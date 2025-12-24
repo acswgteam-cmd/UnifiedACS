@@ -29,18 +29,18 @@ const ArtworkForm: React.FC<Props> = ({ state, onSubmit }) => {
     
     setFormData(prev => ({ 
       ...prev, 
-      [name]: val === "" ? null : val, // Ensure empty strings are null for DB FKs
+      [name]: val === "" ? null : val,
       ...(name === 'work_context' ? { project_id: null, lead_id: null, department_id: null } : {})
     }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Remove ID and ensure foreign keys are proper
+    // Use Omit type to ensure we don't send an invalid string ID to a UUID column
     const { id, ...logData } = formData as ArtworkLog;
-    
     onSubmit(logData);
     
+    // Clear name and notes only
     setFormData(prev => ({
       ...prev,
       artwork_name: '',
