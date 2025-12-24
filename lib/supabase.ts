@@ -1,14 +1,18 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7';
 
-// Ambil variabel environment dari Vite
+// Ambil variabel environment dari Vite (Pastikan di Vercel diawali VITE_)
 const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL;
 const supabaseAnonKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY;
 
-// Hanya inisialisasi jika kunci tersedia untuk mencegah crash
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.warn("SUPABASE CONFIG MISSING: Check Vercel Environment Variables. Names must start with VITE_");
+}
+
 export const supabase = (supabaseUrl && supabaseAnonKey) 
   ? createClient(supabaseUrl, supabaseAnonKey) 
   : null;
+
 
 /**
  * SQL Schema (Gunakan ini di SQL Editor Supabase):
