@@ -4,13 +4,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Creative Log Pro</title>
+    <title>ACS Unified Log Artwork</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
         body { font-family: 'Inter', sans-serif; }
         
-        /* Force native browser widgets (like date picker icons) to be dark for light backgrounds */
         input[type="date"]::-webkit-calendar-picker-indicator {
             filter: invert(0);
             cursor: pointer;
@@ -19,6 +18,11 @@
         :root {
             color-scheme: light;
         }
+
+        .backdrop-blur-custom {
+            backdrop-filter: blur(8px);
+            background-color: rgba(15, 23, 42, 0.4);
+        }
     </style>
 <script type="importmap">
 {
@@ -26,7 +30,8 @@
     "react-router-dom": "https://esm.sh/react-router-dom@^7.11.0",
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
     "react/": "https://esm.sh/react@^19.2.3/",
-    "react": "https://esm.sh/react@^19.2.3"
+    "react": "https://esm.sh/react@^19.2.3",
+    "jspdf": "https://esm.sh/jspdf@^2.5.1"
   }
 }
 </script>

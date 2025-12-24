@@ -20,7 +20,7 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
     end_date: '',
     location: '',
     pic_designer_id: designers[0]?.id || '',
-    project_type: 'Campaign'
+    project_type: 'EVENT'
   });
 
   const getDesignerName = (id: string) => designers.find(d => d.id === id)?.name || 'N/A';
@@ -32,7 +32,7 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
       end_date: '',
       location: '',
       pic_designer_id: designers[0]?.id || '',
-      project_type: 'Campaign'
+      project_type: 'EVENT'
     });
     setEditingId(null);
     setIsAdding(false);
@@ -167,10 +167,12 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
             <div className="relative">
               <label className={labelClass}>Project Type</label>
               <select value={formData.project_type} onChange={e => setFormData({...formData, project_type: e.target.value})} className={inputClass}>
-                <option value="Campaign">Campaign</option>
-                <option value="Identity">Identity</option>
-                <option value="Event">Event</option>
-                <option value="Internal">Internal</option>
+                <option value="EVENT">EVENT</option>
+                <option value="TRAVEL">TRAVEL</option>
+                <option value="WELLNESS">WELLNESS</option>
+                <option value="CREATIVE">CREATIVE</option>
+                <option value="TRAINING">TRAINING</option>
+                <option value="RETAIL">RETAIL</option>
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 top-6 flex items-center px-3 text-slate-500">
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>

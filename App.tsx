@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { HashRouter, Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
 import { INITIAL_STATE } from './data/mockData';
 import { AppState, ArtworkLog, Department, Designer, Project, Lead } from './types';
@@ -15,6 +15,9 @@ import { supabase } from './lib/supabase';
 const App: React.FC = () => {
   const [state, setState] = useState<AppState>(INITIAL_STATE);
   const [loading, setLoading] = useState(false);
+  const [seenLeadsCount, setSeenLeadsCount] = useState<number>(() => {
+    return parseInt(localStorage.getItem('acs_seen_leads_count') || '0');
+  });
 
   const fetchData = async () => {
     if (!supabase) return;
@@ -28,13 +31,21 @@ const App: React.FC = () => {
         supabase.from('artwork_logs').select('*').order('created_at', { ascending: false })
       ]);
 
+      const leadsData = leads.data || [];
+
       setState({
         designers: designers.data || [],
         departments: departments.data || [],
         projects: projects.data || [],
-        leads: leads.data || [],
+        leads: leadsData,
         artworkLogs: logs.data || []
       });
+      
+      // Initialize seen count if not exists
+      if (!localStorage.getItem('acs_seen_leads_count')) {
+        setSeenLeadsCount(leadsData.length);
+        localStorage.setItem('acs_seen_leads_count', leadsData.length.toString());
+      }
     } catch (error) {
       console.error("Error fetching database:", error);
     } finally {
@@ -46,43 +57,18 @@ const App: React.FC = () => {
     fetchData();
   }, []);
 
-  const handleAddLog = async (log: ArtworkLog) => {
-    setState(s => ({ ...s, artworkLogs: [log, ...s.artworkLogs] }));
-    if (supabase) {
-      const { error } = await supabase.from('artwork_logs').insert([log]);
-      if (error) console.error("Database sync error:", error);
-    }
-  };
-
-  const handleUpdateLog = async (updatedLog: ArtworkLog) => {
-    setState(s => ({
-      ...s,
-      artworkLogs: s.artworkLogs.map(l => l.id === updatedLog.id ? updatedLog : l)
-    }));
-    if (supabase) {
-      const { error } = await supabase.from('artwork_logs').update(updatedLog).eq('id', updatedLog.id);
-      if (error) console.error("Database sync error:", error);
-    }
-  };
-
-  const handleDeleteLog = async (id: string) => {
-    if (!confirm('Are you sure you want to permanently delete this log entry?')) return;
-    setState(s => ({
-      ...s,
-      artworkLogs: s.artworkLogs.filter(l => l.id !== id)
-    }));
-    if (supabase) {
-      const { error } = await supabase.from('artwork_logs').delete().eq('id', id);
-      if (error) console.error("Database sync error:", error);
-    }
-  };
-
-  const handleUpdateDepartments = (deps: Department[]) => setState(s => ({ ...s, departments: deps }));
-  const handleUpdateDesigners = (des: Designer[]) => setState(s => ({ ...s, designers: des }));
-  const handleUpdateProjects = (projs: Project[]) => setState(s => ({ ...s, projects: projs }));
-  
   const handleUpdateLeads = async (leads: Lead[]) => {
     setState(s => ({ ...s, leads: leads }));
+  };
+
+  const unreadLeadsCount = useMemo(() => {
+    return Math.max(0, state.leads.length - seenLeadsCount);
+  }, [state.leads.length, seenLeadsCount]);
+
+  const markLeadsAsSeen = () => {
+    const currentCount = state.leads.length;
+    setSeenLeadsCount(currentCount);
+    localStorage.setItem('acs_seen_leads_count', currentCount.toString());
   };
 
   return (
@@ -94,8 +80,8 @@ const App: React.FC = () => {
           <div className="flex h-screen overflow-hidden bg-slate-50 text-slate-900">
             <aside className="w-64 bg-slate-900 text-white flex-shrink-0 flex flex-col shadow-xl z-20">
               <div className="p-6">
-                <h1 className="text-xl font-bold tracking-tight">CREATIVE<span className="text-indigo-400">LOG</span></h1>
-                <p className="text-[10px] text-slate-500 uppercase tracking-[0.2em] mt-1 font-semibold text-white/60">Creative Operations</p>
+                <h1 className="text-lg font-bold tracking-tight leading-tight">ACS UNIFIED<br/><span className="text-indigo-400">LOG ARTWORK</span></h1>
+                <p className="text-[10px] text-slate-500 uppercase tracking-[0.2em] mt-2 font-bold text-white/60">Creative Operations</p>
               </div>
               <nav className="flex-1 px-4 py-4 space-y-1">
                 <NavLink to="/dashboard">
@@ -119,7 +105,7 @@ const App: React.FC = () => {
                   <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
                   Projects
                 </NavLink>
-                <NavLink to="/masters/leads">
+                <NavLink to="/masters/leads" badge={unreadLeadsCount} onClick={markLeadsAsSeen}>
                   <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"/></svg>
                   Leads
                 </NavLink>
@@ -138,11 +124,11 @@ const App: React.FC = () => {
                   <Routes>
                     <Route path="/" element={<Navigate to="/dashboard" replace />} />
                     <Route path="/dashboard" element={<Dashboard state={state} />} />
-                    <Route path="/artwork-logs" element={<ArtworkLogPage state={state} onAdd={handleAddLog} onUpdate={handleUpdateLog} onDelete={handleDeleteLog} />} />
-                    <Route path="/masters/departments" element={<DepartmentMaster departments={state.departments} onUpdate={handleUpdateDepartments} />} />
-                    <Route path="/masters/designers" element={<DesignerMaster designers={state.designers} onUpdate={handleUpdateDesigners} />} />
-                    <Route path="/masters/projects" element={<ProjectMaster projects={state.projects} designers={state.designers} onUpdate={handleUpdateProjects} />} />
-                    <Route path="/masters/leads" element={<LeadMaster leads={state.leads} onUpdate={handleUpdateLeads} />} />
+                    <Route path="/artwork-logs" element={<ArtworkLogPage state={state} onAdd={() => fetchData()} onUpdate={() => fetchData()} onDelete={() => fetchData()} />} />
+                    <Route path="/masters/departments" element={<DepartmentMaster departments={state.departments} onUpdate={() => fetchData()} />} />
+                    <Route path="/masters/designers" element={<DesignerMaster designers={state.designers} onUpdate={() => fetchData()} />} />
+                    <Route path="/masters/projects" element={<ProjectMaster projects={state.projects} designers={state.designers} onUpdate={() => fetchData()} />} />
+                    <Route path="/masters/leads" element={<LeadMaster leads={state.leads} onUpdate={() => fetchData()} />} />
                   </Routes>
                 </div>
               </div>
@@ -154,12 +140,22 @@ const App: React.FC = () => {
   );
 };
 
-const NavLink: React.FC<{ to: string; children: React.ReactNode }> = ({ to, children }) => {
+const NavLink: React.FC<{ to: string; children: React.ReactNode; badge?: number; onClick?: () => void }> = ({ to, children, badge = 0, onClick }) => {
   const location = useLocation();
   const isActive = location.pathname.startsWith(to);
+  
   return (
-    <Link to={to} className={`flex items-center px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${isActive ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/40' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+    <Link 
+      to={to} 
+      onClick={onClick}
+      className={`flex items-center px-4 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 relative group ${isActive ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/40' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+    >
       {children}
+      {badge > 0 && !isActive ? (
+        <span className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center min-w-[18px] h-[18px] bg-rose-500 text-white text-[10px] font-bold rounded-full border-2 border-slate-900 shadow-sm animate-bounce">
+          {badge > 99 ? '99+' : badge}
+        </span>
+      ) : null}
     </Link>
   );
 };
