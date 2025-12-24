@@ -1,17 +1,54 @@
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7';
+import { createClient } from '@supabase/supabase-js';
 
-// Ambil variabel environment dari Vite (Pastikan di Vercel diawali VITE_)
-const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL;
-const supabaseAnonKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY;
+// Comprehensive environment variable lookup
+const getEnv = (key: string): string => {
+  // 1. Try global process.env (Standard for many CI/CD and shims)
+  try {
+    if (typeof process !== 'undefined' && process.env && process.env[key]) {
+      return process.env[key] as string;
+    }
+  } catch (e) {}
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn("SUPABASE CONFIG MISSING: Check Vercel Environment Variables. Names must start with VITE_");
-}
+  // 2. Try Vite's import.meta.env
+  try {
+    const metaEnv = (import.meta as any).env;
+    if (metaEnv && metaEnv[key]) {
+      return metaEnv[key];
+    }
+  } catch (e) {}
+
+  // 3. Try window.process.env
+  try {
+    if (typeof window !== 'undefined' && (window as any).process?.env?.[key]) {
+      return (window as any).process?.env?.[key];
+    }
+  } catch (e) {}
+  
+  return '';
+};
+
+const supabaseUrl = getEnv('VITE_SUPABASE_URL');
+const supabaseAnonKey = getEnv('VITE_SUPABASE_ANON_KEY');
 
 export const supabase = (supabaseUrl && supabaseAnonKey) 
   ? createClient(supabaseUrl, supabaseAnonKey) 
   : null;
+
+export const isSupabaseConfigured = !!(supabaseUrl && supabaseAnonKey);
+export const missingVars = {
+  url: !supabaseUrl,
+  key: !supabaseAnonKey
+};
+
+// Log status for debugging (visible in browser console)
+if (!isSupabaseConfigured) {
+  console.warn("Supabase Configuration Status:", {
+    urlFound: !!supabaseUrl,
+    keyFound: !!supabaseAnonKey,
+    detectionPath: "Checked process.env, import.meta.env, and window.process.env"
+  });
+}
 
 
 /**
