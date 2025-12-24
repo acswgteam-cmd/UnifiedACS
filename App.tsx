@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { HashRouter, Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
-import { INITIAL_STATE } from './data/mockData';
 import { AppState, ArtworkLog, Department, Designer, Project, Lead } from './types';
 import ArtworkLogPage from './pages/ArtworkLogPage';
 import DepartmentMaster from './pages/DepartmentMaster';
@@ -13,8 +12,14 @@ import Dashboard from './pages/Dashboard';
 import { supabase } from './lib/supabase';
 
 const App: React.FC = () => {
-  const [state, setState] = useState<AppState>(INITIAL_STATE);
-  const [loading, setLoading] = useState(false);
+  const [state, setState] = useState<AppState>({
+    designers: [],
+    departments: [],
+    projects: [],
+    leads: [],
+    artworkLogs: []
+  });
+  const [loading, setLoading] = useState(true);
   const [seenLeadsCount, setSeenLeadsCount] = useState<number>(() => {
     return parseInt(localStorage.getItem('acs_seen_leads_count') || '0');
   });
@@ -26,7 +31,7 @@ const App: React.FC = () => {
       const [designers, departments, projects, leads, logs] = await Promise.all([
         supabase.from('designers').select('*').order('name'),
         supabase.from('departments').select('*').order('department_name'),
-        supabase.from('projects').select('*').order('start_date', { ascending: false }),
+        supabase.from('projects').select('*').order('created_at', { ascending: false }),
         supabase.from('leads').select('*').order('created_at', { ascending: false }),
         supabase.from('artwork_logs').select('*').order('created_at', { ascending: false })
       ]);
@@ -57,18 +62,15 @@ const App: React.FC = () => {
 
   const handleAddLog = async (log: Omit<ArtworkLog, 'id'>) => {
     if (!supabase) {
-      alert("Error: Supabase connection not established. Check Vercel Env Vars.");
+      alert("Error: Supabase connection not established.");
       return;
     }
     
-    // Ensure nested objects are cleaned for the DB
-    const cleanLog = { ...log };
-    
-    const { error } = await supabase.from('artwork_logs').insert([cleanLog]);
+    const { error } = await supabase.from('artwork_logs').insert([log]);
     
     if (error) {
       console.error("Database Error:", error);
-      alert(`DATABASE ERROR: ${error.message}\n\nHint: Ensure all Foreign Keys (Designers, Projects, etc) exist as valid UUIDs.`);
+      alert(`Gagal Simpan: ${error.message}\n\nPastikan Anda sudah mengisi data Designer/Project di menu Master terlebih dahulu.`);
     } else {
       fetchData();
     }
@@ -77,28 +79,25 @@ const App: React.FC = () => {
   const handleUpdateLog = async (log: ArtworkLog) => {
     if (!supabase) return;
     const { error } = await supabase.from('artwork_logs').update(log).eq('id', log.id);
-    if (error) {
-      alert(`Update failed: ${error.message}`);
-    } else {
-      fetchData();
-    }
+    if (error) alert(`Update gagal: ${error.message}`);
+    else fetchData();
   };
 
   const handleDeleteLog = async (id: string) => {
-    if (!supabase || !confirm("Are you sure?")) return;
+    if (!supabase || !confirm("Hapus log ini?")) return;
     const { error } = await supabase.from('artwork_logs').delete().eq('id', id);
-    if (error) {
-      alert(`Delete failed: ${error.message}`);
-    } else {
-      fetchData();
-    }
+    if (error) alert(`Hapus gagal: ${error.message}`);
+    else fetchData();
   };
 
-  const handleUpdateDepartments = async () => fetchData();
-  const handleUpdateDesigners = async () => fetchData();
-  const handleUpdateProjects = async () => fetchData();
-  const handleUpdateLeads = async (leads: Lead[]) => {
-    setState(s => ({ ...s, leads: leads }));
+  const handleUpdateDepartments = async (depts: Department[]) => {
+    // For master tables, we usually do fetchData after any DB operation
+    fetchData();
+  };
+  
+  const handleUpdateDesigners = async (designers: Designer[]) => {
+    // If using the local master components that send the whole array, 
+    // we need to handle specific logic or just refresh
     fetchData();
   };
 
@@ -115,7 +114,7 @@ const App: React.FC = () => {
   return (
     <HashRouter>
       <Routes>
-        <Route path="/public/submit-lead" element={<PublicLeadForm onHostSubmit={handleUpdateLeads} currentLeads={state.leads} />} />
+        <Route path="/public/submit-lead" element={<PublicLeadForm onHostSubmit={() => fetchData()} currentLeads={state.leads} />} />
         
         <Route path="*" element={
           <div className="flex h-screen overflow-hidden bg-slate-50 text-slate-900">
@@ -127,49 +126,37 @@ const App: React.FC = () => {
               <nav className="flex-1 px-4 py-4 space-y-1">
                 <NavLink to="/dashboard">
                   <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                  Analytics Dashboard
+                  Dashboard
                 </NavLink>
                 <NavLink to="/artwork-logs">
                   <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
                   Artwork Logs
                 </NavLink>
-                <div className="mt-8 mb-2 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Master Registry</div>
-                <NavLink to="/masters/departments">
-                  <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
-                  Departments
-                </NavLink>
-                <NavLink to="/masters/designers">
-                  <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
-                  Designers
-                </NavLink>
-                <NavLink to="/masters/projects">
-                  <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-                  Projects
-                </NavLink>
-                <NavLink to="/masters/leads" badge={unreadLeadsCount} onClick={markLeadsAsSeen}>
-                  <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"/></svg>
-                  Leads
-                </NavLink>
+                <div className="mt-8 mb-2 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Master Data</div>
+                <NavLink to="/masters/departments">Departments</NavLink>
+                <NavLink to="/masters/designers">Designers</NavLink>
+                <NavLink to="/masters/projects">Projects</NavLink>
+                <NavLink to="/masters/leads" badge={unreadLeadsCount} onClick={markLeadsAsSeen}>Leads</NavLink>
               </nav>
-              <div className="p-4 bg-slate-800/50 mt-auto">
-                <Link to="/public/submit-lead" target="_blank" className="block text-center p-2 rounded bg-indigo-600/20 text-indigo-400 text-[10px] font-bold uppercase tracking-wider hover:bg-indigo-600 hover:text-white transition-colors">
-                  Open Public Form ↗
-                </Link>
-              </div>
             </aside>
 
             <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
               {loading && <div className="absolute top-0 left-0 w-full h-1 bg-indigo-600 animate-pulse z-50"></div>}
               <div className="flex-1 overflow-y-auto">
                 <div className="max-w-7xl mx-auto p-6 sm:p-8">
+                  {state.designers.length === 0 && !loading && (
+                    <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-sm font-medium">
+                      ⚠️ <strong>Database Kosong:</strong> Silakan isi data di menu <strong>Designers</strong> dan <strong>Departments</strong> terlebih dahulu sebelum membuat Log.
+                    </div>
+                  )}
                   <Routes>
                     <Route path="/" element={<Navigate to="/dashboard" replace />} />
                     <Route path="/dashboard" element={<Dashboard state={state} />} />
                     <Route path="/artwork-logs" element={<ArtworkLogPage state={state} onAdd={handleAddLog} onUpdate={handleUpdateLog} onDelete={handleDeleteLog} />} />
-                    <Route path="/masters/departments" element={<DepartmentMaster departments={state.departments} onUpdate={handleUpdateDepartments} />} />
-                    <Route path="/masters/designers" element={<DesignerMaster designers={state.designers} onUpdate={handleUpdateDesigners} />} />
-                    <Route path="/masters/projects" element={<ProjectMaster projects={state.projects} designers={state.designers} onUpdate={handleUpdateProjects} />} />
-                    <Route path="/masters/leads" element={<LeadMaster leads={state.leads} onUpdate={handleUpdateLeads} />} />
+                    <Route path="/masters/departments" element={<DepartmentMaster departments={state.departments} onUpdate={fetchData} />} />
+                    <Route path="/masters/designers" element={<DesignerMaster designers={state.designers} onUpdate={fetchData} />} />
+                    <Route path="/masters/projects" element={<ProjectMaster projects={state.projects} designers={state.designers} onUpdate={fetchData} />} />
+                    <Route path="/masters/leads" element={<LeadMaster leads={state.leads} onUpdate={fetchData} />} />
                   </Routes>
                 </div>
               </div>
@@ -184,19 +171,13 @@ const App: React.FC = () => {
 const NavLink: React.FC<{ to: string; children: React.ReactNode; badge?: number; onClick?: () => void }> = ({ to, children, badge = 0, onClick }) => {
   const location = useLocation();
   const isActive = location.pathname.startsWith(to);
-  
   return (
     <Link 
-      to={to} 
-      onClick={onClick}
+      to={to} onClick={onClick}
       className={`flex items-center px-4 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 relative group ${isActive ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/40' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
     >
       {children}
-      {badge > 0 && !isActive ? (
-        <span className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center min-w-[18px] h-[18px] bg-rose-500 text-white text-[10px] font-bold rounded-full border-2 border-slate-900 shadow-sm animate-bounce">
-          {badge > 99 ? '99+' : badge}
-        </span>
-      ) : null}
+      {badge > 0 && !isActive ? <span className="absolute right-3 top-1/2 -translate-y-1/2 bg-rose-500 text-white text-[10px] font-bold rounded-full px-1.5">{badge}</span> : null}
     </Link>
   );
 };
