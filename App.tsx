@@ -24,10 +24,10 @@ const App: React.FC = () => {
     setLoading(true);
     try {
       const [designers, departments, projects, leads, logs] = await Promise.all([
-        supabase.from('designers').select('*'),
-        supabase.from('departments').select('*'),
-        supabase.from('projects').select('*'),
-        supabase.from('leads').select('*'),
+        supabase.from('designers').select('*').order('name'),
+        supabase.from('departments').select('*').order('department_name'),
+        supabase.from('projects').select('*').order('start_date', { ascending: false }),
+        supabase.from('leads').select('*').order('created_at', { ascending: false }),
         supabase.from('artwork_logs').select('*').order('created_at', { ascending: false })
       ]);
 
@@ -41,7 +41,6 @@ const App: React.FC = () => {
         artworkLogs: logs.data || []
       });
       
-      // Initialize seen count if not exists
       if (!localStorage.getItem('acs_seen_leads_count')) {
         setSeenLeadsCount(leadsData.length);
         localStorage.setItem('acs_seen_leads_count', leadsData.length.toString());
@@ -57,8 +56,53 @@ const App: React.FC = () => {
     fetchData();
   }, []);
 
+  const handleAddLog = async (log: Omit<ArtworkLog, 'id'>) => {
+    if (!supabase) return;
+    // We omit 'id' to let Supabase generate a UUID automatically
+    const { error } = await supabase.from('artwork_logs').insert([log]);
+    if (error) {
+      console.error("Error adding log:", error);
+      alert(`Error: ${error.message}`);
+    } else {
+      fetchData();
+    }
+  };
+
+  const handleUpdateLog = async (log: ArtworkLog) => {
+    if (!supabase) return;
+    const { error } = await supabase.from('artwork_logs').update(log).eq('id', log.id);
+    if (error) {
+      console.error("Error updating log:", error);
+    } else {
+      fetchData();
+    }
+  };
+
+  const handleDeleteLog = async (id: string) => {
+    if (!supabase || !confirm("Are you sure?")) return;
+    const { error } = await supabase.from('artwork_logs').delete().eq('id', id);
+    if (error) {
+      console.error("Error deleting log:", error);
+    } else {
+      fetchData();
+    }
+  };
+
+  const handleUpdateDepartments = async (deps: Department[]) => {
+    fetchData();
+  };
+
+  const handleUpdateDesigners = async (des: Designer[]) => {
+    fetchData();
+  };
+
+  const handleUpdateProjects = async (projs: Project[]) => {
+    fetchData();
+  };
+
   const handleUpdateLeads = async (leads: Lead[]) => {
     setState(s => ({ ...s, leads: leads }));
+    fetchData();
   };
 
   const unreadLeadsCount = useMemo(() => {
@@ -124,11 +168,11 @@ const App: React.FC = () => {
                   <Routes>
                     <Route path="/" element={<Navigate to="/dashboard" replace />} />
                     <Route path="/dashboard" element={<Dashboard state={state} />} />
-                    <Route path="/artwork-logs" element={<ArtworkLogPage state={state} onAdd={() => fetchData()} onUpdate={() => fetchData()} onDelete={() => fetchData()} />} />
-                    <Route path="/masters/departments" element={<DepartmentMaster departments={state.departments} onUpdate={() => fetchData()} />} />
-                    <Route path="/masters/designers" element={<DesignerMaster designers={state.designers} onUpdate={() => fetchData()} />} />
-                    <Route path="/masters/projects" element={<ProjectMaster projects={state.projects} designers={state.designers} onUpdate={() => fetchData()} />} />
-                    <Route path="/masters/leads" element={<LeadMaster leads={state.leads} onUpdate={() => fetchData()} />} />
+                    <Route path="/artwork-logs" element={<ArtworkLogPage state={state} onAdd={handleAddLog} onUpdate={handleUpdateLog} onDelete={handleDeleteLog} />} />
+                    <Route path="/masters/departments" element={<DepartmentMaster departments={state.departments} onUpdate={handleUpdateDepartments} />} />
+                    <Route path="/masters/designers" element={<DesignerMaster designers={state.designers} onUpdate={handleUpdateDesigners} />} />
+                    <Route path="/masters/projects" element={<ProjectMaster projects={state.projects} designers={state.designers} onUpdate={handleUpdateProjects} />} />
+                    <Route path="/masters/leads" element={<LeadMaster leads={state.leads} onUpdate={handleUpdateLeads} />} />
                   </Routes>
                 </div>
               </div>

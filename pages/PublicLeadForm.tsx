@@ -25,25 +25,23 @@ const PublicLeadForm: React.FC<Props> = ({ onHostSubmit, currentLeads = [] }) =>
     e.preventDefault();
     setLoading(true);
 
-    const newLead: Lead = {
-      ...formData as Lead,
-      id: `lead-${Date.now()}`
-    };
+    // Omit ID to let Supabase handle UUID
+    const { id, ...leadData } = formData as Lead;
 
     try {
       if (supabase) {
-        const { error } = await supabase.from('leads').insert([newLead]);
+        const { data, error } = await supabase.from('leads').insert([leadData]).select();
         if (error) throw error;
+        
+        if (onHostSubmit && data) {
+          onHostSubmit([...currentLeads, data[0]]);
+        }
       }
       
-      if (onHostSubmit) {
-        onHostSubmit([...currentLeads, newLead]);
-      }
-
       setSubmitted(true);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Submission failed:", err);
-      alert("Failed to submit request. Please try again.");
+      alert(`Submission failed: ${err.message || 'Check your internet connection'}`);
     } finally {
       setLoading(false);
     }
