@@ -31,19 +31,18 @@ const App: React.FC = () => {
         supabase.from('artwork_logs').select('*').order('created_at', { ascending: false })
       ]);
 
-      const leadsData = leads.data || [];
-
       setState({
         designers: designers.data || [],
         departments: departments.data || [],
         projects: projects.data || [],
-        leads: leadsData,
+        leads: leads.data || [],
         artworkLogs: logs.data || []
       });
       
+      const leadsCount = leads.data?.length || 0;
       if (!localStorage.getItem('acs_seen_leads_count')) {
-        setSeenLeadsCount(leadsData.length);
-        localStorage.setItem('acs_seen_leads_count', leadsData.length.toString());
+        setSeenLeadsCount(leadsCount);
+        localStorage.setItem('acs_seen_leads_count', leadsCount.toString());
       }
     } catch (error) {
       console.error("Error fetching database:", error);
@@ -58,11 +57,10 @@ const App: React.FC = () => {
 
   const handleAddLog = async (log: Omit<ArtworkLog, 'id'>) => {
     if (!supabase) return;
-    // We omit 'id' to let Supabase generate a UUID automatically
     const { error } = await supabase.from('artwork_logs').insert([log]);
     if (error) {
       console.error("Error adding log:", error);
-      alert(`Error: ${error.message}`);
+      alert(`Error saving to database: ${error.message}`);
     } else {
       fetchData();
     }
@@ -79,7 +77,7 @@ const App: React.FC = () => {
   };
 
   const handleDeleteLog = async (id: string) => {
-    if (!supabase || !confirm("Are you sure?")) return;
+    if (!supabase || !confirm("Are you sure you want to delete this log?")) return;
     const { error } = await supabase.from('artwork_logs').delete().eq('id', id);
     if (error) {
       console.error("Error deleting log:", error);
@@ -88,18 +86,9 @@ const App: React.FC = () => {
     }
   };
 
-  const handleUpdateDepartments = async (deps: Department[]) => {
-    fetchData();
-  };
-
-  const handleUpdateDesigners = async (des: Designer[]) => {
-    fetchData();
-  };
-
-  const handleUpdateProjects = async (projs: Project[]) => {
-    fetchData();
-  };
-
+  const handleUpdateDepartments = async () => fetchData();
+  const handleUpdateDesigners = async () => fetchData();
+  const handleUpdateProjects = async () => fetchData();
   const handleUpdateLeads = async (leads: Lead[]) => {
     setState(s => ({ ...s, leads: leads }));
     fetchData();
