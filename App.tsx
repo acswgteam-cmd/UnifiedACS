@@ -56,11 +56,19 @@ const App: React.FC = () => {
   }, []);
 
   const handleAddLog = async (log: Omit<ArtworkLog, 'id'>) => {
-    if (!supabase) return;
-    const { error } = await supabase.from('artwork_logs').insert([log]);
+    if (!supabase) {
+      alert("Error: Supabase connection not established. Check Vercel Env Vars.");
+      return;
+    }
+    
+    // Ensure nested objects are cleaned for the DB
+    const cleanLog = { ...log };
+    
+    const { error } = await supabase.from('artwork_logs').insert([cleanLog]);
+    
     if (error) {
-      console.error("Error adding log:", error);
-      alert(`Error saving to database: ${error.message}`);
+      console.error("Database Error:", error);
+      alert(`DATABASE ERROR: ${error.message}\n\nHint: Ensure all Foreign Keys (Designers, Projects, etc) exist as valid UUIDs.`);
     } else {
       fetchData();
     }
@@ -70,17 +78,17 @@ const App: React.FC = () => {
     if (!supabase) return;
     const { error } = await supabase.from('artwork_logs').update(log).eq('id', log.id);
     if (error) {
-      console.error("Error updating log:", error);
+      alert(`Update failed: ${error.message}`);
     } else {
       fetchData();
     }
   };
 
   const handleDeleteLog = async (id: string) => {
-    if (!supabase || !confirm("Are you sure you want to delete this log?")) return;
+    if (!supabase || !confirm("Are you sure?")) return;
     const { error } = await supabase.from('artwork_logs').delete().eq('id', id);
     if (error) {
-      console.error("Error deleting log:", error);
+      alert(`Delete failed: ${error.message}`);
     } else {
       fetchData();
     }
