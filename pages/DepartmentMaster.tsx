@@ -23,7 +23,7 @@ const DepartmentMaster: React.FC<Props> = ({ departments, onUpdate }) => {
     }]);
 
     if (error) {
-      alert(`Error: ${error.message}`);
+      alert(`Gagal Simpan: ${error.message}. Cek kolom 'department_name' di database.`);
     } else {
       onUpdate();
       setNewDeptName('');
@@ -68,14 +68,13 @@ const DepartmentMaster: React.FC<Props> = ({ departments, onUpdate }) => {
       <header className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Department Master</h1>
-          <p className="text-slate-600 text-sm mt-1 font-bold">Manage corporate departments for internal logging.</p>
+          <p className="text-slate-600 text-sm mt-1 font-bold">Manage creative units.</p>
         </div>
         <button 
           onClick={() => setIsAdding(true)}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-black flex items-center gap-2 shadow-lg hover:bg-indigo-700 transition-all"
+          className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-black flex items-center gap-2 shadow-lg"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4"/></svg>
-          Add Department
+          Add Dept
         </button>
       </header>
 
@@ -83,7 +82,7 @@ const DepartmentMaster: React.FC<Props> = ({ departments, onUpdate }) => {
         <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-xl flex items-center gap-4 animate-in slide-in-from-top duration-200">
           <input 
             type="text" 
-            placeholder="Department Name (e.g. Sales, Marketing)" 
+            placeholder="Department Name" 
             value={newDeptName}
             onChange={(e) => setNewDeptName(e.target.value)}
             className={inputClass}
@@ -98,10 +97,9 @@ const DepartmentMaster: React.FC<Props> = ({ departments, onUpdate }) => {
           <table className="w-full text-left text-sm border-collapse">
             <thead className="sticky top-0 z-10 bg-slate-100">
               <tr className="border-b border-slate-200">
-                <th className="px-6 py-4 font-black text-slate-900 uppercase text-[10px] tracking-wider">ID Ref</th>
-                <th className="px-6 py-4 font-black text-slate-900 uppercase text-[10px] tracking-wider">Department Name</th>
-                <th className="px-6 py-4 font-black text-slate-900 uppercase text-[10px] tracking-wider">Status</th>
-                <th className="px-6 py-4 font-black text-slate-900 uppercase text-[10px] tracking-wider text-right">Actions</th>
+                <th className="px-6 py-4 font-black text-slate-900 uppercase text-[10px]">ID</th>
+                <th className="px-6 py-4 font-black text-slate-900 uppercase text-[10px]">Dept Name</th>
+                <th className="px-6 py-4 font-black text-slate-900 uppercase text-[10px] text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -117,7 +115,7 @@ const DepartmentMaster: React.FC<Props> = ({ departments, onUpdate }) => {
                         onBlur={saveEdit}
                         onKeyDown={(e) => e.key === 'Enter' && saveEdit()}
                         autoFocus
-                        className="text-sm border-slate-300 rounded-lg p-2 border bg-white text-slate-900 w-full max-w-xs font-bold"
+                        className="text-sm border-slate-300 rounded-lg p-2 border bg-white font-bold"
                       />
                     ) : (
                       <span className={`text-sm font-black ${!dept.active ? 'text-slate-400 line-through' : 'text-slate-900'}`}>
@@ -125,26 +123,11 @@ const DepartmentMaster: React.FC<Props> = ({ departments, onUpdate }) => {
                       </span>
                     )}
                   </td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex px-2 py-1 rounded text-[10px] font-black uppercase tracking-tight ${
-                      dept.active ? 'bg-green-100 text-green-800' : 'bg-slate-200 text-slate-600'
-                    }`}>
-                      {dept.active ? 'Active' : 'Inactive'}
-                    </span>
-                  </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-6">
-                      <button 
-                        onClick={() => startEdit(dept)}
-                        className="text-[10px] font-black uppercase text-indigo-700 hover:text-indigo-900 tracking-widest"
-                      >
-                        Edit
-                      </button>
-                      <button 
-                        onClick={() => toggleStatus(dept)}
-                        className={`text-[10px] font-black uppercase tracking-widest ${dept.active ? 'text-red-500 hover:text-red-700' : 'text-green-600 hover:text-green-800'}`}
-                      >
-                        {dept.active ? 'Deactivate' : 'Activate'}
+                      <button onClick={() => startEdit(dept)} className="text-[10px] font-black uppercase text-indigo-700 tracking-widest">Edit</button>
+                      <button onClick={() => toggleStatus(dept)} className={`text-[10px] font-black uppercase tracking-widest ${dept.active ? 'text-red-500' : 'text-green-600'}`}>
+                        {dept.active ? 'Off' : 'On'}
                       </button>
                     </div>
                   </td>
