@@ -23,7 +23,39 @@ const App: React.FC = () => {
   });
   const [loading, setLoading] = useState(isSupabaseConfigured);
 
-  // Error screen when environment variables are missing
+  const fetchData = async () => {
+    if (!supabase || useDemoMode) return;
+    setLoading(true);
+    try {
+      const [designersRes, departmentsRes, projectsRes, leadsRes, logsRes] = await Promise.all([
+        supabase.from('designers').select('*').order('name'),
+        supabase.from('departments').select('*').order('department_name'),
+        supabase.from('projects').select('*').order('created_at', { ascending: false }),
+        supabase.from('leads').select('*').order('created_at', { ascending: false }),
+        supabase.from('artwork_logs').select('*').order('created_at', { ascending: false })
+      ]);
+
+      setState({
+        designers: designersRes.data || [],
+        departments: departmentsRes.data || [],
+        projects: projectsRes.data || [],
+        leads: leadsRes.data || [],
+        artworkLogs: logsRes.data || []
+      });
+    } catch (error) {
+      console.error("Fetch error:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isSupabaseConfigured && !useDemoMode) {
+      fetchData();
+    }
+  }, [useDemoMode]);
+
+  // MOVE EARLY RETURN AFTER HOOKS to avoid Error 310 (Hook Rule Violation)
   if (!isSupabaseConfigured && !useDemoMode) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6">
@@ -74,43 +106,13 @@ const App: React.FC = () => {
 
           <div className="mt-8 pt-8 border-t border-slate-100">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">
-              ACS Creative Operations &bull; Support ID: ERR_ENV_MISSING
+              ACS Creative Operations & bull; Support ID: ERR_ENV_MISSING
             </p>
           </div>
         </div>
       </div>
     );
   }
-
-  const fetchData = async () => {
-    if (!supabase || useDemoMode) return;
-    setLoading(true);
-    try {
-      const [designers, departments, projects, leads, logs] = await Promise.all([
-        supabase.from('designers').select('*').order('name'),
-        supabase.from('departments').select('*').order('department_name'),
-        supabase.from('projects').select('*').order('created_at', { ascending: false }),
-        supabase.from('leads').select('*').order('created_at', { ascending: false }),
-        supabase.from('artwork_logs').select('*').order('created_at', { ascending: false })
-      ]);
-
-      setState({
-        designers: designers.data || [],
-        departments: departments.data || [],
-        projects: projects.data || [],
-        leads: leads.data || [],
-        artworkLogs: logs.data || []
-      });
-    } catch (error) {
-      console.error("Fetch error:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, [useDemoMode]);
 
   const handleAddLog = async (log: Omit<ArtworkLog, 'id'>) => {
     if (useDemoMode) {
