@@ -55,7 +55,6 @@ const App: React.FC = () => {
     }
   }, [useDemoMode]);
 
-  // MOVE EARLY RETURN AFTER HOOKS to avoid Error 310 (Hook Rule Violation)
   if (!isSupabaseConfigured && !useDemoMode) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6">
@@ -64,50 +63,12 @@ const App: React.FC = () => {
             <div className="w-12 h-12 bg-rose-100 text-rose-600 rounded-2xl flex items-center justify-center text-2xl">⚠️</div>
             <h1 className="text-2xl font-black text-slate-900">Database Connection Error</h1>
           </div>
-          
           <p className="text-slate-600 mb-6 font-medium leading-relaxed">
             Aplikasi tidak dapat menemukan kredensial database. Pastikan <strong>Environment Variables</strong> berikut sudah terpasang di Vercel:
           </p>
-          
-          <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 mb-8 space-y-4">
-            <div className="flex items-center justify-between">
-              <code className="text-xs font-bold text-slate-700">VITE_SUPABASE_URL</code>
-              <span className={`text-[10px] font-black uppercase px-2 py-1 rounded ${missingVars.url ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"}`}>
-                {missingVars.url ? "Missing" : "Detected"}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <code className="text-xs font-bold text-slate-700">VITE_SUPABASE_ANON_KEY</code>
-              <span className={`text-[10px] font-black uppercase px-2 py-1 rounded ${missingVars.key ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"}`}>
-                {missingVars.key ? "Missing" : "Detected"}
-              </span>
-            </div>
-          </div>
-
           <div className="space-y-4">
-            <button 
-              onClick={() => window.location.reload()} 
-              className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-              Periksa Lagi & Refresh
-            </button>
-            
-            <button 
-              onClick={() => {
-                setState(INITIAL_STATE);
-                setUseDemoMode(true);
-              }}
-              className="w-full py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold hover:bg-slate-200 transition-all text-sm"
-            >
-              Masuk dengan Data Demo (Hanya Lihat)
-            </button>
-          </div>
-
-          <div className="mt-8 pt-8 border-t border-slate-100">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">
-              ACS Creative Operations & bull; Support ID: ERR_ENV_MISSING
-            </p>
+            <button onClick={() => window.location.reload()} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold">Refresh</button>
+            <button onClick={() => { setState(INITIAL_STATE); setUseDemoMode(true); }} className="w-full py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold">Demo Mode</button>
           </div>
         </div>
       </div>
@@ -115,27 +76,21 @@ const App: React.FC = () => {
   }
 
   const handleAddLog = async (log: Omit<ArtworkLog, 'id'>) => {
-    if (useDemoMode) {
-      alert("Mode Demo: Tidak dapat menyimpan ke database.");
-      return;
-    }
-    if (!supabase) return;
+    if (useDemoMode || !supabase) return;
     const { error } = await supabase.from('artwork_logs').insert([log]);
     if (error) alert(`Error: ${error.message}`);
     else fetchData();
   };
 
   const handleUpdateLog = async (log: ArtworkLog) => {
-    if (useDemoMode) return;
-    if (!supabase) return;
+    if (useDemoMode || !supabase) return;
     const { error } = await supabase.from('artwork_logs').update(log).eq('id', log.id);
     if (error) alert(`Update failed: ${error.message}`);
     else fetchData();
   };
 
   const handleDeleteLog = async (id: string) => {
-    if (useDemoMode) return;
-    if (!supabase || !confirm("Hapus?")) return;
+    if (useDemoMode || !supabase || !confirm("Hapus?")) return;
     const { error } = await supabase.from('artwork_logs').delete().eq('id', id);
     if (error) alert(`Hapus gagal: ${error.message}`);
     else fetchData();
@@ -147,15 +102,8 @@ const App: React.FC = () => {
         <Route path="/public/submit-lead" element={<PublicLeadForm onHostSubmit={() => fetchData()} currentLeads={state.leads} />} />
         <Route path="*" element={
           <div className="flex h-screen overflow-hidden bg-slate-50 text-slate-900">
-            {useDemoMode && (
-              <div className="absolute top-0 left-0 w-full bg-amber-500 text-white text-[10px] font-black uppercase tracking-[0.2em] py-1 text-center z-[100] shadow-sm">
-                Demo Mode Active (Read Only)
-              </div>
-            )}
             <aside className="w-64 bg-slate-900 text-white flex-shrink-0 flex flex-col shadow-xl z-20">
-              <div className="p-6">
-                <h1 className="text-lg font-bold tracking-tight">ACS UNIFIED<br/><span className="text-indigo-400">LOG ARTWORK</span></h1>
-              </div>
+              <div className="p-6"><h1 className="text-lg font-bold tracking-tight">ACS UNIFIED<br/><span className="text-indigo-400">LOG ARTWORK</span></h1></div>
               <nav className="flex-1 px-4 py-4 space-y-1">
                 <NavLink to="/dashboard">Dashboard</NavLink>
                 <NavLink to="/artwork-logs">Artwork Logs</NavLink>
