@@ -1,11 +1,12 @@
 
 import React, { useState, useMemo } from 'react';
 import { Project, Designer } from '../types';
+import { supabase } from '../lib/supabase';
 
 interface Props {
   projects: Project[];
   designers: Designer[];
-  onUpdate: (projects: Project[]) => void;
+  onUpdate: () => void;
 }
 
 const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
@@ -38,21 +39,31 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
     setIsAdding(false);
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.project_name) return;
+    if (!formData.project_name || !supabase) return;
 
     if (editingId) {
-      onUpdate(projects.map(p => p.id === editingId ? { ...p, ...formData as Project } : p));
+      const { error } = await supabase
+        .from('projects')
+        .update(formData)
+        .eq('id', editingId);
+      if (error) alert(error.message);
+      else {
+        onUpdate();
+        resetForm();
+      }
     } else {
-      const newProj: Project = {
-        ...formData as Project,
-        id: `p-${Date.now()}`,
+      const { error } = await supabase.from('projects').insert([{
+        ...formData,
         support_designer_ids: []
-      };
-      onUpdate([...projects, newProj]);
+      }]);
+      if (error) alert(error.message);
+      else {
+        onUpdate();
+        resetForm();
+      }
     }
-    resetForm();
   };
 
   const handleEdit = (p: Project) => {
@@ -62,10 +73,11 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
     setView('list');
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to remove this project?')) {
-      onUpdate(projects.filter(p => p.id !== id));
-    }
+  const handleDelete = async (id: string) => {
+    if (!supabase || !confirm('Are you sure you want to remove this project?')) return;
+    const { error } = await supabase.from('projects').delete().eq('id', id);
+    if (error) alert(error.message);
+    else onUpdate();
   };
 
   const getColorTheme = (id: string) => {
@@ -101,7 +113,6 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
     const days = [];
     for (let i = 0; i < startDay; i++) days.push(<div key={`empty-${i}`} className="min-h-[160px] bg-slate-100/50 border-r border-b border-slate-200"></div>);
     for (let d = 1; d <= totalDays; d++) {
-      const dayOfWeek = (startDay + d - 1) % 7;
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
       const dayProjects = sortedProjects.filter(p => dateStr >= p.start_date && dateStr <= p.end_date);
       days.push(
@@ -174,9 +185,6 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
                 <option value="TRAINING">TRAINING</option>
                 <option value="RETAIL">RETAIL</option>
               </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 top-6 flex items-center px-3 text-slate-500">
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              </div>
             </div>
             <div>
               <label className={labelClass}>Start Date</label>
@@ -195,9 +203,6 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
               <select value={formData.pic_designer_id} onChange={e => setFormData({...formData, pic_designer_id: e.target.value})} className={inputClass}>
                 {designers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
               </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 top-6 flex items-center px-3 text-slate-500">
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              </div>
             </div>
           </div>
           <div className="flex justify-end gap-4 pt-6 border-t border-slate-100">
