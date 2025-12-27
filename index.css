@@ -1,0 +1,16 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-900;
+    font-family: 'Inter', sans-serif;
+  }
+}
+
+.backdrop-blur-custom {
+    backdrop-filter: blur(8px);
+    background-color: rgba(15, 23, 42, 0.4);
+}
