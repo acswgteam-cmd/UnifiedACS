@@ -1,10 +1,11 @@
 
 import React, { useState } from 'react';
 import { Department } from '../types';
+import { supabase } from '../lib/supabase';
 
 interface Props {
   departments: Department[];
-  onUpdate: (departments: Department[]) => void;
+  onUpdate: () => void;
 }
 
 const DepartmentMaster: React.FC<Props> = ({ departments, onUpdate }) => {
@@ -13,20 +14,32 @@ const DepartmentMaster: React.FC<Props> = ({ departments, onUpdate }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
 
-  const handleAdd = () => {
-    if (!newDeptName.trim()) return;
-    const newDept: Department = {
-      id: `dep-${Date.now()}`,
+  const handleAdd = async () => {
+    if (!newDeptName.trim() || !supabase) return;
+    
+    const { error } = await supabase.from('departments').insert([{
       department_name: newDeptName,
       active: true
-    };
-    onUpdate([...departments, newDept]);
-    setNewDeptName('');
-    setIsAdding(false);
+    }]);
+
+    if (error) {
+      alert(`Error: ${error.message}`);
+    } else {
+      onUpdate();
+      setNewDeptName('');
+      setIsAdding(false);
+    }
   };
 
-  const toggleStatus = (id: string) => {
-    onUpdate(departments.map(d => d.id === id ? { ...d, active: !d.active } : d));
+  const toggleStatus = async (dept: Department) => {
+    if (!supabase) return;
+    const { error } = await supabase
+      .from('departments')
+      .update({ active: !dept.active })
+      .eq('id', dept.id);
+      
+    if (error) alert(error.message);
+    else onUpdate();
   };
 
   const startEdit = (dept: Department) => {
@@ -34,9 +47,18 @@ const DepartmentMaster: React.FC<Props> = ({ departments, onUpdate }) => {
     setEditName(dept.department_name);
   };
 
-  const saveEdit = () => {
-    onUpdate(departments.map(d => d.id === editingId ? { ...d, department_name: editName } : d));
-    setEditingId(null);
+  const saveEdit = async () => {
+    if (!supabase || !editingId) return;
+    const { error } = await supabase
+      .from('departments')
+      .update({ department_name: editName })
+      .eq('id', editingId);
+
+    if (error) alert(error.message);
+    else {
+      setEditingId(null);
+      onUpdate();
+    }
   };
 
   const inputClass = "flex-1 rounded-lg border-slate-300 text-slate-900 text-sm p-2.5 border bg-white focus:ring-2 focus:ring-indigo-600 outline-none placeholder-slate-400 font-semibold shadow-sm";
@@ -85,7 +107,7 @@ const DepartmentMaster: React.FC<Props> = ({ departments, onUpdate }) => {
             <tbody className="divide-y divide-slate-100">
               {departments.map(dept => (
                 <tr key={dept.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-6 py-4 font-mono text-[10px] text-slate-500 font-bold">{dept.id}</td>
+                  <td className="px-6 py-4 font-mono text-[10px] text-slate-500 font-bold truncate max-w-[100px]">{dept.id}</td>
                   <td className="px-6 py-4">
                     {editingId === dept.id ? (
                       <input 
@@ -93,6 +115,7 @@ const DepartmentMaster: React.FC<Props> = ({ departments, onUpdate }) => {
                         value={editName}
                         onChange={(e) => setEditName(e.target.value)}
                         onBlur={saveEdit}
+                        onKeyDown={(e) => e.key === 'Enter' && saveEdit()}
                         autoFocus
                         className="text-sm border-slate-300 rounded-lg p-2 border bg-white text-slate-900 w-full max-w-xs font-bold"
                       />
@@ -118,7 +141,7 @@ const DepartmentMaster: React.FC<Props> = ({ departments, onUpdate }) => {
                         Edit
                       </button>
                       <button 
-                        onClick={() => toggleStatus(dept.id)}
+                        onClick={() => toggleStatus(dept)}
                         className={`text-[10px] font-black uppercase tracking-widest ${dept.active ? 'text-red-500 hover:text-red-700' : 'text-green-600 hover:text-green-800'}`}
                       >
                         {dept.active ? 'Deactivate' : 'Activate'}
