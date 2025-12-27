@@ -43,23 +43,25 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
     e.preventDefault();
     if (!formData.project_name || !supabase) return;
 
+    // Bersihkan data dari ID agar Supabase yang generate UUID-nya
+    const { id, ...payload } = formData;
+
     if (editingId) {
       const { error } = await supabase
         .from('projects')
-        .update(formData)
+        .update(payload)
         .eq('id', editingId);
-      if (error) alert(error.message);
+      if (error) alert(`Gagal Update: ${error.message}`);
       else {
         onUpdate();
         resetForm();
       }
     } else {
-      const { error } = await supabase.from('projects').insert([{
-        ...formData,
-        support_designer_ids: []
-      }]);
-      if (error) alert(error.message);
-      else {
+      const { error } = await supabase.from('projects').insert([payload]);
+      if (error) {
+        console.error(error);
+        alert(`Gagal Simpan: ${error.message}. Pastikan sudah menjalankan SQL di Supabase.`);
+      } else {
         onUpdate();
         resetForm();
       }
@@ -74,7 +76,7 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
   };
 
   const handleDelete = async (id: string) => {
-    if (!supabase || !confirm('Are you sure you want to remove this project?')) return;
+    if (!supabase || !confirm('Hapus project ini?')) return;
     const { error } = await supabase.from('projects').delete().eq('id', id);
     if (error) alert(error.message);
     else onUpdate();
@@ -86,10 +88,6 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
       { bg: 'bg-amber-50', border: 'border-amber-600', text: 'text-amber-900', accent: 'text-amber-700' },
       { bg: 'bg-emerald-50', border: 'border-emerald-600', text: 'text-emerald-900', accent: 'text-emerald-700' },
       { bg: 'bg-rose-50', border: 'border-rose-600', text: 'text-rose-900', accent: 'text-rose-700' },
-      { bg: 'bg-indigo-50', border: 'border-indigo-600', text: 'text-indigo-900', accent: 'text-indigo-700' },
-      { bg: 'bg-violet-50', border: 'border-violet-600', text: 'text-violet-900', accent: 'text-violet-700' },
-      { bg: 'bg-cyan-50', border: 'border-cyan-600', text: 'text-cyan-900', accent: 'text-cyan-700' },
-      { bg: 'bg-orange-50', border: 'border-orange-600', text: 'text-orange-900', accent: 'text-orange-700' },
     ];
     let hash = 0;
     for (let i = 0; i < id.length; i++) hash = id.charCodeAt(i) + ((hash << 5) - hash);
@@ -122,13 +120,11 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
             {dayProjects.map(p => {
               const theme = getColorTheme(p.id);
               const isStart = dateStr === p.start_date;
-              const designerName = getDesignerName(p.pic_designer_id);
               return (
                 <div key={p.id} className={`min-h-[56px] py-1.5 flex flex-col justify-center px-2 overflow-hidden ${isStart ? `rounded-l-md ml-1 border-l-4 ${theme.border}` : ''} ${theme.bg} ${theme.text}`}>
                   <div className="flex flex-col min-w-0 leading-tight">
                     <span className="text-[10px] font-black truncate">{p.project_name}</span>
-                    <span className={`text-[8px] font-black opacity-80 mt-0.5 truncate uppercase tracking-tighter`}>PIC: {designerName}</span>
-                    <span className={`text-[8px] font-bold ${theme.accent} truncate mt-0.5`}>{p.location || 'Remote'}</span>
+                    <span className={`text-[8px] font-black opacity-80 mt-0.5 truncate uppercase tracking-tighter`}>PIC: {getDesignerName(p.pic_designer_id)}</span>
                   </div>
                 </div>
               );
@@ -148,7 +144,7 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 flex-shrink-0">
         <div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">Project Master</h1>
-          <p className="text-slate-600 text-sm mt-1 font-bold">Visualizing timelines with unique project identifiers.</p>
+          <p className="text-slate-600 text-sm mt-1 font-bold">Manage your event project timelines.</p>
         </div>
         <div className="flex items-center gap-4">
           <div className="flex items-center bg-slate-200 p-1 rounded-xl">
@@ -183,7 +179,6 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
                 <option value="WELLNESS">WELLNESS</option>
                 <option value="CREATIVE">CREATIVE</option>
                 <option value="TRAINING">TRAINING</option>
-                <option value="RETAIL">RETAIL</option>
               </select>
             </div>
             <div>
@@ -196,10 +191,10 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
             </div>
             <div>
               <label className={labelClass}>Location</label>
-              <input type="text" placeholder="e.g. Remote, HQ" value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} className={inputClass} />
+              <input type="text" placeholder="e.g. Remote, HQ" value={formData.location || ''} onChange={e => setFormData({...formData, location: e.target.value})} className={inputClass} />
             </div>
             <div className="relative">
-              <label className={labelClass}>Lead Designer (PIC)</label>
+              <label className={labelClass}>PIC Designer</label>
               <select value={formData.pic_designer_id} onChange={e => setFormData({...formData, pic_designer_id: e.target.value})} className={inputClass}>
                 {designers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
               </select>
@@ -208,7 +203,7 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
           <div className="flex justify-end gap-4 pt-6 border-t border-slate-100">
             <button type="button" onClick={resetForm} className="px-6 py-2.5 text-sm font-black text-slate-700 hover:text-slate-900 transition-colors">Cancel</button>
             <button type="submit" className="px-8 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-black shadow-lg hover:bg-indigo-700 transition-all">
-              {editingId ? 'Update Project' : 'Register Project'}
+              {editingId ? 'Update' : 'Save'}
             </button>
           </div>
         </form>
@@ -223,28 +218,16 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
                   <tr className="text-slate-900 font-black uppercase text-[10px] tracking-wider border-b border-slate-200">
                     <th className="px-6 py-4">Project Name</th>
                     <th className="px-6 py-4">Timeline</th>
-                    <th className="px-6 py-4">Location</th>
-                    <th className="px-6 py-4">Lead Designer</th>
-                    <th className="px-6 py-4">Type</th>
+                    <th className="px-6 py-4">PIC</th>
                     <th className="px-6 py-4 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 text-slate-900 font-bold">
-                  {projects.length === 0 ? (
-                    <tr><td colSpan={6} className="px-6 py-12 text-center text-slate-500 italic">No projects registered.</td></tr>
-                  ) : projects.map(p => (
+                  {projects.map(p => (
                     <tr key={p.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4 font-black">{p.project_name}</td>
-                      <td className="px-6 py-4 text-[11px]">
-                        <span className="bg-white border-slate-300 border px-2 py-0.5 rounded">{p.start_date}</span>
-                        <span className="mx-2 text-slate-400">→</span>
-                        <span className="bg-white border-slate-300 border px-2 py-0.5 rounded">{p.end_date}</span>
-                      </td>
-                      <td className="px-6 py-4 uppercase tracking-tight text-xs">{p.location || '—'}</td>
+                      <td className="px-6 py-4 text-[11px]">{p.start_date} - {p.end_date}</td>
                       <td className="px-6 py-4">{getDesignerName(p.pic_designer_id)}</td>
-                      <td className="px-6 py-4">
-                        <span className="bg-indigo-50 text-indigo-800 px-2 py-1 rounded text-[10px] font-black uppercase tracking-tight">{p.project_type}</span>
-                      </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-4">
                           <button onClick={() => handleEdit(p)} className="text-indigo-700 hover:text-indigo-900 text-[10px] font-black uppercase tracking-widest">Edit</button>
@@ -263,16 +246,10 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
               <h3 className="font-black text-slate-900 text-sm uppercase tracking-widest">{monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</h3>
               <div className="flex gap-2">
                 <button onClick={() => navigateMonth(-1)} className="p-1.5 hover:bg-slate-300 rounded-lg transition-colors"><svg className="w-5 h-5 text-slate-800" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7"/></svg></button>
-                <button onClick={() => setCurrentDate(new Date())} className="px-3 py-1 text-[10px] font-black uppercase tracking-widest bg-white border border-slate-300 rounded-lg text-slate-900">Today</button>
                 <button onClick={() => navigateMonth(1)} className="p-1.5 hover:bg-slate-300 rounded-lg transition-colors"><svg className="w-5 h-5 text-slate-800" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7"/></svg></button>
               </div>
             </div>
             <div className="overflow-y-auto flex-1">
-              <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-100">
-                {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map(d => (
-                  <div key={d} className="py-3 text-center text-[10px] font-black text-slate-900 uppercase tracking-widest border-r border-slate-200 last:border-0">{d}</div>
-                ))}
-              </div>
               <div className="grid grid-cols-7 border-l border-slate-200">{renderCalendar()}</div>
             </div>
           </div>
