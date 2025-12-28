@@ -102,24 +102,71 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
     doc.save(`Lead_${lead.lead_name}.pdf`);
   };
 
+  // Helper for consistent coloring
+  const getColorTheme = (id: string) => {
+    const themes = [
+      { bg: 'bg-blue-50', border: 'border-blue-600', text: 'text-blue-900', accent: 'text-blue-700' },
+      { bg: 'bg-amber-50', border: 'border-amber-600', text: 'text-amber-900', accent: 'text-amber-700' },
+      { bg: 'bg-emerald-50', border: 'border-emerald-600', text: 'text-emerald-900', accent: 'text-emerald-700' },
+      { bg: 'bg-rose-50', border: 'border-rose-600', text: 'text-rose-900', accent: 'text-rose-700' },
+    ];
+    let hash = 0;
+    for (let i = 0; i < id.length; i++) hash = id.charCodeAt(i) + ((hash << 5) - hash);
+    return themes[Math.abs(hash) % themes.length];
+  };
+
   const daysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
+  const firstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
   const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
   
+  const navigateMonth = (direction: number) => {
+    setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() + direction, 1));
+  };
+
   const renderCalendar = () => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
     const totalDays = daysInMonth(year, month);
+    const startDay = firstDayOfMonth(year, month);
     const days = [];
+
+    // Empty slots for start of month
+    for (let i = 0; i < startDay; i++) {
+      days.push(<div key={`empty-${i}`} className="min-h-[160px] bg-slate-100/50 border-r border-b border-slate-200"></div>);
+    }
+
+    // Actual month days
     for (let d = 1; d <= totalDays; d++) {
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
       const dayLeads = leads.filter(l => dateStr >= l.order_date && dateStr <= l.deadline);
+      
       days.push(
-        <div key={d} className="min-h-[120px] bg-white border-r border-b border-slate-200 p-2">
-          <span className="text-[10px] font-bold text-slate-400">{d}</span>
-          <div className="space-y-1 mt-1">
-            {dayLeads.map(l => (
-              <div key={l.id} onClick={() => setSelectedLead(l)} className="cursor-pointer text-[9px] bg-indigo-50 p-1 rounded font-bold truncate text-indigo-700 hover:bg-indigo-100 transition-colors">{l.lead_name}</div>
-            ))}
+        <div key={d} className="min-h-[160px] h-full bg-white border-r border-b border-slate-200 p-0 flex flex-col relative">
+          <span className="text-[10px] font-black text-slate-700 block p-2">{String(d).padStart(2, '0')}</span>
+          <div className="flex flex-col space-y-1 pb-2">
+            {dayLeads.map(l => {
+              const theme = getColorTheme(l.id);
+              const isStart = dateStr === l.order_date;
+              return (
+                <div 
+                  key={l.id} 
+                  onClick={() => setSelectedLead(l)}
+                  className={`cursor-pointer min-h-[60px] py-1.5 flex flex-col justify-center px-2 overflow-hidden transition-all hover:brightness-95 ${isStart ? `rounded-l-md ml-1 border-l-4 ${theme.border}` : ''} ${theme.bg} ${theme.text}`}
+                >
+                  <div className="flex flex-col min-w-0 leading-tight">
+                    <span className="text-[10px] font-black truncate uppercase">{l.lead_name}</span>
+                    <span className="text-[8px] font-black opacity-80 mt-0.5 truncate uppercase tracking-tighter">
+                      PIC: {l.requester}
+                    </span>
+                    <div className="flex items-center gap-1 mt-1">
+                      <span className={`text-[7px] font-black px-1 rounded border ${theme.border} uppercase`}>
+                        Grade {l.lead_grade}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       );
@@ -214,17 +261,21 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
             ))}
           </div>
         ) : (
-          <div className="bg-white rounded-2xl border border-slate-200 h-full flex flex-col overflow-hidden">
-            <div className="p-4 border-b bg-slate-50 flex justify-between items-center flex-shrink-0">
-               <h3 className="font-bold text-sm uppercase tracking-widest text-slate-600">{monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</h3>
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden h-full flex flex-col animate-in fade-in duration-300">
+            <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between flex-shrink-0">
+               <h3 className="font-black text-slate-900 text-sm uppercase tracking-widest">{monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</h3>
                <div className="flex gap-2">
-                 <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))} className="p-1 hover:bg-slate-200 rounded"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7"/></svg></button>
-                 <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))} className="p-1 hover:bg-slate-200 rounded"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7"/></svg></button>
+                 <button onClick={() => navigateMonth(-1)} className="p-1.5 hover:bg-slate-300 rounded-lg transition-colors"><svg className="w-5 h-5 text-slate-800" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7"/></svg></button>
+                 <button onClick={() => navigateMonth(1)} className="p-1.5 hover:bg-slate-300 rounded-lg transition-colors"><svg className="w-5 h-5 text-slate-800" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7"/></svg></button>
                </div>
             </div>
-            <div className="grid grid-cols-7 flex-1 overflow-auto">
-               {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => <div key={d} className="py-2 text-center text-[9px] font-black uppercase text-slate-400 bg-slate-50 border-b border-r border-slate-200">{d}</div>)}
-               {renderCalendar()}
+            <div className="overflow-y-auto flex-1">
+               <div className="grid grid-cols-7 border-l border-slate-200">
+                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+                   <div key={d} className="py-2 text-center text-[9px] font-black uppercase text-slate-400 bg-slate-50 border-b border-r border-slate-200">{d}</div>
+                 ))}
+                 {renderCalendar()}
+               </div>
             </div>
           </div>
         )}
