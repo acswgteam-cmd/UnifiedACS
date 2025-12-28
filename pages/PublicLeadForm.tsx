@@ -76,8 +76,7 @@ const PublicLeadForm: React.FC<Props> = ({ onHostSubmit, currentLeads = [] }) =>
           <div className="inline-block px-4 py-1.5 bg-indigo-600 text-white rounded-full text-[10px] font-bold uppercase tracking-widest mb-4">
             Creative Support Request
           </div>
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Artwork Request Portal</h1>
-          <p className="text-slate-700 mt-2 font-semibold italic">ACS Unified Log Artwork Management System</p>
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Inquiry Request</h1>
         </div>
 
         <form onSubmit={handleSubmit} className="bg-white rounded-3xl shadow-2xl border border-slate-200 p-8 md:p-12 overflow-hidden relative">
@@ -91,18 +90,18 @@ const PublicLeadForm: React.FC<Props> = ({ onHostSubmit, currentLeads = [] }) =>
                 <span className="text-indigo-600">01</span> Project Details
               </h2>
               <div>
-                <label className={labelClass}>Request Name / Title</label>
+                <label className={labelClass}>Project Name</label>
                 <input 
-                  type="text" required placeholder="e.g. Social Media KV for Jan 2025"
+                  type="text" required placeholder=""
                   value={formData.lead_name} onChange={e => setFormData({...formData, lead_name: e.target.value})}
                   className={inputClass} 
                 />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className={labelClass}>Requester (Your Name/Dept)</label>
+                  <label className={labelClass}>PIC</label>
                   <input 
-                    type="text" required placeholder="e.g. Budi - Marketing"
+                    type="text" required placeholder=""
                     value={formData.requester} onChange={e => setFormData({...formData, requester: e.target.value})}
                     className={inputClass} 
                   />
@@ -125,13 +124,13 @@ const PublicLeadForm: React.FC<Props> = ({ onHostSubmit, currentLeads = [] }) =>
               <div>
                 <label className={labelClass}>Brief / Scope of Work</label>
                 <textarea 
-                  rows={4} placeholder="Describe what you need, size, format, and key message..."
+                  rows={4} placeholder="tulis brief singkat anda disini, sertakan link pdf/jpg/png, etc untuk penunjang brief"
                   value={formData.brief} onChange={e => setFormData({...formData, brief: e.target.value})}
                   className={inputClass} 
                 />
               </div>
               <div>
-                <label className={labelClass}>Link to Assets (G-Drive/Dropbox)</label>
+                <label className={labelClass}>Link OneDrive</label>
                 <input 
                   type="url" placeholder="https://..."
                   value={formData.drive_link} onChange={e => setFormData({...formData, drive_link: e.target.value})}
