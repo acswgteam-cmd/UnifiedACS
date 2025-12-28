@@ -46,7 +46,7 @@ const PublicLeadForm: React.FC<Props> = ({ onHostSubmit, currentLeads = [] }) =>
     }
   };
 
-  const inputClass = "w-full rounded-xl border-slate-300 text-slate-900 text-base p-4 border focus:ring-4 focus:ring-indigo-100 focus:border-indigo-600 outline-none transition-all placeholder-slate-400 bg-white shadow-sm font-medium";
+  const inputClass = "w-full rounded-xl border-slate-300 text-slate-900 text-base p-4 border focus:ring-4 focus:ring-indigo-100 focus:border-indigo-600 outline-none transition-all placeholder-slate-400 bg-white shadow-sm font-medium appearance-none";
   const labelClass = "text-sm font-semibold text-slate-900 uppercase tracking-wide mb-2 block ml-1";
 
   if (submitted) {
@@ -97,7 +97,7 @@ const PublicLeadForm: React.FC<Props> = ({ onHostSubmit, currentLeads = [] }) =>
                   className={inputClass} 
                 />
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
                   <label className={labelClass}>PIC</label>
                   <input 
@@ -107,12 +107,27 @@ const PublicLeadForm: React.FC<Props> = ({ onHostSubmit, currentLeads = [] }) =>
                   />
                 </div>
                 <div>
-                  <label className={labelClass}>Desired Deadline</label>
+                  <label className={labelClass}>Deadline</label>
                   <input 
                     type="date" required
                     value={formData.deadline} onChange={e => setFormData({...formData, deadline: e.target.value})}
                     className={inputClass} 
                   />
+                </div>
+                <div className="relative">
+                  <label className={labelClass}>Grade</label>
+                  <select 
+                    value={formData.lead_grade} 
+                    onChange={e => setFormData({...formData, lead_grade: e.target.value})}
+                    className={inputClass}
+                  >
+                    <option value="A">Grade A (High)</option>
+                    <option value="B">Grade B (Standard)</option>
+                    <option value="C">Grade C (Low)</option>
+                  </select>
+                  <div className="pointer-events-none absolute right-4 top-[50px] text-slate-400">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"/></svg>
+                  </div>
                 </div>
               </div>
             </section>
