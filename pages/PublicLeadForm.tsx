@@ -1,7 +1,9 @@
 
 import React, { useState } from 'react';
+import { useParams, Link } from 'react-router-dom';
 import { Lead } from '../types';
 import { supabase } from '../lib/supabase';
+import { PUBLIC_FORM_SECRET } from '../App';
 
 interface Props {
   onHostSubmit?: (leads: Lead[]) => void;
@@ -9,6 +11,9 @@ interface Props {
 }
 
 const PublicLeadForm: React.FC<Props> = ({ onHostSubmit, currentLeads = [] }) => {
+  const { token } = useParams<{ token: string }>();
+  const isAuthorized = token === PUBLIC_FORM_SECRET;
+
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<Partial<Lead>>({
@@ -23,6 +28,7 @@ const PublicLeadForm: React.FC<Props> = ({ onHostSubmit, currentLeads = [] }) =>
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isAuthorized) return;
     setLoading(true);
 
     const { id, ...leadData } = formData as Lead;
@@ -48,6 +54,22 @@ const PublicLeadForm: React.FC<Props> = ({ onHostSubmit, currentLeads = [] }) =>
 
   const inputClass = "w-full rounded-xl border-slate-300 text-slate-900 text-base p-4 border focus:ring-4 focus:ring-indigo-100 focus:border-indigo-600 outline-none transition-all placeholder-slate-400 bg-white shadow-sm font-medium appearance-none";
   const labelClass = "text-sm font-semibold text-slate-900 uppercase tracking-wide mb-2 block ml-1";
+
+  // Jika token tidak valid, tampilkan halaman blokir
+  if (!isAuthorized) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6">
+        <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl p-10 text-center animate-in zoom-in duration-300">
+          <div className="text-6xl mb-6">🔒</div>
+          <h1 className="text-2xl font-bold text-slate-900 mb-2">Access Denied</h1>
+          <p className="text-slate-500 mb-8 font-medium">Invalid or expired inquiry token. Please contact the design department for a valid link.</p>
+          <div className="p-4 bg-slate-50 rounded-2xl text-[10px] text-slate-400 font-mono break-all">
+            ERR_INVALID_AUTH_TOKEN_V1
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (submitted) {
     return (
@@ -80,9 +102,7 @@ const PublicLeadForm: React.FC<Props> = ({ onHostSubmit, currentLeads = [] }) =>
         </div>
 
         <form onSubmit={handleSubmit} className="bg-white rounded-3xl shadow-2xl border border-slate-200 p-8 md:p-12 overflow-hidden relative">
-          {loading && (
-            <div className="absolute top-0 left-0 w-full h-1.5 bg-indigo-600 animate-pulse"></div>
-          )}
+          {loading && <div className="absolute top-0 left-0 w-full h-1.5 bg-indigo-600 animate-pulse"></div>}
           
           <div className="space-y-8">
             <section className="space-y-6">
@@ -91,36 +111,20 @@ const PublicLeadForm: React.FC<Props> = ({ onHostSubmit, currentLeads = [] }) =>
               </h2>
               <div>
                 <label className={labelClass}>Project Name</label>
-                <input 
-                  type="text" required placeholder=""
-                  value={formData.lead_name} onChange={e => setFormData({...formData, lead_name: e.target.value})}
-                  className={inputClass} 
-                />
+                <input type="text" required value={formData.lead_name} onChange={e => setFormData({...formData, lead_name: e.target.value})} className={inputClass} />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
                   <label className={labelClass}>PIC</label>
-                  <input 
-                    type="text" required placeholder=""
-                    value={formData.requester} onChange={e => setFormData({...formData, requester: e.target.value})}
-                    className={inputClass} 
-                  />
+                  <input type="text" required value={formData.requester} onChange={e => setFormData({...formData, requester: e.target.value})} className={inputClass} />
                 </div>
                 <div>
                   <label className={labelClass}>Deadline</label>
-                  <input 
-                    type="date" required
-                    value={formData.deadline} onChange={e => setFormData({...formData, deadline: e.target.value})}
-                    className={inputClass} 
-                  />
+                  <input type="date" required value={formData.deadline} onChange={e => setFormData({...formData, deadline: e.target.value})} className={inputClass} />
                 </div>
                 <div className="relative">
                   <label className={labelClass}>Grade</label>
-                  <select 
-                    value={formData.lead_grade} 
-                    onChange={e => setFormData({...formData, lead_grade: e.target.value})}
-                    className={inputClass}
-                  >
+                  <select value={formData.lead_grade} onChange={e => setFormData({...formData, lead_grade: e.target.value})} className={inputClass}>
                     <option value="A">Grade A (High)</option>
                     <option value="B">Grade B (Standard)</option>
                     <option value="C">Grade C (Low)</option>
@@ -138,36 +142,20 @@ const PublicLeadForm: React.FC<Props> = ({ onHostSubmit, currentLeads = [] }) =>
               </h2>
               <div>
                 <label className={labelClass}>Brief / Scope of Work</label>
-                <textarea 
-                  rows={4} placeholder="tulis brief singkat anda disini, sertakan link pdf/jpg/png, etc untuk penunjang brief"
-                  value={formData.brief} onChange={e => setFormData({...formData, brief: e.target.value})}
-                  className={inputClass} 
-                />
+                <textarea rows={4} placeholder="tulis brief singkat anda disini..." value={formData.brief} onChange={e => setFormData({...formData, brief: e.target.value})} className={inputClass} />
               </div>
               <div>
                 <label className={labelClass}>Link OneDrive</label>
-                <input 
-                  type="url" placeholder="https://..."
-                  value={formData.drive_link} onChange={e => setFormData({...formData, drive_link: e.target.value})}
-                  className={inputClass} 
-                />
+                <input type="url" placeholder="https://..." value={formData.drive_link} onChange={e => setFormData({...formData, drive_link: e.target.value})} className={inputClass} />
               </div>
             </section>
 
-            <button 
-              type="submit" 
-              disabled={loading}
-              className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-bold text-lg shadow-xl shadow-indigo-100 hover:bg-indigo-700 hover:-translate-y-1 active:translate-y-0 transition-all disabled:opacity-50 flex items-center justify-center gap-3"
-            >
+            <button type="submit" disabled={loading} className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-bold text-lg shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center justify-center gap-3">
               {loading ? 'Submitting...' : 'Send Request to Design Team'}
               {!loading && <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>}
             </button>
           </div>
         </form>
-
-        <p className="text-center text-slate-500 text-[10px] mt-8 font-bold uppercase tracking-widest">
-          ACS Artwork Management System &bull; Unified Operations
-        </p>
       </div>
     </div>
   );
