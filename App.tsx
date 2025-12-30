@@ -1,7 +1,7 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
-import { AppState, ArtworkLog, Department, Designer, Project, Lead } from './types';
+import { AppState, ArtworkLog } from './types';
 import ArtworkLogPage from './pages/ArtworkLogPage';
 import DepartmentMaster from './pages/DepartmentMaster';
 import DesignerMaster from './pages/DesignerMaster';
@@ -9,8 +9,11 @@ import ProjectMaster from './pages/ProjectMaster';
 import LeadMaster from './pages/LeadMaster';
 import PublicLeadForm from './pages/PublicLeadForm';
 import Dashboard from './pages/Dashboard';
-import { supabase, isSupabaseConfigured, missingVars } from './lib/supabase';
+import { supabase, isSupabaseConfigured } from './lib/supabase';
 import { INITIAL_STATE } from './data/mockData';
+
+// Token rahasia untuk "enkripsi" link public form
+export const PUBLIC_FORM_SECRET = 'acs-creative-portal-v1-992837465';
 
 const App: React.FC = () => {
   const [useDemoMode, setUseDemoMode] = useState(false);
@@ -64,7 +67,7 @@ const App: React.FC = () => {
             <h1 className="text-2xl font-black text-slate-900">Database Connection Error</h1>
           </div>
           <p className="text-slate-600 mb-6 font-medium leading-relaxed">
-            Aplikasi tidak dapat menemukan kredensial database. Pastikan <strong>Environment Variables</strong> berikut sudah terpasang di Vercel:
+            Aplikasi tidak dapat menemukan kredensial database. Pastikan <strong>Environment Variables</strong> sudah terpasang.
           </p>
           <div className="space-y-4">
             <button onClick={() => window.location.reload()} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold">Refresh</button>
@@ -99,26 +102,29 @@ const App: React.FC = () => {
   return (
     <HashRouter>
       <Routes>
-        <Route path="/public/submit-lead" element={<PublicLeadForm onHostSubmit={() => fetchData()} currentLeads={state.leads} />} />
-        <Route path="*" element={
+        {/* Jalur Publik Terenkripsi */}
+        <Route path="/portal/v1/inquiry/:token" element={<PublicLeadForm onHostSubmit={() => fetchData()} currentLeads={state.leads} />} />
+        
+        {/* Jalur Admin (Dashboard) */}
+        <Route path="/admin/*" element={
           <div className="flex h-screen overflow-hidden bg-slate-50 text-slate-900">
             <aside className="w-64 bg-slate-900 text-white flex-shrink-0 flex flex-col shadow-xl z-20">
               <div className="p-6"><h1 className="text-lg font-bold tracking-tight">ACS UNIFIED<br/><span className="text-indigo-400">LOG ARTWORK</span></h1></div>
               <nav className="flex-1 px-4 py-4 space-y-1">
-                <NavLink to="/dashboard">Dashboard</NavLink>
-                <NavLink to="/artwork-logs">Artwork Logs</NavLink>
+                <NavLink to="/admin/dashboard">Dashboard</NavLink>
+                <NavLink to="/admin/artwork-logs">Artwork Logs</NavLink>
                 <div className="mt-8 mb-2 px-3 text-[10px] font-bold text-slate-500 uppercase">Master Data</div>
-                <NavLink to="/masters/departments">Departments</NavLink>
-                <NavLink to="/masters/designers">Designers</NavLink>
-                <NavLink to="/masters/projects">Projects</NavLink>
-                <NavLink to="/masters/leads">Leads</NavLink>
+                <NavLink to="/admin/masters/departments">Departments</NavLink>
+                <NavLink to="/admin/masters/designers">Designers</NavLink>
+                <NavLink to="/admin/masters/projects">Projects</NavLink>
+                <NavLink to="/admin/masters/leads">Leads</NavLink>
               </nav>
             </aside>
             <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
               {loading && <div className="absolute top-0 left-0 w-full h-1 bg-indigo-600 animate-pulse z-50"></div>}
               <div className="flex-1 overflow-y-auto p-8">
                 <Routes>
-                  <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                  <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
                   <Route path="/dashboard" element={<Dashboard state={state} />} />
                   <Route path="/artwork-logs" element={<ArtworkLogPage state={state} onAdd={handleAddLog} onUpdate={handleUpdateLog} onDelete={handleDeleteLog} />} />
                   <Route path="/masters/departments" element={<DepartmentMaster departments={state.departments} onUpdate={fetchData} />} />
@@ -130,6 +136,19 @@ const App: React.FC = () => {
             </main>
           </div>
         } />
+
+        {/* Root Redirect - Menutup celah keamanan default */}
+        <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
+        
+        {/* Halaman 404/Unauthorized */}
+        <Route path="*" element={
+          <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center">
+            <div className="text-6xl mb-4">🚫</div>
+            <h1 className="text-2xl font-bold text-slate-900">Unauthorized Access</h1>
+            <p className="text-slate-500 mt-2">You do not have permission to view this resource or the link is expired.</p>
+            <Link to="/admin/dashboard" className="mt-6 px-6 py-2 bg-slate-900 text-white rounded-lg font-bold">Back to App</Link>
+          </div>
+        } />
       </Routes>
     </HashRouter>
   );
@@ -137,7 +156,7 @@ const App: React.FC = () => {
 
 const NavLink: React.FC<{ to: string; children: React.ReactNode }> = ({ to, children }) => {
   const location = useLocation();
-  const isActive = location.pathname.startsWith(to);
+  const isActive = location.pathname === to;
   return (
     <Link to={to} className={`flex items-center px-4 py-2.5 rounded-lg text-sm font-semibold ${isActive ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
       {children}
