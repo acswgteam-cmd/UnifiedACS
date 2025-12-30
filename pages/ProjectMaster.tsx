@@ -21,10 +21,20 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
     end_date: '',
     location: '',
     pic_designer_id: designers[0]?.id || '',
+    support_designer_ids: [],
     project_type: 'EVENT'
   });
 
   const getDesignerName = (id: string) => designers.find(d => d.id === id)?.name || 'N/A';
+  
+  const toggleSupportDesigner = (id: string) => {
+    const current = formData.support_designer_ids || [];
+    if (current.includes(id)) {
+      setFormData({ ...formData, support_designer_ids: current.filter(sid => sid !== id) });
+    } else {
+      setFormData({ ...formData, support_designer_ids: [...current, id] });
+    }
+  };
 
   const resetForm = () => {
     setFormData({
@@ -33,6 +43,7 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
       end_date: '',
       location: '',
       pic_designer_id: designers[0]?.id || '',
+      support_designer_ids: [],
       project_type: 'EVENT'
     });
     setEditingId(null);
@@ -43,7 +54,6 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
     e.preventDefault();
     if (!formData.project_name || !supabase) return;
 
-    // Bersihkan data dari ID agar Supabase yang generate UUID-nya
     const { id, ...payload } = formData;
 
     if (editingId) {
@@ -60,7 +70,7 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
       const { error } = await supabase.from('projects').insert([payload]);
       if (error) {
         console.error(error);
-        alert(`Gagal Simpan: ${error.message}. Pastikan sudah menjalankan SQL di Supabase.`);
+        alert(`Gagal Simpan: ${error.message}`);
       } else {
         onUpdate();
         resetForm();
@@ -69,7 +79,10 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
   };
 
   const handleEdit = (p: Project) => {
-    setFormData(p);
+    setFormData({
+      ...p,
+      support_designer_ids: p.support_designer_ids || []
+    });
     setEditingId(p.id);
     setIsAdding(true);
     setView('list');
@@ -123,8 +136,11 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
               return (
                 <div key={p.id} className={`min-h-[56px] py-1.5 flex flex-col justify-center px-2 overflow-hidden ${isStart ? `rounded-l-md ml-1 border-l-4 ${theme.border}` : ''} ${theme.bg} ${theme.text}`}>
                   <div className="flex flex-col min-w-0 leading-tight">
-                    <span className="text-[10px] font-black truncate">{p.project_name}</span>
-                    <span className={`text-[8px] font-black opacity-80 mt-0.5 truncate uppercase tracking-tighter`}>PIC: {getDesignerName(p.pic_designer_id)}</span>
+                    <span className="text-[10px] font-black truncate uppercase">{p.project_name}</span>
+                    <span className={`text-[8px] font-black opacity-80 mt-0.5 truncate uppercase tracking-tighter`}>
+                      PIC: {getDesignerName(p.pic_designer_id)}
+                      {p.support_designer_ids && p.support_designer_ids.length > 0 && ` (+${p.support_designer_ids.length} Support)`}
+                    </span>
                   </div>
                 </div>
               );
@@ -136,15 +152,15 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
     return days;
   };
 
-  const labelClass = "text-[11px] font-black text-slate-900 uppercase mb-1.5 block";
-  const inputClass = "w-full rounded-lg border-slate-300 text-slate-900 text-sm p-3 border bg-white focus:ring-2 focus:ring-indigo-600 outline-none placeholder-slate-400 font-semibold shadow-sm appearance-none";
+  const labelClass = "text-[11px] font-black text-slate-900 uppercase mb-1.5 block tracking-wide";
+  const inputClass = "w-full rounded-lg border-slate-300 text-slate-900 text-sm p-3 border bg-white focus:ring-2 focus:ring-indigo-600 outline-none placeholder-slate-400 font-semibold shadow-sm appearance-none transition-all";
 
   return (
-    <div className="space-y-6 flex flex-col h-full">
+    <div className="space-y-6 flex flex-col h-full relative">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 flex-shrink-0">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Project Master</h1>
-          <p className="text-slate-600 text-sm mt-1 font-bold">Manage your event project timelines.</p>
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Project Master</h1>
+          <p className="text-slate-600 text-sm mt-1 font-bold">Manage your event project timelines & creative team.</p>
         </div>
         <div className="flex items-center gap-4">
           <div className="flex items-center bg-slate-200 p-1 rounded-xl">
@@ -161,8 +177,8 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
       </header>
 
       {isAdding && (
-        <form onSubmit={handleSave} className="bg-white p-8 rounded-2xl border border-slate-200 shadow-xl animate-in zoom-in duration-200 flex-shrink-0">
-          <h2 className="font-black text-slate-900 mb-8 flex items-center gap-2">
+        <form onSubmit={handleSave} className="bg-white p-8 rounded-2xl border border-slate-200 shadow-xl animate-in zoom-in duration-200 flex-shrink-0 mb-6">
+          <h2 className="font-black text-slate-900 mb-8 flex items-center gap-2 uppercase tracking-tight">
             <span className="w-2 h-2 bg-indigo-600 rounded-full"></span>
             {editingId ? 'Edit Project Details' : 'Register New Project'}
           </h2>
@@ -194,16 +210,38 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
               <input type="text" placeholder="e.g. Remote, HQ" value={formData.location || ''} onChange={e => setFormData({...formData, location: e.target.value})} className={inputClass} />
             </div>
             <div className="relative">
-              <label className={labelClass}>PIC Designer</label>
+              <label className={labelClass}>PIC Designer (Primary)</label>
               <select value={formData.pic_designer_id} onChange={e => setFormData({...formData, pic_designer_id: e.target.value})} className={inputClass}>
                 {designers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
               </select>
             </div>
+            
+            <div className="md:col-span-2">
+              <label className={labelClass}>Support Designers (Tim Pendukung)</label>
+              <div className="flex flex-wrap gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl min-h-[46px]">
+                {designers.map(d => {
+                  const isSelected = formData.support_designer_ids?.includes(d.id);
+                  const isPIC = formData.pic_designer_id === d.id;
+                  if (isPIC) return null; // PIC Utama tidak perlu jadi support
+                  return (
+                    <button
+                      key={d.id}
+                      type="button"
+                      onClick={() => toggleSupportDesigner(d.id)}
+                      className={`px-3 py-1 rounded-full text-[10px] font-black uppercase transition-all border ${isSelected ? 'bg-indigo-600 border-indigo-600 text-white shadow-md' : 'bg-white border-slate-300 text-slate-500 hover:border-indigo-400'}`}
+                    >
+                      {d.name}
+                    </button>
+                  );
+                })}
+                {(!designers.length || designers.length === 1) && <span className="text-[10px] text-slate-400 italic">No other designers available.</span>}
+              </div>
+            </div>
           </div>
           <div className="flex justify-end gap-4 pt-6 border-t border-slate-100">
-            <button type="button" onClick={resetForm} className="px-6 py-2.5 text-sm font-black text-slate-700 hover:text-slate-900 transition-colors">Cancel</button>
-            <button type="submit" className="px-8 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-black shadow-lg hover:bg-indigo-700 transition-all">
-              {editingId ? 'Update' : 'Save'}
+            <button type="button" onClick={resetForm} className="px-6 py-2.5 text-sm font-black text-slate-700 hover:text-slate-900 transition-colors uppercase">Cancel</button>
+            <button type="submit" className="px-8 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-black shadow-lg hover:bg-indigo-700 transition-all uppercase tracking-widest">
+              {editingId ? 'Update Project' : 'Commit Project'}
             </button>
           </div>
         </form>
@@ -218,16 +256,37 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
                   <tr className="text-slate-900 font-black uppercase text-[10px] tracking-wider border-b border-slate-200">
                     <th className="px-6 py-4">Project Name</th>
                     <th className="px-6 py-4">Timeline</th>
-                    <th className="px-6 py-4">PIC</th>
+                    <th className="px-6 py-4">Lead & Team</th>
                     <th className="px-6 py-4 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 text-slate-900 font-bold">
                   {projects.map(p => (
                     <tr key={p.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-6 py-4 font-black">{p.project_name}</td>
-                      <td className="px-6 py-4 text-[11px]">{p.start_date} - {p.end_date}</td>
-                      <td className="px-6 py-4">{getDesignerName(p.pic_designer_id)}</td>
+                      <td className="px-6 py-4 font-black">
+                        <div className="flex flex-col">
+                          <span className="uppercase">{p.project_name}</span>
+                          <span className="text-[9px] text-indigo-500 tracking-widest uppercase">{p.project_type} &bull; {p.location || 'N/A'}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-[11px] font-black">{p.start_date} <span className="text-slate-400">→</span> {p.end_date}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-2 h-2 bg-indigo-600 rounded-full"></span>
+                            <span className="text-xs uppercase">{getDesignerName(p.pic_designer_id)}</span>
+                          </div>
+                          {p.support_designer_ids && p.support_designer_ids.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {p.support_designer_ids.map(sid => (
+                                <span key={sid} className="text-[8px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded uppercase border border-slate-200">
+                                  {getDesignerName(sid)}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-4">
                           <button onClick={() => handleEdit(p)} className="text-indigo-700 hover:text-indigo-900 text-[10px] font-black uppercase tracking-widest">Edit</button>
