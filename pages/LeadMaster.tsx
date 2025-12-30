@@ -3,6 +3,7 @@ import React, { useState, useMemo } from 'react';
 import { Lead } from '../types';
 import { jsPDF } from 'jspdf';
 import { supabase } from '../lib/supabase';
+import { PUBLIC_FORM_SECRET } from '../App';
 
 interface Props {
   leads: Lead[];
@@ -28,7 +29,8 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
   });
 
   const handleCopyLink = () => {
-    const publicUrl = `${window.location.origin}${window.location.pathname}#/public/submit-lead`;
+    // Menghasilkan link dengan token terenkripsi
+    const publicUrl = `${window.location.origin}${window.location.pathname}#/portal/v1/inquiry/${PUBLIC_FORM_SECRET}`;
     navigator.clipboard.writeText(publicUrl);
     setCopySuccess(true);
     setTimeout(() => setCopySuccess(false), 2000);
@@ -130,12 +132,10 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
     const startDay = firstDayOfMonth(year, month);
     const days = [];
 
-    // Empty slots for start of month
     for (let i = 0; i < startDay; i++) {
       days.push(<div key={`empty-${i}`} className="min-h-[160px] bg-slate-100/50 border-r border-b border-slate-200"></div>);
     }
 
-    // Actual month days
     for (let d = 1; d <= totalDays; d++) {
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
       const dayLeads = leads.filter(l => dateStr >= l.order_date && dateStr <= l.deadline);
@@ -190,7 +190,7 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
             className={`px-4 py-2 rounded-lg text-xs font-bold uppercase transition-all flex items-center gap-2 border ${copySuccess ? 'bg-emerald-50 border-emerald-500 text-emerald-700' : 'bg-white border-slate-300 text-slate-700 hover:border-indigo-500'}`}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
-            {copySuccess ? 'Copied!' : 'Copy Public Form Link'}
+            {copySuccess ? 'Copied Link!' : 'Copy Secured Link'}
           </button>
           <div className="flex bg-slate-200 p-1 rounded-lg">
             <button onClick={() => setView('list')} className={`px-4 py-1 rounded-md text-xs font-bold ${view === 'list' ? 'bg-white shadow-sm text-indigo-700' : 'text-slate-600'}`}>List</button>
