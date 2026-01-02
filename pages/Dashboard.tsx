@@ -26,8 +26,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
   };
 
   const weekDays = useMemo(() => getWeekDays(weekOffset), [weekOffset]);
-  const formatDate = (date: Date) => date.toISOString().split('T')[0];
-
+  
   const analytics = useMemo(() => {
     const { artworkLogs, projects, leads, designers, departments } = state;
 
@@ -72,6 +71,32 @@ const Dashboard: React.FC<Props> = ({ state }) => {
       });
     };
 
+    // Monthly Trend Logic (Last 6 Months)
+    const getMonthlyTrends = () => {
+      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const trends = [];
+      const now = new Date();
+      
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        const label = `${monthNames[d.getMonth()]}`;
+        
+        const monthLogs = artworkLogs.filter(l => l.start_date.startsWith(monthKey));
+        
+        trends.push({
+          label,
+          "2D Design": monthLogs.filter(l => l.artwork_type === "2D Design").length,
+          "3D Design": monthLogs.filter(l => l.artwork_type === "3D Design").length,
+          "Video": monthLogs.filter(l => l.artwork_type === "Video").length,
+          [WorkContext.PROJECT]: monthLogs.filter(l => l.work_context === WorkContext.PROJECT).length,
+          [WorkContext.LEAD]: monthLogs.filter(l => l.work_context === WorkContext.LEAD).length,
+          [WorkContext.INTERNAL]: monthLogs.filter(l => l.work_context === WorkContext.INTERNAL).length,
+        });
+      }
+      return trends;
+    };
+
     const departmentStats = departments.map(dept => {
       const logs = filteredLogs.filter(l => l.department_id === dept.id);
       const counts = {
@@ -111,6 +136,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
       totalArtworks, totalProjects, totalLeads,
       artworksProject, artworksLead, artworksInternal,
       teamStats, departmentStats,
+      monthlyTrends: getMonthlyTrends(),
       avgDurProj: calcAvgDuration(WorkContext.PROJECT),
       avgDurLead: calcAvgDuration(WorkContext.LEAD),
       avgDurInt: calcAvgDuration(WorkContext.INTERNAL),
@@ -149,6 +175,51 @@ const Dashboard: React.FC<Props> = ({ state }) => {
         <ContextMetricsCard title="Project" count={analytics.artworksProject} duration={analytics.avgDurProj} typeSplit={analytics.projectTypeSplit} accentColor="bg-blue-600" lightColor="bg-blue-50" textColor="text-blue-700" />
         <ContextMetricsCard title="Lead" count={analytics.artworksLead} duration={analytics.avgDurLead} typeSplit={analytics.leadTypeSplit} accentColor="bg-emerald-600" lightColor="bg-emerald-50" textColor="text-emerald-700" />
         <ContextMetricsCard title="Internal" count={analytics.artworksInternal} duration={analytics.avgDurInt} typeSplit={analytics.internalTypeSplit} accentColor="bg-purple-600" lightColor="bg-purple-50" textColor="text-purple-700" />
+      </div>
+
+      {/* NEW LINE CHARTS SECTION */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <section className={cardClass}>
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <span className={labelClass}>Production Velocity</span>
+              <h2 className="text-xl font-bold text-slate-900">Artwork Type Trend</h2>
+            </div>
+            <div className="flex gap-4">
+               <LegendItem label="2D" color="bg-blue-500" />
+               <LegendItem label="3D" color="bg-emerald-500" />
+               <LegendItem label="VIDEO" color="bg-orange-500" />
+            </div>
+          </div>
+          <div className="h-64 w-full">
+            <TrendLineChart 
+              data={analytics.monthlyTrends} 
+              keys={["2D Design", "3D Design", "Video"]} 
+              colors={["#3b82f6", "#10b981", "#f97316"]} 
+            />
+          </div>
+        </section>
+
+        <section className={cardClass}>
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <span className={labelClass}>Operational Flow</span>
+              <h2 className="text-xl font-bold text-slate-900">Work Context Trend</h2>
+            </div>
+            <div className="flex gap-4">
+               <LegendItem label="PROJECT" color="bg-blue-600" />
+               <LegendItem label="LEAD" color="bg-emerald-600" />
+               <LegendItem label="INTERNAL" color="bg-purple-600" />
+            </div>
+          </div>
+          <div className="h-64 w-full">
+            <TrendLineChart 
+              data={analytics.monthlyTrends} 
+              keys={[WorkContext.PROJECT, WorkContext.LEAD, WorkContext.INTERNAL]} 
+              colors={["#2563eb", "#059669", "#7c3aed"]} 
+            />
+          </div>
+        </section>
       </div>
 
       <section className={cardClass}>
@@ -254,6 +325,78 @@ const Dashboard: React.FC<Props> = ({ state }) => {
         </div>
       </div>
     </div>
+  );
+};
+
+// HELPER COMPONENTS FOR VISUALIZATION
+
+const TrendLineChart = ({ data, keys, colors }: { data: any[], keys: string[], colors: string[] }) => {
+  const width = 500;
+  const height = 200;
+  const padding = 30;
+  
+  const maxValue = useMemo(() => {
+    return Math.max(...data.flatMap(d => keys.map(k => d[k])), 5);
+  }, [data, keys]);
+
+  const getY = (val: number) => height - padding - (val / maxValue) * (height - padding * 2);
+  const getX = (idx: number) => padding + (idx / (data.length - 1)) * (width - padding * 2);
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible">
+      {/* Grid Lines */}
+      {[0, 0.25, 0.5, 0.75, 1].map(p => (
+        <line 
+          key={p}
+          x1={padding} y1={getY(maxValue * p)} 
+          x2={width - padding} y2={getY(maxValue * p)} 
+          stroke="#e2e8f0" strokeWidth="1" strokeDasharray="4 4"
+        />
+      ))}
+
+      {/* Lines & Points */}
+      {keys.map((key, kIdx) => {
+        const points = data.map((d, i) => `${getX(i)},${getY(d[key])}`).join(" ");
+        return (
+          <g key={key}>
+            <polyline
+              points={points}
+              fill="none"
+              stroke={colors[kIdx]}
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="transition-all duration-700"
+            />
+            {data.map((d, i) => (
+              <circle
+                key={i}
+                cx={getX(i)}
+                cy={getY(d[key])}
+                r="4"
+                fill="white"
+                stroke={colors[kIdx]}
+                strokeWidth="2"
+              />
+            ))}
+          </g>
+        );
+      })}
+
+      {/* X Axis Labels */}
+      {data.map((d, i) => (
+        <text
+          key={i}
+          x={getX(i)}
+          y={height - 5}
+          textAnchor="middle"
+          fontSize="10"
+          className="fill-slate-400 font-bold uppercase tracking-tighter"
+        >
+          {d.label}
+        </text>
+      ))}
+    </svg>
   );
 };
 
