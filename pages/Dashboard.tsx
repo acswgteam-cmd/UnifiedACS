@@ -146,9 +146,9 @@ const Dashboard: React.FC<Props> = ({ state }) => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <ContextMetricsCard title="MICE & Gatherings" count={analytics.artworksProject} duration={analytics.avgDurProj} typeSplit={analytics.projectTypeSplit} accentColor="bg-blue-600" lightColor="bg-blue-50" textColor="text-blue-700" />
-        <ContextMetricsCard title="Travel & Direct Briefs" count={analytics.artworksLead} duration={analytics.avgDurLead} typeSplit={analytics.leadTypeSplit} accentColor="bg-emerald-600" lightColor="bg-emerald-50" textColor="text-emerald-700" />
-        <ContextMetricsCard title="Internal Studio Units" count={analytics.artworksInternal} duration={analytics.avgDurInt} typeSplit={analytics.internalTypeSplit} accentColor="bg-purple-600" lightColor="bg-purple-50" textColor="text-purple-700" />
+        <ContextMetricsCard title="Project" count={analytics.artworksProject} duration={analytics.avgDurProj} typeSplit={analytics.projectTypeSplit} accentColor="bg-blue-600" lightColor="bg-blue-50" textColor="text-blue-700" />
+        <ContextMetricsCard title="Lead" count={analytics.artworksLead} duration={analytics.avgDurLead} typeSplit={analytics.leadTypeSplit} accentColor="bg-emerald-600" lightColor="bg-emerald-50" textColor="text-emerald-700" />
+        <ContextMetricsCard title="Internal" count={analytics.artworksInternal} duration={analytics.avgDurInt} typeSplit={analytics.internalTypeSplit} accentColor="bg-purple-600" lightColor="bg-purple-50" textColor="text-purple-700" />
       </div>
 
       <section className={cardClass}>
