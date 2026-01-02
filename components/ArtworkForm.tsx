@@ -30,7 +30,7 @@ const ArtworkForm: React.FC<Props> = ({ state, onSubmit }) => {
     setFormData(prev => ({ 
       ...prev, 
       [name]: val === "" ? null : val,
-      ...(name === 'work_context' ? { project_id: null, lead_id: null, department_id: null } : {})
+      ...(name === 'work_context' ? { project_id: null, lead_id: null, department_id: null, approval_required: false } : {})
     }));
   };
 
@@ -44,7 +44,8 @@ const ArtworkForm: React.FC<Props> = ({ state, onSubmit }) => {
     setFormData(prev => ({
       ...prev,
       artwork_name: '',
-      notes: ''
+      notes: '',
+      approval_required: false
     }));
   };
 
@@ -53,10 +54,29 @@ const ArtworkForm: React.FC<Props> = ({ state, onSubmit }) => {
 
   return (
     <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 mb-8 animate-in slide-in-from-top duration-300">
-      <h2 className="text-xl font-bold mb-8 text-slate-900 flex items-center gap-2">
-        <span className="w-1.5 h-6 bg-indigo-600 rounded-full"></span>
-        Log Production Activity
-      </h2>
+      <div className="flex items-center justify-between mb-8">
+        <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+          <span className="w-1.5 h-6 bg-indigo-600 rounded-full"></span>
+          Log Production Activity
+        </h2>
+        
+        {/* Conditional Approval Toggle */}
+        {formData.work_context === WorkContext.PROJECT && (
+          <label className="flex items-center gap-3 cursor-pointer group bg-slate-50 px-4 py-2 rounded-xl border border-slate-200 hover:border-indigo-300 transition-all">
+            <input 
+              type="checkbox" 
+              name="approval_required" 
+              checked={formData.approval_required} 
+              onChange={handleChange}
+              className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+            />
+            <div className="flex flex-col">
+              <span className="text-[10px] font-black text-slate-900 uppercase leading-none">Form Approval</span>
+              <span className="text-[8px] text-slate-400 font-bold uppercase tracking-tighter">Requires Manager Validation</span>
+            </div>
+          </label>
+        )}
+      </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6">
         <div className="space-y-1">
