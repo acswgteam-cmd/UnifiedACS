@@ -121,14 +121,23 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
     const month = currentDate.getMonth();
     const totalDays = daysInMonth(year, month);
     const startDay = firstDayOfMonth(year, month);
+    const todayStr = new Date().toISOString().split('T')[0];
     const days = [];
+    
     for (let i = 0; i < startDay; i++) days.push(<div key={`empty-${i}`} className="min-h-[160px] bg-slate-100/50 border-r border-b border-slate-200"></div>);
+    
     for (let d = 1; d <= totalDays; d++) {
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const isToday = dateStr === todayStr;
       const dayProjects = sortedProjects.filter(p => dateStr >= p.start_date && dateStr <= p.end_date);
+      
       days.push(
-        <div key={d} className="min-h-[160px] h-full bg-white border-r border-b border-slate-200 p-0 flex flex-col relative">
-          <span className="text-[10px] font-black text-slate-700 block p-2">{String(d).padStart(2, '0')}</span>
+        <div key={d} className={`min-h-[160px] h-full border-r border-b border-slate-200 p-0 flex flex-col relative ${isToday ? 'bg-indigo-50/30' : 'bg-white'}`}>
+          <div className="p-2">
+            <span className={`text-[10px] font-black inline-flex items-center justify-center w-6 h-6 rounded-full ${isToday ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-700'}`}>
+              {String(d).padStart(2, '0')}
+            </span>
+          </div>
           <div className="flex flex-col space-y-1 pb-2">
             {dayProjects.map(p => {
               const theme = getColorTheme(p.id);
