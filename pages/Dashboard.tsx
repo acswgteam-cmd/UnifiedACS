@@ -51,7 +51,8 @@ const Dashboard: React.FC<Props> = ({ state }) => {
       const totalDays = logs.reduce((acc, l) => {
         const start = new Date(l.start_date);
         const end = new Date(l.end_date!);
-        const diff = Math.max(0, (end.getTime() - start.getTime()) / (1000 * 3600 * 24));
+        // Adding +1 so same-day completion counts as 1 day
+        const diff = Math.max(0, (end.getTime() - start.getTime()) / (1000 * 3600 * 24)) + 1;
         return acc + diff;
       }, 0);
       return (totalDays / logs.length).toFixed(1);
@@ -116,7 +117,9 @@ const Dashboard: React.FC<Props> = ({ state }) => {
       const totalDays = completedLogs.reduce((acc, l) => {
         const start = new Date(l.start_date);
         const end = new Date(l.end_date!);
-        return acc + Math.max(0, (end.getTime() - start.getTime()) / (1000 * 3600 * 24));
+        // Adding +1 so same-day completion counts as 1 day
+        const diff = Math.max(0, (end.getTime() - start.getTime()) / (1000 * 3600 * 24)) + 1;
+        return acc + diff;
       }, 0);
       const avgDuration = completedLogs.length ? (totalDays / completedLogs.length).toFixed(1) : "0.0";
 
