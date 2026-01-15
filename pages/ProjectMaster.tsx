@@ -15,6 +15,12 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [currentDate, setCurrentDate] = useState(new Date());
   
+  // States for Filtering
+  const [filterType, setFilterType] = useState('ALL');
+  const [filterPIC, setFilterPIC] = useState('ALL');
+  const [filterSupport, setFilterSupport] = useState('ALL');
+  const [filterLocation, setFilterLocation] = useState('ALL');
+
   const [formData, setFormData] = useState<Partial<Project>>({
     project_name: '',
     start_date: '',
@@ -22,11 +28,28 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
     location: '',
     pic_designer_id: designers[0]?.id || '',
     support_designer_ids: [],
-    project_type: 'EVENT'
+    project_type: 'EVENT',
+    status: 'ON PROGRESS',
+    notes: ''
   });
 
   const getDesignerName = (id: string) => designers.find(d => d.id === id)?.name || 'N/A';
   
+  const uniqueLocations = useMemo(() => {
+    const locs = projects.map(p => p.location).filter(Boolean);
+    return Array.from(new Set(locs)).sort();
+  }, [projects]);
+
+  const filteredProjects = useMemo(() => {
+    return projects.filter(p => {
+      const matchType = filterType === 'ALL' || p.project_type === filterType;
+      const matchPIC = filterPIC === 'ALL' || p.pic_designer_id === filterPIC;
+      const matchSupport = filterSupport === 'ALL' || (p.support_designer_ids && p.support_designer_ids.includes(filterSupport));
+      const matchLoc = filterLocation === 'ALL' || p.location === filterLocation;
+      return matchType && matchPIC && matchSupport && matchLoc;
+    });
+  }, [projects, filterType, filterPIC, filterSupport, filterLocation]);
+
   const toggleSupportDesigner = (id: string) => {
     const current = formData.support_designer_ids || [];
     if (current.includes(id)) {
@@ -44,7 +67,9 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
       location: '',
       pic_designer_id: designers[0]?.id || '',
       support_designer_ids: [],
-      project_type: 'EVENT'
+      project_type: 'EVENT',
+      status: 'ON PROGRESS',
+      notes: ''
     });
     setEditingId(null);
     setIsAdding(false);
@@ -107,11 +132,18 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
     return themes[Math.abs(hash) % themes.length];
   };
 
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'ON HOLD': return 'bg-amber-100 text-amber-700 border-amber-200';
+      case 'DONE': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+      default: return 'bg-blue-100 text-blue-700 border-blue-200';
+    }
+  };
+
   const daysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
   const firstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
   const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-  const sortedProjects = useMemo(() => [...projects].sort((a, b) => a.id.localeCompare(b.id)), [projects]);
-
+  
   const navigateMonth = (direction: number) => {
     setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() + direction, 1));
   };
@@ -129,7 +161,7 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
     for (let d = 1; d <= totalDays; d++) {
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
       const isToday = dateStr === todayStr;
-      const dayProjects = sortedProjects.filter(p => dateStr >= p.start_date && dateStr <= p.end_date);
+      const dayProjects = filteredProjects.filter(p => dateStr >= p.start_date && dateStr <= p.end_date);
       
       days.push(
         <div key={d} className={`min-h-[160px] h-full border-r border-b border-slate-200 p-0 flex flex-col relative ${isToday ? 'bg-indigo-50/30' : 'bg-white'}`}>
@@ -148,7 +180,6 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
                     <span className="text-[10px] font-black truncate uppercase">{p.project_name}</span>
                     <span className={`text-[8px] font-black opacity-80 mt-0.5 truncate uppercase tracking-tighter`}>
                       PIC: {getDesignerName(p.pic_designer_id)}
-                      {p.support_designer_ids && p.support_designer_ids.length > 0 && ` (+${p.support_designer_ids.length} Support)`}
                     </span>
                   </div>
                 </div>
@@ -162,7 +193,8 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
   };
 
   const labelClass = "text-[11px] font-black text-slate-900 uppercase mb-1.5 block tracking-wide";
-  const inputClass = "w-full rounded-lg border-slate-300 text-slate-900 text-sm p-3 border bg-white focus:ring-2 focus:ring-indigo-600 outline-none placeholder-slate-400 font-semibold shadow-sm appearance-none transition-all";
+  const inputClass = "w-full rounded-lg border-slate-300 text-slate-900 text-sm p-3 border bg-white focus:ring-2 focus:ring-indigo-600 outline-none placeholder-slate-400 font-semibold shadow-sm transition-all";
+  const filterSelectClass = "text-[10px] font-bold border-slate-200 rounded-lg p-2 bg-white outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm uppercase tracking-tighter cursor-pointer";
 
   return (
     <div className="space-y-6 flex flex-col h-full relative">
@@ -185,6 +217,42 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
         </div>
       </header>
 
+      {/* FILTER BAR */}
+      <div className="bg-slate-100 p-4 rounded-2xl flex flex-wrap items-center gap-4 border border-slate-200 shadow-inner">
+        <div className="flex flex-col gap-1">
+          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Type</span>
+          <select value={filterType} onChange={e => setFilterType(e.target.value)} className={filterSelectClass}>
+            <option value="ALL">All Types</option>
+            <option value="EVENT">EVENT</option>
+            <option value="TRAVEL">TRAVEL</option>
+            <option value="WELLNESS">WELLNESS</option>
+            <option value="CREATIVE">CREATIVE</option>
+            <option value="TRAINING">TRAINING</option>
+          </select>
+        </div>
+        <div className="flex flex-col gap-1">
+          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">PIC</span>
+          <select value={filterPIC} onChange={e => setFilterPIC(e.target.value)} className={filterSelectClass}>
+            <option value="ALL">All PICs</option>
+            {designers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+          </select>
+        </div>
+        <div className="flex flex-col gap-1">
+          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Support</span>
+          <select value={filterSupport} onChange={e => setFilterSupport(e.target.value)} className={filterSelectClass}>
+            <option value="ALL">All Support</option>
+            {designers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+          </select>
+        </div>
+        <div className="flex flex-col gap-1">
+          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Location</span>
+          <select value={filterLocation} onChange={e => setFilterLocation(e.target.value)} className={filterSelectClass}>
+            <option value="ALL">All Locations</option>
+            {uniqueLocations.map(loc => <option key={loc} value={loc}>{loc}</option>)}
+          </select>
+        </div>
+      </div>
+
       {isAdding && (
         <form onSubmit={handleSave} className="bg-white p-8 rounded-2xl border border-slate-200 shadow-xl animate-in zoom-in duration-200 flex-shrink-0 mb-6">
           <h2 className="font-black text-slate-900 mb-8 flex items-center gap-2 uppercase tracking-tight">
@@ -197,6 +265,14 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
               <input type="text" required value={formData.project_name} onChange={e => setFormData({...formData, project_name: e.target.value})} className={inputClass} placeholder="e.g. Annual Report 2024" />
             </div>
             <div className="relative">
+              <label className={labelClass}>Status</label>
+              <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as any})} className={inputClass}>
+                <option value="ON PROGRESS">ON PROGRESS</option>
+                <option value="ON HOLD">ON HOLD</option>
+                <option value="DONE">DONE</option>
+              </select>
+            </div>
+            <div>
               <label className={labelClass}>Project Type</label>
               <select value={formData.project_type} onChange={e => setFormData({...formData, project_type: e.target.value})} className={inputClass}>
                 <option value="EVENT">EVENT</option>
@@ -216,7 +292,17 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
             </div>
             <div>
               <label className={labelClass}>Location</label>
-              <input type="text" placeholder="e.g. Remote, HQ" value={formData.location || ''} onChange={e => setFormData({...formData, location: e.target.value})} className={inputClass} />
+              <input 
+                type="text" 
+                list="location-suggestions"
+                placeholder="e.g. Remote, HQ" 
+                value={formData.location || ''} 
+                onChange={e => setFormData({...formData, location: e.target.value})} 
+                className={inputClass} 
+              />
+              <datalist id="location-suggestions">
+                {uniqueLocations.map(loc => <option key={loc} value={loc} />)}
+              </datalist>
             </div>
             <div className="relative">
               <label className={labelClass}>PIC Designer (Primary)</label>
@@ -225,26 +311,35 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
               </select>
             </div>
             
-            <div className="md:col-span-2">
-              <label className={labelClass}>Support Designers (Tim Pendukung)</label>
+            <div className="md:col-span-1">
+              <label className={labelClass}>Support Designers</label>
               <div className="flex flex-wrap gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl min-h-[46px]">
                 {designers.map(d => {
                   const isSelected = formData.support_designer_ids?.includes(d.id);
-                  const isPIC = formData.pic_designer_id === d.id;
-                  if (isPIC) return null; // PIC Utama tidak perlu jadi support
+                  if (formData.pic_designer_id === d.id) return null;
                   return (
                     <button
                       key={d.id}
                       type="button"
                       onClick={() => toggleSupportDesigner(d.id)}
-                      className={`px-3 py-1 rounded-full text-[10px] font-black uppercase transition-all border ${isSelected ? 'bg-indigo-600 border-indigo-600 text-white shadow-md' : 'bg-white border-slate-300 text-slate-500 hover:border-indigo-400'}`}
+                      className={`px-3 py-1 rounded-full text-[9px] font-black uppercase transition-all border ${isSelected ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-300 text-slate-500 hover:border-indigo-400'}`}
                     >
                       {d.name}
                     </button>
                   );
                 })}
-                {(!designers.length || designers.length === 1) && <span className="text-[10px] text-slate-400 italic">No other designers available.</span>}
               </div>
+            </div>
+
+            <div className="md:col-span-3">
+              <label className={labelClass}>Keterangan / Notes</label>
+              <textarea 
+                rows={3}
+                value={formData.notes || ''} 
+                onChange={e => setFormData({...formData, notes: e.target.value})} 
+                className={inputClass}
+                placeholder="Catatan tambahan mengenai project ini..."
+              />
             </div>
           </div>
           <div className="flex justify-end gap-4 pt-6 border-t border-slate-100">
@@ -263,22 +358,32 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
               <table className="w-full text-left text-sm border-collapse">
                 <thead className="sticky top-0 z-10 bg-slate-100">
                   <tr className="text-slate-900 font-black uppercase text-[10px] tracking-wider border-b border-slate-200">
-                    <th className="px-6 py-4">Project Name</th>
-                    <th className="px-6 py-4">Timeline</th>
+                    <th className="px-6 py-4">Status & Name</th>
+                    <th className="px-6 py-4">Timeline & Loc</th>
                     <th className="px-6 py-4">Lead & Team</th>
                     <th className="px-6 py-4 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 text-slate-900 font-bold">
-                  {projects.map(p => (
+                  {filteredProjects.map(p => (
                     <tr key={p.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-6 py-4 font-black">
-                        <div className="flex flex-col">
-                          <span className="uppercase">{p.project_name}</span>
-                          <span className="text-[9px] text-indigo-500 tracking-widest uppercase">{p.project_type} &bull; {p.location || 'N/A'}</span>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col gap-2">
+                          <span className={`px-2 py-0.5 rounded-full border text-[8px] font-black uppercase self-start ${getStatusBadge(p.status)}`}>
+                            {p.status}
+                          </span>
+                          <div className="flex flex-col leading-tight">
+                            <span className="font-black uppercase">{p.project_name}</span>
+                            <span className="text-[9px] text-indigo-500 tracking-widest uppercase">{p.project_type}</span>
+                          </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-[11px] font-black">{p.start_date} <span className="text-slate-400">→</span> {p.end_date}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col">
+                          <span className="text-[11px] font-black">{p.start_date} <span className="text-slate-400">→</span> {p.end_date}</span>
+                          <span className="text-[9px] text-slate-400 uppercase font-black">{p.location || 'No Location'}</span>
+                        </div>
+                      </td>
                       <td className="px-6 py-4">
                         <div className="flex flex-col gap-1">
                           <div className="flex items-center gap-1.5">
