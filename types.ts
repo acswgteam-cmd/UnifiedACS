@@ -26,7 +26,9 @@ export interface Project {
   location: string;
   pic_designer_id: string;
   support_designer_ids: string[];
-  project_type: string; // Conference, Gathering, Travel, Branding
+  project_type: string;
+  notes?: string;
+  status: 'ON HOLD' | 'ON PROGRESS' | 'DONE';
 }
 
 export interface Lead {
