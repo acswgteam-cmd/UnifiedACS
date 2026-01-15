@@ -51,7 +51,6 @@ const Dashboard: React.FC<Props> = ({ state }) => {
       const totalDays = logs.reduce((acc, l) => {
         const start = new Date(l.start_date);
         const end = new Date(l.end_date!);
-        // Adding +1 so same-day completion counts as 1 day
         const diff = Math.max(0, (end.getTime() - start.getTime()) / (1000 * 3600 * 24)) + 1;
         return acc + diff;
       }, 0);
@@ -72,7 +71,6 @@ const Dashboard: React.FC<Props> = ({ state }) => {
       });
     };
 
-    // Monthly Trend Logic (Last 6 Months)
     const getMonthlyTrends = () => {
       const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
       const trends = [];
@@ -117,7 +115,6 @@ const Dashboard: React.FC<Props> = ({ state }) => {
       const totalDays = completedLogs.reduce((acc, l) => {
         const start = new Date(l.start_date);
         const end = new Date(l.end_date!);
-        // Adding +1 so same-day completion counts as 1 day
         const diff = Math.max(0, (end.getTime() - start.getTime()) / (1000 * 3600 * 24)) + 1;
         return acc + diff;
       }, 0);
@@ -180,7 +177,6 @@ const Dashboard: React.FC<Props> = ({ state }) => {
         <ContextMetricsCard title="Internal" count={analytics.artworksInternal} duration={analytics.avgDurInt} typeSplit={analytics.internalTypeSplit} accentColor="bg-purple-600" lightColor="bg-purple-50" textColor="text-purple-700" />
       </div>
 
-      {/* NEW LINE CHARTS SECTION */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <section className={cardClass}>
           <div className="flex items-center justify-between mb-8">
@@ -331,12 +327,10 @@ const Dashboard: React.FC<Props> = ({ state }) => {
   );
 };
 
-// HELPER COMPONENTS FOR VISUALIZATION
-
 const TrendLineChart = ({ data, keys, colors }: { data: any[], keys: string[], colors: string[] }) => {
   const width = 500;
   const height = 200;
-  const padding = 30;
+  const padding = 35; // Increased padding for top labels
   
   const maxValue = useMemo(() => {
     return Math.max(...data.flatMap(d => keys.map(k => d[k])), 5);
@@ -347,7 +341,6 @@ const TrendLineChart = ({ data, keys, colors }: { data: any[], keys: string[], c
 
   return (
     <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible">
-      {/* Grid Lines */}
       {[0, 0.25, 0.5, 0.75, 1].map(p => (
         <line 
           key={p}
@@ -357,7 +350,6 @@ const TrendLineChart = ({ data, keys, colors }: { data: any[], keys: string[], c
         />
       ))}
 
-      {/* Lines & Points */}
       {keys.map((key, kIdx) => {
         const points = data.map((d, i) => `${getX(i)},${getY(d[key])}`).join(" ");
         return (
@@ -372,26 +364,38 @@ const TrendLineChart = ({ data, keys, colors }: { data: any[], keys: string[], c
               className="transition-all duration-700"
             />
             {data.map((d, i) => (
-              <circle
-                key={i}
-                cx={getX(i)}
-                cy={getY(d[key])}
-                r="4"
-                fill="white"
-                stroke={colors[kIdx]}
-                strokeWidth="2"
-              />
+              <g key={i}>
+                <circle
+                  cx={getX(i)}
+                  cy={getY(d[key])}
+                  r="4"
+                  fill="white"
+                  stroke={colors[kIdx]}
+                  strokeWidth="2"
+                />
+                {/* DATA VALUE LABEL */}
+                <text
+                  x={getX(i)}
+                  y={getY(d[key]) - 12}
+                  textAnchor="middle"
+                  fontSize="9"
+                  fontWeight="bold"
+                  fill={colors[kIdx]}
+                  className="animate-in fade-in duration-500"
+                >
+                  {d[key]}
+                </text>
+              </g>
             ))}
           </g>
         );
       })}
 
-      {/* X Axis Labels */}
       {data.map((d, i) => (
         <text
           key={i}
           x={getX(i)}
-          y={height - 5}
+          y={height - 10}
           textAnchor="middle"
           fontSize="10"
           className="fill-slate-400 font-bold uppercase tracking-tighter"
