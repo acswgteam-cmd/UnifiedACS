@@ -31,7 +31,11 @@ const PublicLeadForm: React.FC<Props> = ({ onHostSubmit, currentLeads = [] }) =>
     if (!isAuthorized) return;
     setLoading(true);
 
-    const { id, ...leadData } = formData as Lead;
+    // Force inject status as 'ON PROGRESS' to ensure public users can't override it
+    const leadData = {
+      ...formData,
+      status: 'ON PROGRESS'
+    };
 
     try {
       if (!supabase) throw new Error("Database connection not found");
@@ -55,7 +59,6 @@ const PublicLeadForm: React.FC<Props> = ({ onHostSubmit, currentLeads = [] }) =>
   const inputClass = "w-full rounded-xl border-slate-300 text-slate-900 text-base p-4 border focus:ring-4 focus:ring-indigo-100 focus:border-indigo-600 outline-none transition-all placeholder-slate-400 bg-white shadow-sm font-medium appearance-none";
   const labelClass = "text-sm font-semibold text-slate-900 uppercase tracking-wide mb-2 block ml-1";
 
-  // Jika token tidak valid, tampilkan halaman blokir
   if (!isAuthorized) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6">
@@ -111,12 +114,12 @@ const PublicLeadForm: React.FC<Props> = ({ onHostSubmit, currentLeads = [] }) =>
               </h2>
               <div>
                 <label className={labelClass}>Project Name</label>
-                <input type="text" required value={formData.lead_name} onChange={e => setFormData({...formData, lead_name: e.target.value})} className={inputClass} />
+                <input type="text" required value={formData.lead_name} onChange={e => setFormData({...formData, lead_name: e.target.value})} className={inputClass} placeholder="Nama project Anda..." />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
                   <label className={labelClass}>PIC</label>
-                  <input type="text" required value={formData.requester} onChange={e => setFormData({...formData, requester: e.target.value})} className={inputClass} />
+                  <input type="text" required value={formData.requester} onChange={e => setFormData({...formData, requester: e.target.value})} className={inputClass} placeholder="Nama Anda" />
                 </div>
                 <div>
                   <label className={labelClass}>Deadline</label>
@@ -142,7 +145,7 @@ const PublicLeadForm: React.FC<Props> = ({ onHostSubmit, currentLeads = [] }) =>
               </h2>
               <div>
                 <label className={labelClass}>Brief / Scope of Work</label>
-                <textarea rows={4} placeholder="tulis brief singkat anda disini..." value={formData.brief} onChange={e => setFormData({...formData, brief: e.target.value})} className={inputClass} />
+                <textarea rows={4} placeholder="Tulis brief singkat anda disini..." value={formData.brief} onChange={e => setFormData({...formData, brief: e.target.value})} className={inputClass} />
               </div>
               <div>
                 <label className={labelClass}>LINK BRIEF (Gdrive/ OneDrive)</label>
