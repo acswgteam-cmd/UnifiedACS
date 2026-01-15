@@ -40,6 +40,7 @@ export interface Lead {
   lead_grade: string;
   brief: string;
   drive_link: string;
+  status: 'ON PROGRESS' | 'DONE' | 'CANCEL';
 }
 
 export interface ArtworkLog {
