@@ -1,5 +1,5 @@
 
-import { WorkContext, AppState, ArtworkLog, Project } from '../types';
+import { WorkContext, AppState, ArtworkLog, Project, Lead } from '../types';
 
 const formatDate = (date: Date) => date.toISOString().split('T')[0];
 const dateOffset = (days: number) => {
@@ -31,7 +31,6 @@ const departments = [
 ];
 
 // --- Event Projects ---
-// Fix: Added status property to all mock projects to comply with the Project interface.
 const projects: Project[] = [
   { id: 'p1', project_name: 'Global Tech Summit Bali', start_date: dateOffset(-20), end_date: dateOffset(30), location: 'Bali', pic_designer_id: 'd-sofyan', support_designer_ids: ['d-pandhu'], project_type: 'Conference', status: 'ON PROGRESS' },
   { id: 'p2', project_name: 'Nike Sales Kickoff', start_date: dateOffset(-10), end_date: dateOffset(15), location: 'Jakarta', pic_designer_id: 'd-mya', support_designer_ids: [], project_type: 'Gathering', status: 'ON PROGRESS' },
@@ -51,7 +50,7 @@ const projects: Project[] = [
 ];
 
 // --- Service Inquiries / Leads ---
-const leads = Array.from({ length: 30 }, (_, i) => ({
+const leads: Lead[] = Array.from({ length: 30 }, (_, i) => ({
   id: `l${i + 1}`,
   lead_name: [
     'Logo Mockup Request', 'Itinerary Design', 'Stage Visual Pitch', 'Social Media Kit', 'Brochure Revamp', 'Video Bumpers'
@@ -61,13 +60,13 @@ const leads = Array.from({ length: 30 }, (_, i) => ({
   deadline: dateOffset(Math.floor(Math.random() * 15)),
   lead_grade: ['A', 'B', 'C'][i % 3],
   brief: 'Professional creative service request for upcoming production.',
-  drive_link: 'https://drive.google.com/...'
+  drive_link: 'https://drive.google.com/...',
+  status: i % 10 === 0 ? 'DONE' : i % 7 === 0 ? 'CANCEL' : 'ON PROGRESS'
 }));
 
 // --- Deliverable Logs (Randomized for variance) ---
 const artworkTypes = ['2D Design', '3D Design', 'Video'];
 const artworkLogs: ArtworkLog[] = Array.from({ length: 120 }, (_, i) => {
-  // Use Random for more natural variance in stats
   const randomDesignerIdx = Math.floor(Math.random() * designers.length);
   const designerId = designers[randomDesignerIdx].id;
   
