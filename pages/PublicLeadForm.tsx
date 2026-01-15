@@ -145,7 +145,7 @@ const PublicLeadForm: React.FC<Props> = ({ onHostSubmit, currentLeads = [] }) =>
                 <textarea rows={4} placeholder="tulis brief singkat anda disini..." value={formData.brief} onChange={e => setFormData({...formData, brief: e.target.value})} className={inputClass} />
               </div>
               <div>
-                <label className={labelClass}>Link OneDrive</label>
+                <label className={labelClass}>LINK BRIEF (Gdrive/ OneDrive)</label>
                 <input type="url" placeholder="https://..." value={formData.drive_link} onChange={e => setFormData({...formData, drive_link: e.target.value})} className={inputClass} />
               </div>
             </section>
