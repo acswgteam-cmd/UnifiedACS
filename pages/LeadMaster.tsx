@@ -25,11 +25,11 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
     deadline: '',
     lead_grade: 'B',
     brief: '',
-    drive_link: ''
+    drive_link: '',
+    status: 'ON PROGRESS'
   });
 
   const handleCopyLink = () => {
-    // Menghasilkan link dengan token terenkripsi
     const publicUrl = `${window.location.origin}${window.location.pathname}#/portal/v1/inquiry/${PUBLIC_FORM_SECRET}`;
     navigator.clipboard.writeText(publicUrl);
     setCopySuccess(true);
@@ -44,7 +44,8 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
       deadline: '',
       lead_grade: 'B',
       brief: '',
-      drive_link: ''
+      drive_link: '',
+      status: 'ON PROGRESS'
     });
     setEditingId(null);
     setIsAdding(false);
@@ -98,13 +99,21 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
     doc.text(`Requester: ${lead.requester}`, 20, 35);
     doc.text(`Deadline: ${lead.deadline}`, 20, 45);
     doc.text(`Grade: ${lead.lead_grade}`, 20, 55);
-    doc.text(`Brief:`, 20, 70);
+    doc.text(`Status: ${lead.status}`, 20, 65);
+    doc.text(`Brief:`, 20, 80);
     const splitBrief = doc.splitTextToSize(lead.brief || '-', 170);
-    doc.text(splitBrief, 20, 80);
+    doc.text(splitBrief, 20, 90);
     doc.save(`Lead_${lead.lead_name}.pdf`);
   };
 
-  // Helper for consistent coloring
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'DONE': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+      case 'CANCEL': return 'bg-slate-100 text-slate-600 border-slate-200';
+      default: return 'bg-blue-100 text-blue-700 border-blue-200';
+    }
+  };
+
   const getColorTheme = (id: string) => {
     const themes = [
       { bg: 'bg-blue-50', border: 'border-blue-600', text: 'text-blue-900', accent: 'text-blue-700' },
@@ -165,8 +174,8 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
                       PIC: {l.requester}
                     </span>
                     <div className="flex items-center gap-1 mt-1">
-                      <span className={`text-[7px] font-black px-1 rounded border ${theme.border} uppercase`}>
-                        Grade {l.lead_grade}
+                      <span className={`text-[7px] font-black px-1 rounded border border-slate-300 bg-white/50 uppercase`}>
+                        {l.status}
                       </span>
                     </div>
                   </div>
@@ -181,7 +190,7 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
   };
 
   const labelClass = "text-[11px] font-bold text-slate-900 uppercase mb-1.5 block tracking-wide";
-  const inputClass = "w-full rounded-lg border-slate-300 text-slate-900 text-sm p-3 border bg-white focus:ring-2 focus:ring-indigo-600 outline-none shadow-sm font-medium";
+  const inputClass = "w-full rounded-lg border-slate-300 text-slate-900 text-sm p-3 border bg-white focus:ring-2 focus:ring-indigo-600 outline-none shadow-sm font-medium transition-all";
 
   return (
     <div className="space-y-6 flex flex-col h-full relative">
@@ -217,16 +226,24 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
               <input type="text" required value={formData.lead_name} onChange={e => setFormData({...formData, lead_name: e.target.value})} className={inputClass} placeholder="Project title..." />
             </div>
             <div>
+              <label className={labelClass}>Status</label>
+              <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as any})} className={inputClass}>
+                <option value="ON PROGRESS">ON PROGRESS</option>
+                <option value="DONE">DONE</option>
+                <option value="CANCEL">CANCEL</option>
+              </select>
+            </div>
+            <div>
+              <label className={labelClass}>Requester</label>
+              <input type="text" required value={formData.requester} onChange={e => setFormData({...formData, requester: e.target.value})} className={inputClass} placeholder="Name/Dept" />
+            </div>
+            <div>
               <label className={labelClass}>Grade</label>
               <select value={formData.lead_grade} onChange={e => setFormData({...formData, lead_grade: e.target.value})} className={inputClass}>
                 <option value="A">Grade A (High)</option>
                 <option value="B">Grade B (Standard)</option>
                 <option value="C">Grade C (Low)</option>
               </select>
-            </div>
-            <div>
-              <label className={labelClass}>Requester</label>
-              <input type="text" required value={formData.requester} onChange={e => setFormData({...formData, requester: e.target.value})} className={inputClass} placeholder="Name/Dept" />
             </div>
             <div>
               <label className={labelClass}>Deadline</label>
@@ -238,8 +255,10 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
             </div>
           </div>
           <div className="flex justify-end gap-4">
-            <button type="button" onClick={resetForm} className="px-6 py-2.5 text-sm font-bold text-slate-500">Cancel</button>
-            <button type="submit" className="px-8 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-bold shadow-md hover:bg-indigo-700 transition-all">Commit Lead</button>
+            <button type="button" onClick={resetForm} className="px-6 py-2.5 text-sm font-bold text-slate-500 uppercase">Cancel</button>
+            <button type="submit" className="px-8 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-bold shadow-md hover:bg-indigo-700 transition-all uppercase tracking-widest">
+              {editingId ? 'Update Lead' : 'Commit Lead'}
+            </button>
           </div>
         </form>
       )}
@@ -252,7 +271,8 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
             ) : leads.map(l => (
               <div key={l.id} onClick={() => setSelectedLead(l)} className="bg-white p-6 rounded-2xl border border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 group cursor-pointer hover:shadow-md transition-all">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <span className={`px-2 py-0.5 rounded-full border text-[8px] font-black uppercase ${getStatusBadge(l.status)}`}>{l.status}</span>
                     <h3 className="text-lg font-bold text-slate-900 truncate">{l.lead_name}</h3>
                     <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${l.lead_grade === 'A' ? 'bg-orange-100 text-orange-700' : 'bg-indigo-100 text-indigo-700'}`}>Grade {l.lead_grade}</span>
                   </div>
@@ -291,7 +311,10 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6 backdrop-blur-sm bg-slate-900/40" onClick={() => setSelectedLead(null)}>
           <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl p-8 animate-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-start mb-6">
-              <h2 className="text-xl font-bold text-slate-900">{selectedLead.lead_name}</h2>
+              <div className="flex items-center gap-2">
+                <span className={`px-2 py-0.5 rounded-full border text-[9px] font-black uppercase ${getStatusBadge(selectedLead.status)}`}>{selectedLead.status}</span>
+                <h2 className="text-xl font-bold text-slate-900">{selectedLead.lead_name}</h2>
+              </div>
               <button onClick={() => setSelectedLead(null)} className="p-1 text-slate-400 hover:text-slate-900"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
             </div>
             <div className="space-y-4">
