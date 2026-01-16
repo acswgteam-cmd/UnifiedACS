@@ -52,6 +52,38 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
     });
   }, [projects, filterType, filterPIC, filterSupport, filterLocation, filterStatus]);
 
+  // CALENDAR LANE LOGIC: Assign each project to a stable "track" index
+  const calendarLanes = useMemo(() => {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const startOfMonth = new Date(year, month, 1).toISOString().split('T')[0];
+    const endOfMonth = new Date(year, month + 1, 0).toISOString().split('T')[0];
+
+    // Only process projects visible in this month
+    const visibleProjects = filteredProjects.filter(p => p.start_date <= endOfMonth && p.end_date >= startOfMonth);
+    
+    // Sort by start date, then by duration (longer projects first for better packing)
+    const sorted = [...visibleProjects].sort((a, b) => {
+      if (a.start_date !== b.start_date) return a.start_date.localeCompare(b.start_date);
+      return b.end_date.localeCompare(a.end_date);
+    });
+
+    const lanes: Project[][] = [];
+    sorted.forEach(project => {
+      let placed = false;
+      for (let i = 0; i < lanes.length; i++) {
+        const lastInLane = lanes[i][lanes[i].length - 1];
+        if (project.start_date > lastInLane.end_date) {
+          lanes[i].push(project);
+          placed = true;
+          break;
+        }
+      }
+      if (!placed) lanes.push([project]);
+    });
+    return lanes;
+  }, [filteredProjects, currentDate]);
+
   const toggleSupportDesigner = (id: string) => {
     const current = formData.support_designer_ids || [];
     if (current.includes(id)) {
@@ -163,25 +195,36 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
     for (let d = 1; d <= totalDays; d++) {
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
       const isToday = dateStr === todayStr;
-      const dayProjects = filteredProjects.filter(p => dateStr >= p.start_date && dateStr <= p.end_date);
       
       days.push(
         <div key={d} className={`min-h-[160px] h-full border-r border-b border-slate-200 p-0 flex flex-col relative ${isToday ? 'bg-indigo-50/30' : 'bg-white'}`}>
-          <div className="p-2">
+          <div className="p-2 flex-shrink-0">
             <span className={`text-[10px] font-black inline-flex items-center justify-center w-6 h-6 rounded-full ${isToday ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-700'}`}>
               {String(d).padStart(2, '0')}
             </span>
           </div>
-          <div className="flex flex-col space-y-1 pb-2">
-            {dayProjects.map(p => {
-              const theme = getColorTheme(p.id);
-              const isStart = dateStr === p.start_date;
+          <div className="flex flex-col space-y-1 pb-2 flex-1">
+            {calendarLanes.map((lane, laneIdx) => {
+              const project = lane.find(p => dateStr >= p.start_date && dateStr <= p.end_date);
+              
+              if (!project) {
+                // Return an invisible spacer to keep lanes aligned
+                return <div key={`lane-spacer-${laneIdx}`} className="min-h-[56px] py-1.5 w-full"></div>;
+              }
+
+              const theme = getColorTheme(project.id);
+              const isStart = dateStr === project.start_date;
+              const isEnd = dateStr === project.end_date;
+
               return (
-                <div key={p.id} className={`min-h-[56px] py-1.5 flex flex-col justify-center px-2 overflow-hidden ${isStart ? `rounded-l-md ml-1 border-l-4 ${theme.border}` : ''} ${theme.bg} ${theme.text}`}>
+                <div 
+                  key={project.id} 
+                  className={`min-h-[56px] py-1.5 flex flex-col justify-center px-2 overflow-hidden transition-all duration-200 ${theme.bg} ${theme.text} ${isStart ? `rounded-l-md ml-1 border-l-4 ${theme.border}` : ''} ${isEnd ? 'rounded-r-md mr-1' : ''}`}
+                >
                   <div className="flex flex-col min-w-0 leading-tight">
-                    <span className="text-[10px] font-black truncate uppercase">{p.project_name}</span>
+                    <span className="text-[10px] font-black truncate uppercase">{project.project_name}</span>
                     <span className={`text-[8px] font-black opacity-80 mt-0.5 truncate uppercase tracking-tighter`}>
-                      PIC: {getDesignerName(p.pic_designer_id)}
+                      PIC: {getDesignerName(project.pic_designer_id)}
                     </span>
                   </div>
                 </div>
