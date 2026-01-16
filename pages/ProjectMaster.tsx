@@ -20,6 +20,7 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
   const [filterPIC, setFilterPIC] = useState('ALL');
   const [filterSupport, setFilterSupport] = useState('ALL');
   const [filterLocation, setFilterLocation] = useState('ALL');
+  const [filterStatus, setFilterStatus] = useState('ALL');
 
   const [formData, setFormData] = useState<Partial<Project>>({
     project_name: '',
@@ -46,9 +47,10 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
       const matchPIC = filterPIC === 'ALL' || p.pic_designer_id === filterPIC;
       const matchSupport = filterSupport === 'ALL' || (p.support_designer_ids && p.support_designer_ids.includes(filterSupport));
       const matchLoc = filterLocation === 'ALL' || p.location === filterLocation;
-      return matchType && matchPIC && matchSupport && matchLoc;
+      const matchStatus = filterStatus === 'ALL' || p.status === filterStatus;
+      return matchType && matchPIC && matchSupport && matchLoc && matchStatus;
     });
-  }, [projects, filterType, filterPIC, filterSupport, filterLocation]);
+  }, [projects, filterType, filterPIC, filterSupport, filterLocation, filterStatus]);
 
   const toggleSupportDesigner = (id: string) => {
     const current = formData.support_designer_ids || [];
@@ -219,6 +221,15 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
 
       {/* FILTER BAR */}
       <div className="bg-slate-100 p-4 rounded-2xl flex flex-wrap items-center gap-4 border border-slate-200 shadow-inner">
+        <div className="flex flex-col gap-1">
+          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Status</span>
+          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className={filterSelectClass}>
+            <option value="ALL">All Statuses</option>
+            <option value="ON PROGRESS">ON PROGRESS</option>
+            <option value="ON HOLD">ON HOLD</option>
+            <option value="DONE">DONE</option>
+          </select>
+        </div>
         <div className="flex flex-col gap-1">
           <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Type</span>
           <select value={filterType} onChange={e => setFilterType(e.target.value)} className={filterSelectClass}>
