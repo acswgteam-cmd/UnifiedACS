@@ -18,6 +18,11 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [copySuccess, setCopySuccess] = useState(false);
   
+  // States for Filtering
+  const [filterStatus, setFilterStatus] = useState('ALL');
+  const [filterGrade, setFilterGrade] = useState('ALL');
+  const [filterRequester, setFilterRequester] = useState('ALL');
+
   const [formData, setFormData] = useState<Partial<Lead>>({
     lead_name: '',
     requester: '',
@@ -28,6 +33,20 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
     drive_link: '',
     status: 'ON PROGRESS'
   });
+
+  const uniqueRequesters = useMemo(() => {
+    const names = leads.map(l => l.requester).filter(Boolean);
+    return Array.from(new Set(names)).sort();
+  }, [leads]);
+
+  const filteredLeads = useMemo(() => {
+    return leads.filter(l => {
+      const matchStatus = filterStatus === 'ALL' || l.status === filterStatus;
+      const matchGrade = filterGrade === 'ALL' || l.lead_grade === filterGrade;
+      const matchRequester = filterRequester === 'ALL' || l.requester === filterRequester;
+      return matchStatus && matchGrade && matchRequester;
+    });
+  }, [leads, filterStatus, filterGrade, filterRequester]);
 
   const handleCopyLink = () => {
     const publicUrl = `${window.location.origin}${window.location.pathname}#/portal/v1/inquiry/${PUBLIC_FORM_SECRET}`;
@@ -149,7 +168,7 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
     for (let d = 1; d <= totalDays; d++) {
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
       const isToday = dateStr === todayStr;
-      const dayLeads = leads.filter(l => dateStr >= l.order_date && dateStr <= l.deadline);
+      const dayLeads = filteredLeads.filter(l => dateStr >= l.order_date && dateStr <= l.deadline);
       
       days.push(
         <div key={d} className={`min-h-[160px] h-full border-r border-b border-slate-200 p-0 flex flex-col relative ${isToday ? 'bg-indigo-50/30' : 'bg-white'}`}>
@@ -191,6 +210,7 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
 
   const labelClass = "text-[11px] font-bold text-slate-900 uppercase mb-1.5 block tracking-wide";
   const inputClass = "w-full rounded-lg border-slate-300 text-slate-900 text-sm p-3 border bg-white focus:ring-2 focus:ring-indigo-600 outline-none shadow-sm font-medium transition-all";
+  const filterSelectClass = "text-[10px] font-bold border-slate-200 rounded-lg p-2 bg-white outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm uppercase tracking-tighter cursor-pointer";
 
   return (
     <div className="space-y-6 flex flex-col h-full relative">
@@ -217,6 +237,35 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
           </button>
         </div>
       </header>
+
+      {/* FILTER BAR */}
+      <div className="bg-slate-100 p-4 rounded-2xl flex flex-wrap items-center gap-4 border border-slate-200 shadow-inner">
+        <div className="flex flex-col gap-1">
+          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Status</span>
+          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className={filterSelectClass}>
+            <option value="ALL">All Statuses</option>
+            <option value="ON PROGRESS">ON PROGRESS</option>
+            <option value="DONE">DONE</option>
+            <option value="CANCEL">CANCEL</option>
+          </select>
+        </div>
+        <div className="flex flex-col gap-1">
+          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Grade</span>
+          <select value={filterGrade} onChange={e => setFilterGrade(e.target.value)} className={filterSelectClass}>
+            <option value="ALL">All Grades</option>
+            <option value="A">Grade A</option>
+            <option value="B">Grade B</option>
+            <option value="C">Grade C</option>
+          </select>
+        </div>
+        <div className="flex flex-col gap-1">
+          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Requester</span>
+          <select value={filterRequester} onChange={e => setFilterRequester(e.target.value)} className={filterSelectClass}>
+            <option value="ALL">All Requesters</option>
+            {uniqueRequesters.map(req => <option key={req} value={req}>{req}</option>)}
+          </select>
+        </div>
+      </div>
 
       {isAdding && (
         <form onSubmit={handleSave} className="bg-white p-8 rounded-2xl border border-slate-200 shadow-xl animate-in zoom-in duration-200 flex-shrink-0">
@@ -266,9 +315,9 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
       <div className="flex-1 overflow-auto">
         {view === 'list' ? (
           <div className="space-y-4">
-            {leads.length === 0 ? (
+            {filteredLeads.length === 0 ? (
               <div className="p-20 text-center bg-white rounded-3xl border-2 border-dashed border-slate-200 text-slate-400 font-bold italic">No leads found.</div>
-            ) : leads.map(l => (
+            ) : filteredLeads.map(l => (
               <div key={l.id} onClick={() => setSelectedLead(l)} className="bg-white p-6 rounded-2xl border border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 group cursor-pointer hover:shadow-md transition-all">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
