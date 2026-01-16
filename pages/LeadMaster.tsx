@@ -48,6 +48,36 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
     });
   }, [leads, filterStatus, filterGrade, filterRequester]);
 
+  // CALENDAR LANE LOGIC
+  const calendarLanes = useMemo(() => {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const startOfMonth = new Date(year, month, 1).toISOString().split('T')[0];
+    const endOfMonth = new Date(year, month + 1, 0).toISOString().split('T')[0];
+
+    const visibleLeads = filteredLeads.filter(l => l.order_date <= endOfMonth && l.deadline >= startOfMonth);
+    
+    const sorted = [...visibleLeads].sort((a, b) => {
+      if (a.order_date !== b.order_date) return a.order_date.localeCompare(b.order_date);
+      return b.deadline.localeCompare(a.deadline);
+    });
+
+    const lanes: Lead[][] = [];
+    sorted.forEach(lead => {
+      let placed = false;
+      for (let i = 0; i < lanes.length; i++) {
+        const lastInLane = lanes[i][lanes[i].length - 1];
+        if (lead.order_date > lastInLane.deadline) {
+          lanes[i].push(lead);
+          placed = true;
+          break;
+        }
+      }
+      if (!placed) lanes.push([lead]);
+    });
+    return lanes;
+  }, [filteredLeads, currentDate]);
+
   const handleCopyLink = () => {
     const publicUrl = `${window.location.origin}${window.location.pathname}#/portal/v1/inquiry/${PUBLIC_FORM_SECRET}`;
     navigator.clipboard.writeText(publicUrl);
@@ -168,33 +198,40 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
     for (let d = 1; d <= totalDays; d++) {
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
       const isToday = dateStr === todayStr;
-      const dayLeads = filteredLeads.filter(l => dateStr >= l.order_date && dateStr <= l.deadline);
       
       days.push(
         <div key={d} className={`min-h-[160px] h-full border-r border-b border-slate-200 p-0 flex flex-col relative ${isToday ? 'bg-indigo-50/30' : 'bg-white'}`}>
-          <div className="p-2">
+          <div className="p-2 flex-shrink-0">
             <span className={`text-[10px] font-black inline-flex items-center justify-center w-6 h-6 rounded-full ${isToday ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-700'}`}>
               {String(d).padStart(2, '0')}
             </span>
           </div>
-          <div className="flex flex-col space-y-1 pb-2">
-            {dayLeads.map(l => {
-              const theme = getColorTheme(l.id);
-              const isStart = dateStr === l.order_date;
+          <div className="flex flex-col space-y-1 pb-2 flex-1">
+            {calendarLanes.map((lane, laneIdx) => {
+              const lead = lane.find(l => dateStr >= l.order_date && dateStr <= l.deadline);
+              
+              if (!lead) {
+                return <div key={`lane-spacer-${laneIdx}`} className="min-h-[60px] py-1.5 w-full"></div>;
+              }
+
+              const theme = getColorTheme(lead.id);
+              const isStart = dateStr === lead.order_date;
+              const isEnd = dateStr === lead.deadline;
+
               return (
                 <div 
-                  key={l.id} 
-                  onClick={() => setSelectedLead(l)}
-                  className={`cursor-pointer min-h-[60px] py-1.5 flex flex-col justify-center px-2 overflow-hidden transition-all hover:brightness-95 ${isStart ? `rounded-l-md ml-1 border-l-4 ${theme.border}` : ''} ${theme.bg} ${theme.text}`}
+                  key={lead.id} 
+                  onClick={() => setSelectedLead(lead)}
+                  className={`cursor-pointer min-h-[60px] py-1.5 flex flex-col justify-center px-2 overflow-hidden transition-all hover:brightness-95 ${theme.bg} ${theme.text} ${isStart ? `rounded-l-md ml-1 border-l-4 ${theme.border}` : ''} ${isEnd ? 'rounded-r-md mr-1' : ''}`}
                 >
                   <div className="flex flex-col min-w-0 leading-tight">
-                    <span className="text-[10px] font-black truncate uppercase">{l.lead_name}</span>
+                    <span className="text-[10px] font-black truncate uppercase">{lead.lead_name}</span>
                     <span className="text-[8px] font-black opacity-80 mt-0.5 truncate uppercase tracking-tighter">
-                      PIC: {l.requester}
+                      PIC: {lead.requester}
                     </span>
                     <div className="flex items-center gap-1 mt-1">
                       <span className={`text-[7px] font-black px-1 rounded border border-slate-300 bg-white/50 uppercase`}>
-                        {l.status}
+                        {lead.status}
                       </span>
                     </div>
                   </div>
