@@ -142,17 +142,83 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
   const downloadPDF = (e: React.MouseEvent | null, lead: Lead) => {
     if (e) e.stopPropagation();
     const doc = new jsPDF() as any;
-    doc.setFontSize(18);
-    doc.text(`LEAD SPECIFICATION: ${lead.lead_name}`, 20, 20);
+    const primaryColor = [15, 23, 42]; // Slate 900
+    const accentColor = [79, 70, 229]; // Indigo 600
+
+    // Header Background
+    doc.setFillColor(...primaryColor);
+    doc.rect(0, 0, 210, 40, 'F');
+    
+    // Header Content
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
-    doc.text(`Requester: ${lead.requester}`, 20, 35);
-    doc.text(`Deadline: ${lead.deadline}`, 20, 45);
-    doc.text(`Grade: ${lead.lead_grade}`, 20, 55);
-    doc.text(`Status: ${lead.status}`, 20, 65);
-    doc.text(`Brief:`, 20, 80);
-    const splitBrief = doc.splitTextToSize(lead.brief || '-', 170);
-    doc.text(splitBrief, 20, 90);
-    doc.save(`Lead_${lead.lead_name}.pdf`);
+    doc.text('LEAD PRODUCTION SPECIFICATION', 20, 15);
+    doc.setFontSize(22);
+    doc.text(lead.lead_name.toUpperCase(), 20, 28);
+
+    // Metadata Section
+    doc.setTextColor(100, 116, 139); // Slate 500
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    
+    // Column 1
+    doc.text('REQUESTER / PIC', 20, 55);
+    doc.text('LEAD GRADE', 20, 70);
+    
+    // Column 2
+    doc.text('DEADLINE', 110, 55);
+    doc.text('CURRENT STATUS', 110, 70);
+
+    // Metadata Values
+    doc.setTextColor(15, 23, 42); // Slate 900
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    doc.text(lead.requester, 20, 62);
+    doc.text(`Grade ${lead.lead_grade}`, 20, 77);
+    doc.text(lead.deadline, 110, 62);
+    doc.text(lead.status, 110, 77);
+
+    // Separator
+    doc.setDrawColor(226, 232, 240); // Slate 200
+    doc.line(20, 85, 190, 85);
+
+    // Brief Section
+    doc.setTextColor(100, 116, 139); // Slate 500
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text('SCOPE OF WORK / BRIEF', 20, 95);
+
+    doc.setTextColor(51, 65, 85); // Slate 700
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    const splitBrief = doc.splitTextToSize(lead.brief || 'No detailed brief provided for this request.', 170);
+    doc.text(splitBrief, 20, 105);
+
+    // Reference Assets Section
+    if (lead.drive_link) {
+      const briefBottom = 105 + (splitBrief.length * 5) + 10;
+      doc.setDrawColor(226, 232, 240);
+      doc.line(20, briefBottom, 190, briefBottom);
+
+      doc.setTextColor(100, 116, 139);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.text('REFERENCE ASSETS (GDRIVE/CLOUD)', 20, briefBottom + 10);
+
+      doc.setTextColor(...accentColor);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.textWithLink(lead.drive_link, 20, briefBottom + 18, { url: lead.drive_link });
+    }
+
+    // Footer
+    doc.setTextColor(148, 163, 184); // Slate 400
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'italic');
+    doc.text(`Generated on ${new Date().toLocaleString()} - ACS Unified Studio Portal`, 20, 285);
+
+    doc.save(`Lead_Spec_${lead.lead_name.replace(/\s+/g, '_')}.pdf`);
   };
 
   const getStatusBadge = (status: string) => {
