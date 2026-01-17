@@ -19,6 +19,7 @@ const ArtworkForm: React.FC<Props> = ({ state, onSubmit }) => {
     approval_required: false,
     project_id: null,
     lead_id: null,
+    internal_design_id: null,
     department_id: null,
     notes: ''
   });
@@ -30,17 +31,15 @@ const ArtworkForm: React.FC<Props> = ({ state, onSubmit }) => {
     setFormData(prev => ({ 
       ...prev, 
       [name]: val === "" ? null : val,
-      ...(name === 'work_context' ? { project_id: null, lead_id: null, department_id: null, approval_required: false } : {})
+      ...(name === 'work_context' ? { project_id: null, lead_id: null, internal_design_id: null, department_id: null, approval_required: false } : {})
     }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Use Omit type to ensure we don't send an invalid string ID to a UUID column
     const { id, ...logData } = formData as ArtworkLog;
     onSubmit(logData);
     
-    // Clear name and notes only
     setFormData(prev => ({
       ...prev,
       artwork_name: '',
@@ -60,7 +59,6 @@ const ArtworkForm: React.FC<Props> = ({ state, onSubmit }) => {
           Log Production Activity
         </h2>
         
-        {/* Conditional Approval Toggle */}
         {formData.work_context === WorkContext.PROJECT && (
           <label className="flex items-center gap-3 cursor-pointer group bg-slate-50 px-4 py-2 rounded-xl border border-slate-200 hover:border-indigo-300 transition-all">
             <input 
@@ -72,7 +70,7 @@ const ArtworkForm: React.FC<Props> = ({ state, onSubmit }) => {
             />
             <div className="flex flex-col">
               <span className="text-[10px] font-black text-slate-900 uppercase leading-none">Form Approval</span>
-              <span className="text-[8px] text-slate-400 font-bold uppercase tracking-tighter">Requires Manager Validation</span>
+              <span className="text-[8px] text-slate-400 font-bold uppercase tracking-tighter">Requires Validation</span>
             </div>
           </label>
         )}
@@ -81,18 +79,16 @@ const ArtworkForm: React.FC<Props> = ({ state, onSubmit }) => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6">
         <div className="space-y-1">
           <label className={labelClass}>Work Context</label>
-          <div className="relative">
-            <select name="work_context" value={formData.work_context} onChange={handleChange} className={inputClass}>
-              <option value={WorkContext.PROJECT}>Project-Linked</option>
-              <option value={WorkContext.LEAD}>Direct Lead</option>
-              <option value={WorkContext.INTERNAL}>Internal Department</option>
-            </select>
-          </div>
+          <select name="work_context" value={formData.work_context} onChange={handleChange} className={inputClass}>
+            <option value={WorkContext.PROJECT}>Project-Linked</option>
+            <option value={WorkContext.LEAD}>Direct Lead</option>
+            <option value={WorkContext.INTERNAL}>Internal / Dept</option>
+          </select>
         </div>
 
         {formData.work_context === WorkContext.PROJECT && (
           <div className="space-y-1">
-            <label className={labelClass}>Select Project</label>
+            <label className={labelClass}>Select Event Project</label>
             <select name="project_id" value={formData.project_id || ""} onChange={handleChange} required className={inputClass}>
               <option value="">Choose Project...</option>
               {state.projects.map(p => <option key={p.id} value={p.id}>{p.project_name}</option>)}
@@ -102,7 +98,7 @@ const ArtworkForm: React.FC<Props> = ({ state, onSubmit }) => {
 
         {formData.work_context === WorkContext.LEAD && (
           <div className="space-y-1">
-            <label className={labelClass}>Select Lead</label>
+            <label className={labelClass}>Select Lead / Inquiry</label>
             <select name="lead_id" value={formData.lead_id || ""} onChange={handleChange} required className={inputClass}>
               <option value="">Choose Lead...</option>
               {state.leads.map(l => <option key={l.id} value={l.id}>{l.lead_name}</option>)}
@@ -111,13 +107,24 @@ const ArtworkForm: React.FC<Props> = ({ state, onSubmit }) => {
         )}
 
         {formData.work_context === WorkContext.INTERNAL && (
-          <div className="space-y-1">
-            <label className={labelClass}>Department</label>
-            <select name="department_id" value={formData.department_id || ""} onChange={handleChange} required className={inputClass}>
-              <option value="">Choose Department...</option>
-              {state.departments.filter(d => d.active).map(d => <option key={d.id} value={d.id}>{d.department_name}</option>)}
-            </select>
-          </div>
+          <>
+            <div className="space-y-1">
+              <label className={labelClass}>Requester Department</label>
+              <select name="department_id" value={formData.department_id || ""} onChange={handleChange} required className={inputClass}>
+                <option value="">Choose Department...</option>
+                {state.departments.filter(d => d.active).map(d => <option key={d.id} value={d.id}>{d.department_name}</option>)}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label className={labelClass}>Linked Internal Task (Optional)</label>
+              <select name="internal_design_id" value={formData.internal_design_id || ""} onChange={handleChange} className={inputClass}>
+                <option value="">No specific internal project</option>
+                {state.internalDesigns.filter(id => id.department_id === formData.department_id || !formData.department_id).map(id => (
+                  <option key={id.id} value={id.id}>{id.task_name} ({id.status})</option>
+                ))}
+              </select>
+            </div>
+          </>
         )}
 
         <div className="space-y-1">
@@ -159,13 +166,12 @@ const ArtworkForm: React.FC<Props> = ({ state, onSubmit }) => {
 
         <div className="md:col-span-2 lg:col-span-3 space-y-1">
           <label className={labelClass}>Activity Notes</label>
-          <textarea name="notes" value={formData.notes} onChange={handleChange} rows={2} className={inputClass} placeholder="Summarize changes or current status..." />
+          <textarea name="notes" value={formData.notes} onChange={handleChange} rows={2} className={inputClass} placeholder="Summarize changes or status..." />
         </div>
       </div>
 
-      <div className="mt-8 flex justify-end items-center gap-6">
-        <button type="submit" className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-xl shadow-lg shadow-indigo-200 transition-all hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-2">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+      <div className="mt-8 flex justify-end">
+        <button type="submit" className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-xl shadow-lg transition-all hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-2 uppercase tracking-widest">
           Commit Log Entry
         </button>
       </div>
