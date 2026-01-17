@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { Lead } from '../types';
 import { jsPDF } from 'jspdf';
 import { supabase } from '../lib/supabase';
@@ -17,6 +17,7 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [copySuccess, setCopySuccess] = useState(false);
+  const lastScrollTime = useRef(0);
   
   // States for Filtering
   const [filterStatus, setFilterStatus] = useState('ALL');
@@ -233,6 +234,20 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
     setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() + direction, 1));
   };
 
+  const handleWheel = (e: React.WheelEvent) => {
+    const now = Date.now();
+    if (now - lastScrollTime.current < 400) return; // Throttle 400ms
+
+    if (Math.abs(e.deltaY) > 20) {
+      if (e.deltaY > 0) {
+        navigateMonth(1);
+      } else {
+        navigateMonth(-1);
+      }
+      lastScrollTime.current = now;
+    }
+  };
+
   const renderCalendar = () => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
@@ -420,7 +435,10 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
             ))}
           </div>
         ) : (
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden h-full flex flex-col animate-in fade-in duration-300">
+          <div 
+            onWheel={handleWheel}
+            className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden h-full flex flex-col animate-in fade-in duration-300"
+          >
             <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between flex-shrink-0">
                <h3 className="font-black text-slate-900 text-sm uppercase tracking-widest">{monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</h3>
                <div className="flex gap-2">
