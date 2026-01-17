@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { WorkContext, ArtworkLog, AppState } from '../types';
 
 interface Props {
@@ -23,6 +23,16 @@ const ArtworkForm: React.FC<Props> = ({ state, onSubmit }) => {
     department_id: null,
     notes: ''
   });
+
+  // Effect to sync department if internal task is selected
+  useEffect(() => {
+    if (formData.work_context === WorkContext.INTERNAL && formData.internal_design_id) {
+      const selectedTask = state.internalDesigns.find(t => t.id === formData.internal_design_id);
+      if (selectedTask) {
+        setFormData(prev => ({ ...prev, department_id: selectedTask.department_id }));
+      }
+    }
+  }, [formData.internal_design_id, formData.work_context, state.internalDesigns]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
@@ -109,21 +119,35 @@ const ArtworkForm: React.FC<Props> = ({ state, onSubmit }) => {
         {formData.work_context === WorkContext.INTERNAL && (
           <>
             <div className="space-y-1">
-              <label className={labelClass}>Requester Department</label>
-              <select name="department_id" value={formData.department_id || ""} onChange={handleChange} required className={inputClass}>
-                <option value="">Choose Department...</option>
-                {state.departments.filter(d => d.active).map(d => <option key={d.id} value={d.id}>{d.department_name}</option>)}
-              </select>
-            </div>
-            <div className="space-y-1">
               <label className={labelClass}>Linked Internal Task (Optional)</label>
               <select name="internal_design_id" value={formData.internal_design_id || ""} onChange={handleChange} className={inputClass}>
                 <option value="">No specific internal project</option>
-                {state.internalDesigns.filter(id => id.department_id === formData.department_id || !formData.department_id).map(id => (
+                {state.internalDesigns.map(id => (
                   <option key={id.id} value={id.id}>{id.task_name} ({id.status})</option>
                 ))}
               </select>
             </div>
+            
+            {/* Hanya tampil jika tidak memilih internal task secara spesifik */}
+            {!formData.internal_design_id && (
+              <div className="space-y-1 animate-in fade-in duration-300">
+                <label className={labelClass}>Requester Department</label>
+                <select name="department_id" value={formData.department_id || ""} onChange={handleChange} required className={inputClass}>
+                  <option value="">Choose Department...</option>
+                  {state.departments.filter(d => d.active).map(d => <option key={d.id} value={d.id}>{d.department_name}</option>)}
+                </select>
+              </div>
+            )}
+
+            {/* Jika ada internal_design_id, tampilkan departemen sebagai info read-only atau disembunyikan sesuai permintaan */}
+            {formData.internal_design_id && (
+              <div className="space-y-1 animate-in fade-in duration-300">
+                <label className={labelClass}>Auto-linked Department</label>
+                <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-500 uppercase italic">
+                  {state.departments.find(d => d.id === formData.department_id)?.department_name || 'System Loading...'}
+                </div>
+              </div>
+            )}
           </>
         )}
 
