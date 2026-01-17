@@ -7,13 +7,15 @@ import DepartmentMaster from './pages/DepartmentMaster';
 import DesignerMaster from './pages/DesignerMaster';
 import ProjectMaster from './pages/ProjectMaster';
 import LeadMaster from './pages/LeadMaster';
+import InternalDesignMaster from './pages/InternalDesignMaster';
 import PublicLeadForm from './pages/PublicLeadForm';
+import PublicInternalForm from './pages/PublicInternalForm';
 import Dashboard from './pages/Dashboard';
 import { supabase, isSupabaseConfigured } from './lib/supabase';
 import { INITIAL_STATE } from './data/mockData';
 
-// Token rahasia untuk "enkripsi" link public form
 export const PUBLIC_FORM_SECRET = 'acs-creative-portal-v1-992837465';
+export const INTERNAL_FORM_SECRET = 'acs-internal-request-v1-554219830';
 
 const App: React.FC = () => {
   const [useDemoMode, setUseDemoMode] = useState(false);
@@ -22,6 +24,7 @@ const App: React.FC = () => {
     departments: [],
     projects: [],
     leads: [],
+    internalDesigns: [],
     artworkLogs: []
   });
   const [loading, setLoading] = useState(isSupabaseConfigured);
@@ -30,11 +33,12 @@ const App: React.FC = () => {
     if (!supabase || useDemoMode) return;
     setLoading(true);
     try {
-      const [designersRes, departmentsRes, projectsRes, leadsRes, logsRes] = await Promise.all([
+      const [designersRes, departmentsRes, projectsRes, leadsRes, internalRes, logsRes] = await Promise.all([
         supabase.from('designers').select('*').order('name'),
         supabase.from('departments').select('*').order('department_name'),
         supabase.from('projects').select('*').order('created_at', { ascending: false }),
         supabase.from('leads').select('*').order('created_at', { ascending: false }),
+        supabase.from('internal_designs').select('*').order('created_at', { ascending: false }),
         supabase.from('artwork_logs').select('*').order('created_at', { ascending: false })
       ]);
 
@@ -43,6 +47,7 @@ const App: React.FC = () => {
         departments: departmentsRes.data || [],
         projects: projectsRes.data || [],
         leads: leadsRes.data || [],
+        internalDesigns: internalRes.data || [],
         artworkLogs: logsRes.data || []
       });
     } catch (error) {
@@ -55,6 +60,8 @@ const App: React.FC = () => {
   useEffect(() => {
     if (isSupabaseConfigured && !useDemoMode) {
       fetchData();
+    } else if (useDemoMode) {
+      setState(INITIAL_STATE);
     }
   }, [useDemoMode]);
 
@@ -102,15 +109,14 @@ const App: React.FC = () => {
   return (
     <HashRouter>
       <Routes>
-        {/* Jalur Publik Terenkripsi */}
         <Route path="/portal/v1/inquiry/:token" element={<PublicLeadForm onHostSubmit={() => fetchData()} currentLeads={state.leads} />} />
+        <Route path="/portal/v1/internal/:token" element={<PublicInternalForm onHostSubmit={() => fetchData()} departments={state.departments} />} />
         
-        {/* Jalur Admin (Dashboard) */}
         <Route path="/admin/*" element={
           <div className="flex h-screen overflow-hidden bg-slate-50 text-slate-900">
             <aside className="w-64 bg-slate-900 text-white flex-shrink-0 flex flex-col shadow-xl z-20">
               <div className="p-6"><h1 className="text-lg font-bold tracking-tight">ACS UNIFIED<br/><span className="text-indigo-400">LOG ARTWORK</span></h1></div>
-              <nav className="flex-1 px-4 py-4 space-y-1">
+              <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto scrollbar-hide">
                 <NavLink to="/admin/dashboard">Dashboard</NavLink>
                 <NavLink to="/admin/artwork-logs">Artwork Logs</NavLink>
                 <div className="mt-8 mb-2 px-3 text-[10px] font-bold text-slate-500 uppercase">Master Data</div>
@@ -118,6 +124,7 @@ const App: React.FC = () => {
                 <NavLink to="/admin/masters/designers">Designers</NavLink>
                 <NavLink to="/admin/masters/projects">Projects</NavLink>
                 <NavLink to="/admin/masters/leads">Leads</NavLink>
+                <NavLink to="/admin/masters/internal">Internal Tasks</NavLink>
               </nav>
             </aside>
             <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
@@ -131,21 +138,20 @@ const App: React.FC = () => {
                   <Route path="/masters/designers" element={<DesignerMaster designers={state.designers} onUpdate={fetchData} />} />
                   <Route path="/masters/projects" element={<ProjectMaster projects={state.projects} designers={state.designers} onUpdate={fetchData} />} />
                   <Route path="/masters/leads" element={<LeadMaster leads={state.leads} onUpdate={fetchData} />} />
+                  <Route path="/masters/internal" element={<InternalDesignMaster internalDesigns={state.internalDesigns} departments={state.departments} onUpdate={fetchData} />} />
                 </Routes>
               </div>
             </main>
           </div>
         } />
 
-        {/* Root Redirect - Menutup celah keamanan default */}
         <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
         
-        {/* Halaman 404/Unauthorized */}
         <Route path="*" element={
           <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center">
             <div className="text-6xl mb-4">🚫</div>
             <h1 className="text-2xl font-bold text-slate-900">Unauthorized Access</h1>
-            <p className="text-slate-500 mt-2">You do not have permission to view this resource or the link is expired.</p>
+            <p className="text-slate-500 mt-2">You do not have permission to view this resource.</p>
             <Link to="/admin/dashboard" className="mt-6 px-6 py-2 bg-slate-900 text-white rounded-lg font-bold">Back to App</Link>
           </div>
         } />
@@ -158,7 +164,7 @@ const NavLink: React.FC<{ to: string; children: React.ReactNode }> = ({ to, chil
   const location = useLocation();
   const isActive = location.pathname === to;
   return (
-    <Link to={to} className={`flex items-center px-4 py-2.5 rounded-lg text-sm font-semibold ${isActive ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+    <Link to={to} className={`flex items-center px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${isActive ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
       {children}
     </Link>
   );
