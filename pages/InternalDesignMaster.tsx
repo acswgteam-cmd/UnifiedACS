@@ -43,7 +43,8 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
       review: internalDesigns.filter(t => t.status === 'ON REVIEW').length,
       done: internalDesigns.filter(t => t.status === 'DONE').length,
       hold: internalDesigns.filter(t => t.status === 'ON HOLD').length,
-      deadlinesToday: internalDesigns.filter(t => t.deadline === todayStr && t.status !== 'DONE').length
+      deadlinesToday: internalDesigns.filter(t => t.deadline === todayStr && t.status !== 'DONE').length,
+      overdue: internalDesigns.filter(t => t.deadline < todayStr && t.status !== 'DONE').length
     };
   }, [internalDesigns]);
 
@@ -219,24 +220,32 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
       </header>
 
       {/* Simplified Status Summary & Deadline Card */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:col-span-2">
           <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Task Status Summary</span>
-          <div className="grid grid-cols-3 gap-y-4 gap-x-2">
+          <div className="grid grid-cols-3 md:grid-cols-6 gap-y-4 gap-x-2">
             <StatusItem label="New" value={stats.new} color="text-blue-600" />
             <StatusItem label="Progress" value={stats.progress} color="text-amber-600" />
             <StatusItem label="Review" value={stats.review} color="text-purple-600" />
-            <StatusItem label="Done" value={stats.done} color="text-emerald-600" />
             <StatusItem label="Hold" value={stats.hold} color="text-slate-400" />
-            <StatusItem label="Total" value={stats.total} color="text-slate-900 font-black" />
+            <StatusItem label="Done" value={stats.done} color="text-emerald-600" />
+            <StatusItem label="Total" value={stats.total} color="text-slate-900 font-black underline decoration-purple-500 underline-offset-4" />
           </div>
         </div>
 
         <div className={`p-6 rounded-2xl border flex flex-col justify-center transition-colors duration-300 ${stats.deadlinesToday > 0 ? 'bg-red-600 border-red-700 text-white shadow-lg shadow-red-100' : 'bg-white border-slate-200 text-slate-900'}`}>
           <span className={`text-[10px] font-black uppercase tracking-widest mb-1 ${stats.deadlinesToday > 0 ? 'text-red-100' : 'text-slate-400'}`}>Deadlines Today</span>
-          <div className="text-4xl font-black">{stats.deadlinesToday}</div>
-          <p className={`text-[10px] font-bold mt-2 uppercase ${stats.deadlinesToday > 0 ? 'text-red-100' : 'text-slate-400'}`}>
-            {stats.deadlinesToday > 0 ? 'Needs immediate attention!' : 'Clear for today.'}
+          <div className="text-3xl font-black">{stats.deadlinesToday}</div>
+          <p className={`text-[9px] font-bold mt-2 uppercase ${stats.deadlinesToday > 0 ? 'text-red-100' : 'text-slate-400'}`}>
+            {stats.deadlinesToday > 0 ? 'Urgent attention!' : 'Clear for today.'}
+          </p>
+        </div>
+
+        <div className={`p-6 rounded-2xl border flex flex-col justify-center transition-colors duration-300 ${stats.overdue > 0 ? 'bg-red-50 border-red-300 text-red-600 shadow-sm' : 'bg-white border-slate-200 text-slate-900'}`}>
+          <span className="text-[10px] font-black uppercase tracking-widest mb-1 opacity-70">Overdue Tasks</span>
+          <div className="text-3xl font-black">{stats.overdue}</div>
+          <p className="text-[9px] font-bold mt-2 uppercase opacity-60">
+            {stats.overdue > 0 ? 'Tasks missed deadline' : 'None overdue'}
           </p>
         </div>
       </div>
@@ -276,21 +285,23 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredTasks.map(task => (
-                <tr key={task.id} onClick={() => setSelectedTask(task)} className="hover:bg-slate-50 transition-colors cursor-pointer group font-bold">
+                <tr key={task.id} onClick={() => setSelectedTask(task)} className="hover:bg-slate-50 transition-colors cursor-pointer group font-bold text-slate-800 uppercase">
                   <td className="px-6 py-4">
                     <div className="flex flex-col gap-1.5">
-                      <div className="font-bold text-slate-900 uppercase">{task.task_name}</div>
+                      <div className="font-bold text-slate-900">{task.task_name}</div>
                       <div className="flex">
                         <span className={`px-2 py-0.5 rounded-full border text-[8px] font-black uppercase ${getStatusColor(task.status)}`}>{task.status}</span>
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="text-[11px] font-bold text-slate-800 uppercase leading-tight">{getDeptName(task.department_id)}</div>
-                    <div className="text-[10px] text-slate-400 font-medium uppercase mt-0.5">By: {task.requester_name}</div>
+                    <div className="text-[11px] font-bold text-slate-800 leading-tight">{getDeptName(task.department_id)}</div>
+                    <div className="text-[10px] text-slate-400 font-medium mt-0.5 tracking-tight">By: {task.requester_name}</div>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="text-xs font-bold text-slate-700">{task.deadline}</span>
+                    <span className={`text-xs font-black ${task.deadline < new Date().toISOString().split('T')[0] && task.status !== 'DONE' ? 'text-red-600' : 'text-slate-700'}`}>
+                      {task.deadline}
+                    </span>
                   </td>
                   <td className="px-6 py-4 text-right" onClick={e => e.stopPropagation()}>
                     <div className="flex items-center justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -337,7 +348,7 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
         </div>
       )}
 
-      {/* Detail Modal */}
+      {/* Modal & Detail components remain unchanged */}
       {selectedTask && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6 backdrop-blur-sm bg-slate-900/40" onClick={() => setSelectedTask(null)}>
           <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl p-8 animate-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
@@ -370,7 +381,6 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
         </div>
       )}
 
-      {/* CRUD Form Modal */}
       {isFormOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6 backdrop-blur-sm bg-slate-900/40">
           <form onSubmit={handleSave} className="bg-white w-full max-w-lg rounded-3xl shadow-2xl p-8 animate-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
@@ -378,12 +388,12 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
             <div className="space-y-4">
               <div>
                 <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Task Name</label>
-                <input type="text" required value={formData.task_name} onChange={e => setFormData({...formData, task_name: e.target.value})} className="w-full p-3 rounded-xl border border-slate-200 text-sm font-bold outline-none focus:ring-2 focus:ring-purple-600" />
+                <input type="text" required value={formData.task_name} onChange={e => setFormData({...formData, task_name: e.target.value})} className="w-full p-3 rounded-xl border border-slate-200 text-sm font-bold outline-none focus:ring-2 focus:ring-purple-600 uppercase" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Requester Name</label>
-                  <input type="text" required value={formData.requester_name} onChange={e => setFormData({...formData, requester_name: e.target.value})} className="w-full p-3 rounded-xl border border-slate-200 text-sm font-bold outline-none focus:ring-2 focus:ring-purple-600" />
+                  <input type="text" required value={formData.requester_name} onChange={e => setFormData({...formData, requester_name: e.target.value})} className="w-full p-3 rounded-xl border border-slate-200 text-sm font-bold outline-none focus:ring-2 focus:ring-purple-600 uppercase" />
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Deadline</label>
@@ -392,7 +402,7 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
               </div>
               <div>
                 <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Department</label>
-                <select required value={formData.department_id} onChange={e => setFormData({...formData, department_id: e.target.value})} className="w-full p-3 rounded-xl border border-slate-200 text-sm font-bold outline-none focus:ring-2 focus:ring-purple-600">
+                <select required value={formData.department_id} onChange={e => setFormData({...formData, department_id: e.target.value})} className="w-full p-3 rounded-xl border border-slate-200 text-sm font-bold outline-none focus:ring-2 focus:ring-purple-600 uppercase">
                   {departments.map(d => <option key={d.id} value={d.id}>{d.department_name}</option>)}
                 </select>
               </div>
