@@ -39,8 +39,14 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
 
   const getDesignerName = (id: string) => designers.find(d => d.id === id)?.name || 'N/A';
   
+  // Ambil semua lokasi unik yang pernah ada untuk dropdown saran
   const uniqueLocations = useMemo(() => {
-    const locs = projects.flatMap(p => p.locations || []).filter(Boolean);
+    const locs = projects.flatMap(p => {
+      // Handle jika data lama masih string atau array
+      if (Array.isArray(p.locations)) return p.locations;
+      if (typeof p.locations === 'string') return [p.locations];
+      return [];
+    }).filter(Boolean);
     return Array.from(new Set(locs)).sort();
   }, [projects]);
 
@@ -49,7 +55,11 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
       const matchType = filterType === 'ALL' || p.project_type === filterType;
       const matchPIC = filterPIC === 'ALL' || p.pic_designer_id === filterPIC;
       const matchSupport = filterSupport === 'ALL' || (p.support_designer_ids && p.support_designer_ids.includes(filterSupport));
-      const matchLoc = filterLocation === 'ALL' || (p.locations && p.locations.includes(filterLocation));
+      
+      // Filter lokasi (support multi-lokasi)
+      const locs = Array.isArray(p.locations) ? p.locations : [p.locations];
+      const matchLoc = filterLocation === 'ALL' || (locs && locs.includes(filterLocation));
+      
       const matchStatus = filterStatus === 'ALL' || p.status === filterStatus;
       return matchType && matchPIC && matchSupport && matchLoc && matchStatus;
     });
@@ -95,10 +105,11 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
   };
 
   const addLocation = () => {
-    if (!newLocInput.trim()) return;
+    const val = newLocInput.trim();
+    if (!val) return;
     const current = formData.locations || [];
-    if (!current.includes(newLocInput.trim())) {
-      setFormData({ ...formData, locations: [...current, newLocInput.trim()] });
+    if (!current.includes(val)) {
+      setFormData({ ...formData, locations: [...current, val] });
     }
     setNewLocInput('');
   };
@@ -128,17 +139,28 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
     e.preventDefault();
     if (!formData.project_name || !supabase) return;
 
-    const { id, ...payload } = formData;
+    // Pastikan jika ada input yang menggantung di field lokasi, ikut dimasukkan
+    let finalLocations = [...(formData.locations || [])];
+    if (newLocInput.trim() && !finalLocations.includes(newLocInput.trim())) {
+      finalLocations.push(newLocInput.trim());
+    }
+
+    const payload = {
+      ...formData,
+      locations: finalLocations
+    };
+
+    const { id, ...savePayload } = payload;
 
     if (editingId) {
-      const { error } = await supabase.from('projects').update(payload).eq('id', editingId);
+      const { error } = await supabase.from('projects').update(savePayload).eq('id', editingId);
       if (error) alert(`Gagal Update: ${error.message}`);
       else {
         onUpdate();
         resetForm();
       }
     } else {
-      const { error } = await supabase.from('projects').insert([payload]);
+      const { error } = await supabase.from('projects').insert([savePayload]);
       if (error) alert(`Gagal Simpan: ${error.message}`);
       else {
         onUpdate();
@@ -148,10 +170,23 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
   };
 
   const handleEdit = (p: Project) => {
-    setFormData({ ...p, support_designer_ids: p.support_designer_ids || [], locations: p.locations || [] });
+    // Normalisasi lokasi: pastikan selalu array string
+    let normalizedLocations: string[] = [];
+    if (Array.isArray(p.locations)) {
+      normalizedLocations = p.locations;
+    } else if (typeof p.locations === 'string') {
+      normalizedLocations = [p.locations];
+    }
+
+    setFormData({ 
+      ...p, 
+      support_designer_ids: p.support_designer_ids || [], 
+      locations: normalizedLocations 
+    });
     setEditingId(p.id);
     setIsAdding(true);
     setView('list');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
@@ -192,14 +227,11 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
 
   const handleWheel = (e: React.WheelEvent) => {
     const now = Date.now();
-    if (now - lastScrollTime.current < 400) return; // Throttle 400ms
+    if (now - lastScrollTime.current < 400) return;
 
     if (Math.abs(e.deltaY) > 20) {
-      if (e.deltaY > 0) {
-        navigateMonth(1);
-      } else {
-        navigateMonth(-1);
-      }
+      if (e.deltaY > 0) navigateMonth(1);
+      else navigateMonth(-1);
       lastScrollTime.current = now;
     }
   };
@@ -234,6 +266,8 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
               const isStart = dateStr === project.start_date;
               const isEnd = dateStr === project.end_date;
 
+              const displayLocs = Array.isArray(project.locations) ? project.locations.join(', ') : project.locations;
+
               return (
                 <div 
                   key={project.id} 
@@ -246,7 +280,7 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
                       PIC: {getDesignerName(project.pic_designer_id)}
                     </span>
                     <span className="text-[7px] font-bold opacity-70 mt-0.5 truncate uppercase italic">
-                      Loc: {project.locations && project.locations.length > 0 ? project.locations.join(', ') : 'HQ'}
+                      Loc: {displayLocs || 'HQ'}
                     </span>
                   </div>
                 </div>
@@ -361,26 +395,33 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
             </div>
             
             <div className="md:col-span-2">
-              <label className={labelClass}>Locations</label>
+              <label className={labelClass}>Locations (Dropdown Saran Lokasi Yang Sudah Ada)</label>
               <div className="flex gap-2 mb-2">
                 <input 
                   type="text" 
                   list="location-suggestions" 
-                  placeholder="Type location and press Add" 
+                  placeholder="Ketik lokasi atau pilih dari dropdown..." 
                   value={newLocInput} 
                   onChange={e => setNewLocInput(e.target.value)} 
                   className={inputClass}
-                  onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addLocation())}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      addLocation();
+                    }
+                  }}
                 />
-                <button type="button" onClick={addLocation} className="px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-bold shadow-md">Add</button>
+                <button type="button" onClick={addLocation} className="px-5 py-2 bg-slate-900 text-white rounded-lg text-sm font-black shadow-md hover:bg-black transition-all">ADD</button>
               </div>
-              <div className="flex flex-wrap gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl min-h-[46px]">
-                {formData.locations?.length === 0 && <span className="text-[10px] text-slate-400 font-bold italic uppercase">No locations added.</span>}
+              <div className="flex flex-wrap gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl min-h-[58px] items-center">
+                {(!formData.locations || formData.locations.length === 0) && (
+                  <span className="text-[10px] text-slate-400 font-bold italic uppercase px-1">Belum ada lokasi ditambahkan.</span>
+                )}
                 {formData.locations?.map(loc => (
-                  <span key={loc} className="flex items-center gap-2 px-3 py-1 bg-white border border-slate-300 text-slate-800 rounded-full text-[10px] font-black uppercase shadow-sm">
+                  <span key={loc} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-300 text-slate-800 rounded-lg text-[10px] font-black uppercase shadow-sm">
                     {loc}
                     <button type="button" onClick={() => removeLocation(loc)} className="text-red-500 hover:text-red-700">
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
                   </span>
                 ))}
@@ -457,9 +498,15 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
                         <div className="flex flex-col">
                           <span className="text-[11px] font-black">{p.start_date} <span className="text-slate-400">→</span> {p.end_date}</span>
                           <div className="flex flex-wrap gap-1 mt-1">
-                            {p.locations && p.locations.length > 0 ? p.locations.map(loc => (
+                            {Array.isArray(p.locations) && p.locations.length > 0 ? p.locations.map(loc => (
                               <span key={loc} className="text-[8px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded border border-slate-200 uppercase whitespace-nowrap">{loc}</span>
-                            )) : <span className="text-[9px] text-slate-400 uppercase font-black">No Location</span>}
+                            )) : (
+                               typeof p.locations === 'string' && p.locations ? (
+                                 <span className="text-[8px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded border border-slate-200 uppercase whitespace-nowrap">{p.locations}</span>
+                               ) : (
+                                 <span className="text-[9px] text-slate-400 uppercase font-black">No Location</span>
+                               )
+                            )}
                           </div>
                         </div>
                       </td>
@@ -521,9 +568,15 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
               <div>
                 <span className="text-[10px] font-bold text-slate-400 uppercase">Locations</span>
                 <div className="flex flex-wrap gap-2 mt-1">
-                  {selectedProject.locations && selectedProject.locations.length > 0 ? selectedProject.locations.map(loc => (
+                  {Array.isArray(selectedProject.locations) && selectedProject.locations.length > 0 ? selectedProject.locations.map(loc => (
                     <span key={loc} className="px-2 py-1 bg-slate-100 text-[10px] font-black rounded border border-slate-200 uppercase">{loc}</span>
-                  )) : <p className="font-bold text-slate-400 text-xs italic">Remote/HQ</p>}
+                  )) : (
+                    typeof selectedProject.locations === 'string' && selectedProject.locations ? (
+                       <span className="px-2 py-1 bg-slate-100 text-[10px] font-black rounded border border-slate-200 uppercase">{selectedProject.locations}</span>
+                    ) : (
+                      <p className="font-bold text-slate-400 text-xs italic">Remote/HQ</p>
+                    )
+                  )}
                 </div>
               </div>
               <div><span className="text-[10px] font-bold text-slate-400 uppercase">Keterangan / Notes</span><div className="p-4 bg-slate-50 rounded-xl text-sm italic text-slate-700 whitespace-pre-wrap">{selectedProject.notes || 'No notes provided.'}</div></div>
