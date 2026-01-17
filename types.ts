@@ -5,6 +5,8 @@ export enum WorkContext {
   INTERNAL = 'INTERNAL'
 }
 
+export type InternalStatus = 'NEW' | 'ON HOLD' | 'ON PROGRESS' | 'ON REVIEW' | 'DONE';
+
 export interface Designer {
   id: string;
   name: string;
@@ -23,7 +25,7 @@ export interface Project {
   project_name: string;
   start_date: string;
   end_date: string;
-  locations: string[]; // Updated to array
+  locations: string[];
   pic_designer_id: string;
   support_designer_ids: string[];
   project_type: string;
@@ -43,17 +45,29 @@ export interface Lead {
   status: 'ON PROGRESS' | 'DONE' | 'CANCEL';
 }
 
+export interface InternalDesign {
+  id: string;
+  task_name: string;
+  department_id: string;
+  requester_name: string;
+  deadline: string;
+  brief: string;
+  status: InternalStatus;
+  created_at?: string;
+}
+
 export interface ArtworkLog {
   id: string;
   work_context: WorkContext;
   project_id?: string | null;
   lead_id?: string | null;
+  internal_design_id?: string | null; // Referensi ke InternalDesign spesifik
+  department_id?: string | null;
   artwork_name: string;
   artwork_type: string; // 2D Design, 3D Design, Video
   start_date: string;
   end_date: string;
   pic_designer_id: string;
-  department_id?: string | null;
   revision_count: number;
   approval_required: boolean;
   notes?: string;
@@ -64,5 +78,6 @@ export interface AppState {
   departments: Department[];
   projects: Project[];
   leads: Lead[];
+  internalDesigns: InternalDesign[]; // Entitas Baru
   artworkLogs: ArtworkLog[];
 }
