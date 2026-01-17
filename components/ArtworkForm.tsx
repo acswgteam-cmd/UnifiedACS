@@ -24,7 +24,7 @@ const ArtworkForm: React.FC<Props> = ({ state, onSubmit }) => {
     notes: ''
   });
 
-  // Effect to sync department if internal task is selected
+  // Sync department automatically if an internal task is selected
   useEffect(() => {
     if (formData.work_context === WorkContext.INTERNAL && formData.internal_design_id) {
       const selectedTask = state.internalDesigns.find(t => t.id === formData.internal_design_id);
@@ -41,6 +41,7 @@ const ArtworkForm: React.FC<Props> = ({ state, onSubmit }) => {
     setFormData(prev => ({ 
       ...prev, 
       [name]: val === "" ? null : val,
+      // Reset linked entities when changing context to keep data clean
       ...(name === 'work_context' ? { project_id: null, lead_id: null, internal_design_id: null, department_id: null, approval_required: false } : {})
     }));
   };
@@ -129,7 +130,7 @@ const ArtworkForm: React.FC<Props> = ({ state, onSubmit }) => {
             </div>
             
             {/* Hanya tampil jika tidak memilih internal task secara spesifik */}
-            {!formData.internal_design_id && (
+            {!formData.internal_design_id ? (
               <div className="space-y-1 animate-in fade-in duration-300">
                 <label className={labelClass}>Requester Department</label>
                 <select name="department_id" value={formData.department_id || ""} onChange={handleChange} required className={inputClass}>
@@ -137,14 +138,11 @@ const ArtworkForm: React.FC<Props> = ({ state, onSubmit }) => {
                   {state.departments.filter(d => d.active).map(d => <option key={d.id} value={d.id}>{d.department_name}</option>)}
                 </select>
               </div>
-            )}
-
-            {/* Jika ada internal_design_id, tampilkan departemen sebagai info read-only atau disembunyikan sesuai permintaan */}
-            {formData.internal_design_id && (
+            ) : (
               <div className="space-y-1 animate-in fade-in duration-300">
-                <label className={labelClass}>Auto-linked Department</label>
+                <label className={labelClass}>Linked Department</label>
                 <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-500 uppercase italic">
-                  {state.departments.find(d => d.id === formData.department_id)?.department_name || 'System Loading...'}
+                  {state.departments.find(d => d.id === formData.department_id)?.department_name || 'Loading department...'}
                 </div>
               </div>
             )}
