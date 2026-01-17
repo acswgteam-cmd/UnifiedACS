@@ -177,7 +177,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
             <TrendLineChart 
               data={analytics.monthlyTrends} 
               keys={["2D Design", "3D Design", "Video"]} 
-              labels={["2D", "3D", "VDO"]}
+              labels={["", "", ""]}
               colors={["#3b82f6", "#10b981", "#f97316"]} 
             />
           </div>
@@ -196,7 +196,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
             <TrendLineChart 
               data={analytics.monthlyTrends} 
               keys={[WorkContext.PROJECT, WorkContext.LEAD, WorkContext.INTERNAL]} 
-              labels={["PRJ", "LED", "INT"]}
+              labels={["", "", ""]}
               colors={["#2563eb", "#059669", "#7c3aed"]} 
             />
           </div>
