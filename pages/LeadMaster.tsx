@@ -40,6 +40,21 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
     return Array.from(new Set(names)).sort();
   }, [leads]);
 
+  const stats = useMemo(() => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    return {
+      total: leads.length,
+      progress: leads.filter(l => l.status === 'ON PROGRESS').length,
+      done: leads.filter(l => l.status === 'DONE').length,
+      cancel: leads.filter(l => l.status === 'CANCEL').length,
+      gradeA: leads.filter(l => l.lead_grade === 'A').length,
+      gradeB: leads.filter(l => l.lead_grade === 'B').length,
+      gradeC: leads.filter(l => l.lead_grade === 'C').length,
+      deadlinesToday: leads.filter(l => l.deadline === todayStr && l.status !== 'DONE').length,
+      overdue: leads.filter(l => l.deadline < todayStr && l.status !== 'DONE').length
+    };
+  }, [leads]);
+
   const filteredLeads = useMemo(() => {
     return leads.filter(l => {
       const matchStatus = filterStatus === 'ALL' || l.status === filterStatus;
@@ -190,7 +205,7 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
       doc.setTextColor(100, 116, 139);
       doc.setFontSize(9);
       doc.setFont('helvetica', 'bold');
-      doc.text('REFERENCE ASSETS (GDRIVE/CLOUD)', 20, briefBottom + 10);
+      doc.text('REFERENCE ARTWORKS (GDRIVE/CLOUD)', 20, briefBottom + 10);
       doc.setTextColor(...accentColor);
       doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
@@ -287,7 +302,7 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
                   className={`cursor-pointer min-h-[64px] py-1.5 flex flex-col justify-center px-2 overflow-hidden transition-all hover:brightness-95 ${theme.bg} ${theme.text} ${isStart ? `rounded-l-md ml-1 border-l-4 ${theme.border}` : ''} ${isEnd ? 'rounded-r-md mr-1' : ''}`}
                 >
                   <div className="flex flex-col min-w-0 leading-tight">
-                    <span className="text-[10px] font-black truncate uppercase">{lead.lead_name}</span>
+                    <span className="text-[10px] font-black truncate uppercase tracking-tighter">{lead.lead_name}</span>
                     <span className="text-[8px] font-black opacity-80 mt-0.5 truncate uppercase tracking-tighter">
                       PIC: {lead.requester}
                     </span>
@@ -336,6 +351,43 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
           </button>
         </div>
       </header>
+
+      {/* LEAD MINI DASHBOARD */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col">
+          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Status Summary</span>
+          <div className="grid grid-cols-3 gap-2">
+            <StatusItem label="Progress" value={stats.progress} color="text-blue-600" />
+            <StatusItem label="Done" value={stats.done} color="text-emerald-600" />
+            <StatusItem label="Cancel" value={stats.cancel} color="text-slate-400" />
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col">
+          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Grade Summary</span>
+          <div className="grid grid-cols-3 gap-2">
+            <StatusItem label="Grade A" value={stats.gradeA} color="text-orange-600" />
+            <StatusItem label="Grade B" value={stats.gradeB} color="text-indigo-600" />
+            <StatusItem label="Grade C" value={stats.gradeC} color="text-slate-500" />
+          </div>
+        </div>
+
+        <div className={`p-6 rounded-2xl border flex flex-col justify-center transition-colors duration-300 ${stats.deadlinesToday > 0 ? 'bg-indigo-600 border-indigo-700 text-white shadow-lg' : 'bg-white border-slate-200 text-slate-900'}`}>
+          <span className={`text-[10px] font-black uppercase tracking-widest mb-1 ${stats.deadlinesToday > 0 ? 'text-indigo-100' : 'text-slate-400'}`}>Deadlines Today</span>
+          <div className="text-3xl font-black">{stats.deadlinesToday}</div>
+          <p className={`text-[9px] font-bold mt-2 uppercase ${stats.deadlinesToday > 0 ? 'text-indigo-100' : 'text-slate-400'}`}>
+            {stats.deadlinesToday > 0 ? 'Inquiry due today' : 'No deadlines today'}
+          </p>
+        </div>
+
+        <div className={`p-6 rounded-2xl border flex flex-col justify-center transition-colors duration-300 ${stats.overdue > 0 ? 'bg-red-50 border-red-300 text-red-600 shadow-sm' : 'bg-white border-slate-200 text-slate-900'}`}>
+          <span className="text-[10px] font-black uppercase tracking-widest mb-1 opacity-70">Overdue Leads</span>
+          <div className="text-3xl font-black">{stats.overdue}</div>
+          <p className="text-[9px] font-bold mt-2 uppercase opacity-60">
+            {stats.overdue > 0 ? 'Past deadline items' : 'No overdue leads'}
+          </p>
+        </div>
+      </div>
 
       {/* FILTER BAR */}
       <div className="bg-slate-100 p-4 rounded-2xl flex flex-wrap items-center gap-4 border border-slate-200 shadow-inner">
@@ -421,10 +473,10 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <span className={`px-2 py-0.5 rounded-full border text-[8px] font-black uppercase ${getStatusBadge(l.status)}`}>{l.status}</span>
-                    <h3 className="text-lg font-bold text-slate-900 truncate">{l.lead_name}</h3>
+                    <h3 className="text-lg font-bold text-slate-900 truncate uppercase tracking-tighter">{l.lead_name}</h3>
                     <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${l.lead_grade === 'A' ? 'bg-orange-100 text-orange-700' : 'bg-indigo-100 text-indigo-700'}`}>Grade {l.lead_grade}</span>
                   </div>
-                  <p className="text-xs font-bold text-slate-500 uppercase">Req: <span className="text-slate-900">{l.requester}</span> &bull; Deadline: <span className="text-red-600 font-black">{l.deadline}</span></p>
+                  <p className="text-xs font-bold text-slate-500 uppercase">Req: <span className="text-slate-900">{l.requester}</span> &bull; Deadline: <span className={`${l.deadline < new Date().toISOString().split('T')[0] && l.status !== 'DONE' ? 'text-red-600' : 'text-slate-900'} font-black`}>{l.deadline}</span></p>
                 </div>
                 <div className="flex gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button onClick={(e) => downloadPDF(e, l)} className="p-2 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 transition-colors" title="PDF"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></button>
@@ -464,20 +516,20 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
             <div className="flex justify-between items-start mb-6">
               <div className="flex items-center gap-2">
                 <span className={`px-2 py-0.5 rounded-full border text-[9px] font-black uppercase ${getStatusBadge(selectedLead.status)}`}>{selectedLead.status}</span>
-                <h2 className="text-xl font-bold text-slate-900">{selectedLead.lead_name}</h2>
+                <h2 className="text-xl font-bold text-slate-900 uppercase tracking-tighter">{selectedLead.lead_name}</h2>
               </div>
               <button onClick={() => setSelectedLead(null)} className="p-1 text-slate-400 hover:text-slate-900"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
             </div>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <div><span className="text-[10px] font-bold text-slate-400 uppercase">Requester</span><p className="font-bold text-slate-800">{selectedLead.requester}</p></div>
+                <div><span className="text-[10px] font-bold text-slate-400 uppercase">Requester</span><p className="font-bold text-slate-800 uppercase text-xs">{selectedLead.requester}</p></div>
                 <div><span className="text-[10px] font-bold text-slate-400 uppercase">Deadline</span><p className="font-bold text-red-600">{selectedLead.deadline}</p></div>
-                <div><span className="text-[10px] font-bold text-slate-400 uppercase">Grade</span><p className="font-bold text-indigo-600 uppercase">Grade {selectedLead.lead_grade}</p></div>
+                <div><span className="text-[10px] font-bold text-slate-400 uppercase">Grade</span><p className="font-bold text-indigo-600 uppercase text-xs">Grade {selectedLead.lead_grade}</p></div>
                 <div><span className="text-[10px] font-bold text-slate-400 uppercase">Ordered On</span><p className="font-bold text-slate-800">{selectedLead.order_date}</p></div>
               </div>
-              <div><span className="text-[10px] font-bold text-slate-400 uppercase">Brief</span><div className="p-4 bg-slate-50 rounded-xl text-sm italic text-slate-700 whitespace-pre-wrap">{selectedLead.brief || 'No brief provided.'}</div></div>
+              <div><span className="text-[10px] font-bold text-slate-400 uppercase">Brief</span><div className="p-4 bg-slate-50 rounded-xl text-sm italic text-slate-700 whitespace-pre-wrap border border-slate-100">{selectedLead.brief || 'No brief provided.'}</div></div>
               {selectedLead.drive_link && (
-                <div><span className="text-[10px] font-bold text-slate-400 uppercase">Reference Assets</span><a href={selectedLead.drive_link} target="_blank" rel="noreferrer" className="block p-3 bg-indigo-50 text-indigo-700 rounded-xl text-xs font-bold truncate hover:bg-indigo-100 transition-colors">{selectedLead.drive_link}</a></div>
+                <div><span className="text-[10px] font-bold text-slate-400 uppercase">Reference Artworks</span><a href={selectedLead.drive_link} target="_blank" rel="noreferrer" className="block p-3 bg-indigo-50 text-indigo-700 rounded-xl text-xs font-bold truncate hover:bg-indigo-100 transition-colors">{selectedLead.drive_link}</a></div>
               )}
             </div>
             <button onClick={() => setSelectedLead(null)} className="w-full mt-8 py-3 bg-slate-900 text-white rounded-xl font-bold uppercase tracking-widest text-xs">Close Details</button>
@@ -487,5 +539,12 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
     </div>
   );
 };
+
+const StatusItem = ({ label, value, color }: { label: string, value: number, color: string }) => (
+  <div className="flex flex-col">
+    <span className="text-[8px] font-black uppercase text-slate-400 tracking-tighter mb-0.5">{label}</span>
+    <span className={`text-sm font-bold ${color}`}>{value}</span>
+  </div>
+);
 
 export default LeadMaster;
