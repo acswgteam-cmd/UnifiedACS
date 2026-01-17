@@ -45,6 +45,19 @@ const Dashboard: React.FC<Props> = ({ state }) => {
     const artworksLead = countByContext(WorkContext.LEAD);
     const artworksInternal = countByContext(WorkContext.INTERNAL);
 
+    // Global Splits for Pie Charts
+    const globalTypeSplit = [
+      { type: "2D Design", count: filteredLogs.filter(l => l.artwork_type === "2D Design").length, color: "#3b82f6" },
+      { type: "3D Design", count: filteredLogs.filter(l => l.artwork_type === "3D Design").length, color: "#10b981" },
+      { type: "Video", count: filteredLogs.filter(l => l.artwork_type === "Video").length, color: "#f97316" }
+    ];
+
+    const globalContextSplit = [
+      { context: "Project", count: artworksProject, color: "#2563eb" },
+      { context: "Lead", count: artworksLead, color: "#059669" },
+      { context: "Internal", count: artworksInternal, color: "#7c3aed" }
+    ];
+
     const calcAvgDuration = (ctx: WorkContext) => {
       const logs = filteredLogs.filter(l => l.work_context === ctx && l.end_date);
       if (!logs.length) return "0.0";
@@ -136,6 +149,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
       totalArtworks, totalProjects, totalLeads,
       artworksProject, artworksLead, artworksInternal,
       teamStats, departmentStats,
+      globalTypeSplit, globalContextSplit,
       monthlyTrends: getMonthlyTrends(),
       avgDurProj: calcAvgDuration(WorkContext.PROJECT),
       avgDurLead: calcAvgDuration(WorkContext.LEAD),
@@ -166,7 +180,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <KPICard label="Total Assets Produced" value={analytics.totalArtworks} sub="Production in range" color="border-indigo-600" />
+        <KPICard label="Total Artworks Produced" value={analytics.totalArtworks} sub="Production in range" color="border-indigo-600" />
         <KPICard label="Active Event Projects" value={analytics.totalProjects} sub="Contracted MICE Ops" color="border-blue-600" />
         <KPICard label="New Service Requests" value={analytics.totalLeads} sub="Inquiries & Inbounds" color="border-emerald-600" />
       </div>
@@ -177,8 +191,9 @@ const Dashboard: React.FC<Props> = ({ state }) => {
         <ContextMetricsCard title="Internal" count={analytics.artworksInternal} duration={analytics.avgDurInt} typeSplit={analytics.internalTypeSplit} accentColor="bg-purple-600" lightColor="bg-purple-50" textColor="text-purple-700" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <section className={cardClass}>
+      {/* TRENDS & PIE CHARTS ROW */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <section className={`${cardClass} lg:col-span-8`}>
           <div className="flex items-center justify-between mb-8">
             <div>
               <span className={labelClass}>Production Velocity</span>
@@ -199,6 +214,47 @@ const Dashboard: React.FC<Props> = ({ state }) => {
           </div>
         </section>
 
+        <section className={`${cardClass} lg:col-span-4 flex flex-col`}>
+          <div className="mb-6">
+            <span className={labelClass}>Composition</span>
+            <h2 className="text-xl font-bold text-slate-900">Distribution Split</h2>
+          </div>
+          <div className="flex-1 flex flex-col justify-center gap-8">
+            {/* Pie Chart 1: Types */}
+            <div className="flex items-center gap-6">
+              <div className="w-24 h-24 flex-shrink-0">
+                <SimplePieChart data={analytics.globalTypeSplit} total={analytics.totalArtworks} />
+              </div>
+              <div className="space-y-1">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Artwork Types</p>
+                {analytics.globalTypeSplit.map(t => (
+                  <div key={t.type} className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: t.color }}></div>
+                    <span className="text-[10px] font-bold text-slate-700 uppercase">{t.type}: {t.count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {/* Pie Chart 2: Contexts */}
+            <div className="flex items-center gap-6">
+              <div className="w-24 h-24 flex-shrink-0">
+                <SimplePieChart data={analytics.globalContextSplit.map(c => ({ count: c.count, color: c.color }))} total={analytics.totalArtworks} />
+              </div>
+              <div className="space-y-1">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Work Contexts</p>
+                {analytics.globalContextSplit.map(c => (
+                  <div key={c.context} className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: c.color }}></div>
+                    <span className="text-[10px] font-bold text-slate-700 uppercase">{c.context}: {c.count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <section className={cardClass}>
           <div className="flex items-center justify-between mb-8">
             <div>
@@ -219,64 +275,64 @@ const Dashboard: React.FC<Props> = ({ state }) => {
             />
           </div>
         </section>
-      </div>
 
-      <section className={cardClass}>
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <span className={labelClass}>Department Demand</span>
-            <h2 className="text-xl font-bold text-slate-900">Department request</h2>
+        <section className={cardClass}>
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <span className={labelClass}>Department Demand</span>
+              <h2 className="text-xl font-bold text-slate-900">Department request</h2>
+            </div>
+            <div className="flex gap-4">
+               <LegendItem label="2D DESIGN" color="bg-blue-500" />
+               <LegendItem label="3D DESIGN" color="bg-emerald-500" />
+               <LegendItem label="VIDEO" color="bg-orange-500" />
+            </div>
           </div>
-          <div className="flex gap-4">
-             <LegendItem label="2D DESIGN" color="bg-blue-500" />
-             <LegendItem label="3D DESIGN" color="bg-emerald-500" />
-             <LegendItem label="VIDEO" color="bg-orange-500" />
-          </div>
-        </div>
-        <div className="space-y-6 overflow-y-auto max-h-[400px] pr-2 py-4">
-          {analytics.departmentStats.map(dept => {
-            const deptTotal = dept.counts.total || 1;
-            const globalMax = Math.max(...analytics.departmentStats.map(d => d.counts.total)) || 1;
-            
-            return (
-              <div key={dept.id} className="grid grid-cols-1 md:grid-cols-4 items-center gap-4 group/row pt-2">
-                <div className="md:col-span-1">
-                  <h4 className="text-sm font-semibold text-slate-800 leading-tight">{dept.department_name}</h4>
-                  <p className="text-[10px] font-medium text-slate-400 uppercase tracking-tighter">{dept.counts.total} Deliverables</p>
-                </div>
-                <div className="md:col-span-3 flex items-center gap-4">
-                  <div className="flex-1 h-8 bg-slate-50 rounded-lg flex border border-slate-100 shadow-inner relative">
-                    <StackedSegment 
-                      count={dept.counts["2D Design"]} 
-                      total={deptTotal}
-                      globalMax={globalMax} 
-                      color="bg-blue-500" 
-                      label="2D DESIGN" 
-                    />
-                    <StackedSegment 
-                      count={dept.counts["3D Design"]} 
-                      total={deptTotal}
-                      globalMax={globalMax} 
-                      color="bg-emerald-500" 
-                      label="3D DESIGN" 
-                    />
-                    <StackedSegment 
-                      count={dept.counts["Video"]} 
-                      total={deptTotal}
-                      globalMax={globalMax} 
-                      color="bg-orange-500" 
-                      label="VIDEO" 
-                    />
+          <div className="space-y-6 overflow-y-auto max-h-[400px] pr-2 py-4">
+            {analytics.departmentStats.map(dept => {
+              const deptTotal = dept.counts.total || 1;
+              const globalMax = Math.max(...analytics.departmentStats.map(d => d.counts.total)) || 1;
+              
+              return (
+                <div key={dept.id} className="grid grid-cols-1 md:grid-cols-4 items-center gap-4 group/row pt-2">
+                  <div className="md:col-span-1">
+                    <h4 className="text-sm font-semibold text-slate-800 leading-tight">{dept.department_name}</h4>
+                    <p className="text-[10px] font-medium text-slate-400 uppercase tracking-tighter">{dept.counts.total} Deliverables</p>
                   </div>
-                  <span className="text-[10px] font-bold text-slate-600 w-10 text-right">
-                    {dept.counts.total > 0 ? `${Math.round((dept.counts.total / (analytics.totalArtworks || 1)) * 100)}%` : '0%'}
-                  </span>
+                  <div className="md:col-span-3 flex items-center gap-4">
+                    <div className="flex-1 h-8 bg-slate-50 rounded-lg flex border border-slate-100 shadow-inner relative">
+                      <StackedSegment 
+                        count={dept.counts["2D Design"]} 
+                        total={deptTotal}
+                        globalMax={globalMax} 
+                        color="bg-blue-500" 
+                        label="2D DESIGN" 
+                      />
+                      <StackedSegment 
+                        count={dept.counts["3D Design"]} 
+                        total={deptTotal}
+                        globalMax={globalMax} 
+                        color="bg-emerald-500" 
+                        label="3D DESIGN" 
+                      />
+                      <StackedSegment 
+                        count={dept.counts["Video"]} 
+                        total={deptTotal}
+                        globalMax={globalMax} 
+                        color="bg-orange-500" 
+                        label="VIDEO" 
+                      />
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-600 w-10 text-right">
+                      {dept.counts.total > 0 ? `${Math.round((dept.counts.total / (analytics.totalArtworks || 1)) * 100)}%` : '0%'}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
+              );
+            })}
+          </div>
+        </section>
+      </div>
 
       <div>
         <span className={labelClass}>Creative Talent Performance</span>
@@ -293,24 +349,25 @@ const Dashboard: React.FC<Props> = ({ state }) => {
                 </div>
               </div>
 
-              <div className="space-y-3 mb-6">
-                <DesignerMiniStat label="Managed Events" value={ds.uniqueProjects} unit="Projects" bg="bg-blue-50" color="text-blue-700" />
-                <DesignerMiniStat label="Direct Inquiries" value={ds.uniqueLeads} unit="Leads" bg="bg-emerald-50" color="text-emerald-700" />
-                <DesignerMiniStat label="Avg Turnaround" value={ds.avgDuration} unit="Days" bg="bg-slate-50" color="text-slate-900" />
+              {/* NEW MINI CARD STATS */}
+              <div className="grid grid-cols-3 gap-2 mb-6">
+                <DesignerMiniCard label="Events" value={ds.uniqueProjects} bg="bg-blue-50" color="text-blue-700" />
+                <DesignerMiniCard label="Inquiry" value={ds.uniqueLeads} bg="bg-emerald-50" color="text-emerald-700" />
+                <DesignerMiniCard label="Avg" value={ds.avgDuration} unit="d" bg="bg-indigo-50" color="text-indigo-700" />
               </div>
 
               <div className="space-y-2 pt-4 border-t border-slate-100">
-                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Production Breakdown</span>
-                <div className="flex justify-between items-center bg-blue-50/50 p-2 rounded-lg border border-blue-100">
-                  <span className="text-[10px] font-bold text-blue-800 uppercase tracking-tighter">Project Assets</span>
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Artwork Breakdown</span>
+                <div className="flex justify-between items-center bg-blue-50/30 p-2 rounded-lg border border-blue-50">
+                  <span className="text-[10px] font-bold text-blue-800 uppercase tracking-tighter">Project Artworks</span>
                   <span className="text-xs font-bold text-blue-900">{ds.projectArtworks}</span>
                 </div>
-                <div className="flex justify-between items-center bg-emerald-50/50 p-2 rounded-lg border border-emerald-100">
-                  <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-tighter">Lead Assets</span>
+                <div className="flex justify-between items-center bg-emerald-50/30 p-2 rounded-lg border border-emerald-50">
+                  <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-tighter">Lead Artworks</span>
                   <span className="text-xs font-bold text-emerald-900">{ds.leadArtworks}</span>
                 </div>
-                <div className="flex justify-between items-center bg-purple-50/50 p-2 rounded-lg border border-purple-100">
-                  <span className="text-[10px] font-bold text-purple-800 uppercase tracking-tighter">Internal Assets</span>
+                <div className="flex justify-between items-center bg-purple-50/30 p-2 rounded-lg border border-purple-50">
+                  <span className="text-[10px] font-bold text-purple-800 uppercase tracking-tighter">Internal Artworks</span>
                   <span className="text-xs font-bold text-purple-900">{ds.internalArtworks}</span>
                 </div>
               </div>
@@ -324,6 +381,23 @@ const Dashboard: React.FC<Props> = ({ state }) => {
         </div>
       </div>
     </div>
+  );
+};
+
+const SimplePieChart = ({ data, total }: { data: { count: number, color: string }[], total: number }) => {
+  let cumulative = 0;
+  const segments = data.map(item => {
+    const percentage = total > 0 ? (item.count / total) * 100 : 0;
+    const start = cumulative;
+    cumulative += percentage;
+    return `${item.color} ${start}% ${cumulative}%`;
+  });
+
+  return (
+    <div 
+      className="w-full h-full rounded-full shadow-inner border border-white/20" 
+      style={{ background: `conic-gradient(${segments.join(', ')})` }}
+    />
   );
 };
 
@@ -373,7 +447,6 @@ const TrendLineChart = ({ data, keys, colors }: { data: any[], keys: string[], c
                   stroke={colors[kIdx]}
                   strokeWidth="2"
                 />
-                {/* DATA VALUE LABEL */}
                 <text
                   x={getX(i)}
                   y={getY(d[key]) - 12}
@@ -422,7 +495,7 @@ const ContextMetricsCard: React.FC<{ title: string; count: number; duration: str
       <div className={`${lightColor} ${textColor} px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest`}>Throughput</div>
     </div>
     <div className="grid grid-cols-2 gap-4 mb-6">
-      <div><div className="text-2xl font-bold text-slate-900">{count}</div><div className="text-[9px] font-semibold text-slate-400 uppercase">Assets</div></div>
+      <div><div className="text-2xl font-bold text-slate-900">{count}</div><div className="text-[9px] font-semibold text-slate-400 uppercase">Artworks</div></div>
       <div className="border-l border-slate-100 pl-4"><div className="text-xl font-bold text-slate-900 leading-tight">~{duration}</div><div className="text-[9px] font-semibold text-slate-400 uppercase">Avg Days</div></div>
     </div>
     <div className="space-y-3 mt-auto">
@@ -456,10 +529,12 @@ const StackedSegment = ({ count, total, globalMax, color, label }: { count: numb
   );
 };
 
-const DesignerMiniStat = ({ label, value, unit, bg, color }: { label: string, value: any, unit: string, bg: string, color: string }) => (
-  <div className={`flex justify-between items-center p-2 rounded-lg ${bg}`}>
-    <span className="text-[10px] font-semibold text-slate-600 uppercase">{label}</span>
-    <span className={`text-xs font-bold ${color}`}>{value} {unit}</span>
+const DesignerMiniCard = ({ label, value, unit, bg, color }: { label: string, value: any, unit?: string, bg: string, color: string }) => (
+  <div className={`flex flex-col items-center justify-center p-3 rounded-xl ${bg} border border-white shadow-sm`}>
+    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{label}</span>
+    <div className={`text-lg font-black leading-none ${color}`}>
+      {value}<span className="text-[10px] ml-0.5">{unit}</span>
+    </div>
   </div>
 );
 
