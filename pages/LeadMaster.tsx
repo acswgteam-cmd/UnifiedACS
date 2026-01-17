@@ -145,11 +145,8 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
     const primaryColor = [15, 23, 42]; // Slate 900
     const accentColor = [79, 70, 229]; // Indigo 600
 
-    // Header Background
     doc.setFillColor(...primaryColor);
     doc.rect(0, 0, 210, 40, 'F');
-    
-    // Header Content
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
@@ -157,21 +154,15 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
     doc.setFontSize(22);
     doc.text(lead.lead_name.toUpperCase(), 20, 28);
 
-    // Metadata Section
-    doc.setTextColor(100, 116, 139); // Slate 500
+    doc.setTextColor(100, 116, 139); 
     doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
-    
-    // Column 1
     doc.text('REQUESTER / PIC', 20, 55);
     doc.text('LEAD GRADE', 20, 70);
-    
-    // Column 2
     doc.text('DEADLINE', 110, 55);
     doc.text('CURRENT STATUS', 110, 70);
 
-    // Metadata Values
-    doc.setTextColor(15, 23, 42); // Slate 900
+    doc.setTextColor(15, 23, 42); 
     doc.setFontSize(11);
     doc.setFont('helvetica', 'normal');
     doc.text(lead.requester, 20, 62);
@@ -179,45 +170,35 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
     doc.text(lead.deadline, 110, 62);
     doc.text(lead.status, 110, 77);
 
-    // Separator
-    doc.setDrawColor(226, 232, 240); // Slate 200
+    doc.setDrawColor(226, 232, 240); 
     doc.line(20, 85, 190, 85);
-
-    // Brief Section
-    doc.setTextColor(100, 116, 139); // Slate 500
+    doc.setTextColor(100, 116, 139); 
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
     doc.text('SCOPE OF WORK / BRIEF', 20, 95);
-
-    doc.setTextColor(51, 65, 85); // Slate 700
+    doc.setTextColor(51, 65, 85); 
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     const splitBrief = doc.splitTextToSize(lead.brief || 'No detailed brief provided for this request.', 170);
     doc.text(splitBrief, 20, 105);
 
-    // Reference Assets Section
     if (lead.drive_link) {
       const briefBottom = 105 + (splitBrief.length * 5) + 10;
       doc.setDrawColor(226, 232, 240);
       doc.line(20, briefBottom, 190, briefBottom);
-
       doc.setTextColor(100, 116, 139);
       doc.setFontSize(9);
       doc.setFont('helvetica', 'bold');
       doc.text('REFERENCE ASSETS (GDRIVE/CLOUD)', 20, briefBottom + 10);
-
       doc.setTextColor(...accentColor);
       doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
       doc.textWithLink(lead.drive_link, 20, briefBottom + 18, { url: lead.drive_link });
     }
-
-    // Footer
-    doc.setTextColor(148, 163, 184); // Slate 400
+    doc.setTextColor(148, 163, 184); 
     doc.setFontSize(8);
     doc.setFont('helvetica', 'italic');
     doc.text(`Generated on ${new Date().toLocaleString()} - ACS Unified Studio Portal`, 20, 285);
-
     doc.save(`Lead_Spec_${lead.lead_name.replace(/\s+/g, '_')}.pdf`);
   };
 
@@ -229,7 +210,10 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
     }
   };
 
-  const getColorTheme = (id: string) => {
+  const getColorTheme = (lead: Lead) => {
+    if (lead.status === 'DONE') {
+      return { bg: 'bg-slate-100', border: 'border-slate-300', text: 'text-slate-400', accent: 'text-emerald-600' };
+    }
     const themes = [
       { bg: 'bg-blue-50', border: 'border-blue-600', text: 'text-blue-900', accent: 'text-blue-700' },
       { bg: 'bg-amber-50', border: 'border-amber-600', text: 'text-amber-900', accent: 'text-amber-700' },
@@ -237,7 +221,7 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
       { bg: 'bg-rose-50', border: 'border-rose-600', text: 'text-rose-900', accent: 'text-rose-700' },
     ];
     let hash = 0;
-    for (let i = 0; i < id.length; i++) hash = id.charCodeAt(i) + ((hash << 5) - hash);
+    for (let i = 0; i < lead.id.length; i++) hash = lead.id.charCodeAt(i) + ((hash << 5) - hash);
     return themes[Math.abs(hash) % themes.length];
   };
 
@@ -275,12 +259,9 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
           <div className="flex flex-col space-y-1 pb-2 flex-1">
             {calendarLanes.map((lane, laneIdx) => {
               const lead = lane.find(l => dateStr >= l.order_date && dateStr <= l.deadline);
-              
-              if (!lead) {
-                return <div key={`lane-spacer-${laneIdx}`} className="min-h-[60px] py-1.5 w-full"></div>;
-              }
+              if (!lead) return <div key={`lane-spacer-${laneIdx}`} className="min-h-[64px] py-1.5 w-full"></div>;
 
-              const theme = getColorTheme(lead.id);
+              const theme = getColorTheme(lead);
               const isStart = dateStr === lead.order_date;
               const isEnd = dateStr === lead.deadline;
 
@@ -288,16 +269,19 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
                 <div 
                   key={lead.id} 
                   onClick={() => setSelectedLead(lead)}
-                  className={`cursor-pointer min-h-[60px] py-1.5 flex flex-col justify-center px-2 overflow-hidden transition-all hover:brightness-95 ${theme.bg} ${theme.text} ${isStart ? `rounded-l-md ml-1 border-l-4 ${theme.border}` : ''} ${isEnd ? 'rounded-r-md mr-1' : ''}`}
+                  className={`cursor-pointer min-h-[64px] py-1.5 flex flex-col justify-center px-2 overflow-hidden transition-all hover:brightness-95 ${theme.bg} ${theme.text} ${isStart ? `rounded-l-md ml-1 border-l-4 ${theme.border}` : ''} ${isEnd ? 'rounded-r-md mr-1' : ''}`}
                 >
                   <div className="flex flex-col min-w-0 leading-tight">
                     <span className="text-[10px] font-black truncate uppercase">{lead.lead_name}</span>
                     <span className="text-[8px] font-black opacity-80 mt-0.5 truncate uppercase tracking-tighter">
                       PIC: {lead.requester}
                     </span>
-                    <div className="flex items-center gap-1 mt-1">
-                      <span className={`text-[7px] font-black px-1 rounded border border-slate-300 bg-white/50 uppercase`}>
+                    <div className="flex items-center justify-between gap-1 mt-1">
+                      <span className={`text-[7px] font-black px-1 rounded border border-slate-300 bg-white/50 uppercase ${lead.status === 'DONE' ? 'text-emerald-600' : ''}`}>
                         {lead.status}
+                      </span>
+                      <span className="text-[7px] font-black px-1 rounded bg-indigo-600 text-white uppercase">
+                        GR: {lead.lead_grade}
                       </span>
                     </div>
                   </div>
@@ -323,10 +307,7 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
           <p className="text-slate-600 text-sm mt-1 font-semibold">Monitor and manage all design inquiries.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <button 
-            onClick={handleCopyLink}
-            className={`px-4 py-2 rounded-lg text-xs font-bold uppercase transition-all flex items-center gap-2 border ${copySuccess ? 'bg-emerald-50 border-emerald-500 text-emerald-700' : 'bg-white border-slate-300 text-slate-700 hover:border-indigo-500'}`}
-          >
+          <button onClick={handleCopyLink} className={`px-4 py-2 rounded-lg text-xs font-bold uppercase transition-all flex items-center gap-2 border ${copySuccess ? 'bg-emerald-50 border-emerald-500 text-emerald-700' : 'bg-white border-slate-300 text-slate-700 hover:border-indigo-500'}`}>
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
             {copySuccess ? 'Copied Link!' : 'Copy Secured Link'}
           </button>
@@ -473,6 +454,8 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
               <div className="grid grid-cols-2 gap-4">
                 <div><span className="text-[10px] font-bold text-slate-400 uppercase">Requester</span><p className="font-bold text-slate-800">{selectedLead.requester}</p></div>
                 <div><span className="text-[10px] font-bold text-slate-400 uppercase">Deadline</span><p className="font-bold text-red-600">{selectedLead.deadline}</p></div>
+                <div><span className="text-[10px] font-bold text-slate-400 uppercase">Grade</span><p className="font-bold text-indigo-600 uppercase">Grade {selectedLead.lead_grade}</p></div>
+                <div><span className="text-[10px] font-bold text-slate-400 uppercase">Ordered On</span><p className="font-bold text-slate-800">{selectedLead.order_date}</p></div>
               </div>
               <div><span className="text-[10px] font-bold text-slate-400 uppercase">Brief</span><div className="p-4 bg-slate-50 rounded-xl text-sm italic text-slate-700 whitespace-pre-wrap">{selectedLead.brief || 'No brief provided.'}</div></div>
               {selectedLead.drive_link && (
