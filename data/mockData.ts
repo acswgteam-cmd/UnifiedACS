@@ -31,22 +31,23 @@ const departments = [
 ];
 
 // --- Event Projects ---
+// Fix: Renamed 'location' to 'locations' and converted to string array to match Project interface
 const projects: Project[] = [
-  { id: 'p1', project_name: 'Global Tech Summit Bali', start_date: dateOffset(-20), end_date: dateOffset(30), location: 'Bali', pic_designer_id: 'd-sofyan', support_designer_ids: ['d-pandhu'], project_type: 'Conference', status: 'ON PROGRESS' },
-  { id: 'p2', project_name: 'Nike Sales Kickoff', start_date: dateOffset(-10), end_date: dateOffset(15), location: 'Jakarta', pic_designer_id: 'd-mya', support_designer_ids: [], project_type: 'Gathering', status: 'ON PROGRESS' },
-  { id: 'p3', project_name: 'Toyota Dealer Convention', start_date: dateOffset(-5), end_date: dateOffset(20), location: 'Yogyakarta', pic_designer_id: 'd-pandhu', support_designer_ids: ['d-abilio'], project_type: 'Conference', status: 'ON PROGRESS' },
-  { id: 'p4', project_name: 'Incentive Trip: Japan 2025', start_date: dateOffset(-40), end_date: dateOffset(60), location: 'Tokyo', pic_designer_id: 'd-abilio', support_designer_ids: [], project_type: 'Travel', status: 'ON PROGRESS' },
-  { id: 'p5', project_name: 'Annual Partners Meet', start_date: dateOffset(-2), end_date: dateOffset(10), location: 'Surabaya', pic_designer_id: 'd-sofyan', support_designer_ids: [], project_type: 'Gathering', status: 'ON PROGRESS' },
-  { id: 'p6', project_name: 'Pharma Expo Booth', start_date: dateOffset(-15), end_date: dateOffset(5), location: 'Singapore', pic_designer_id: 'd-pandhu', support_designer_ids: [], project_type: 'Exhibition', status: 'DONE' },
-  { id: 'p7', project_name: 'Banking Gala Night', start_date: dateOffset(-8), end_date: dateOffset(12), location: 'Jakarta', pic_designer_id: 'd-mya', support_designer_ids: [], project_type: 'Gathering', status: 'ON PROGRESS' },
-  { id: 'p8', project_name: 'Telco Launch Event', start_date: dateOffset(-30), end_date: dateOffset(40), location: 'Bandung', pic_designer_id: 'd-abilio', support_designer_ids: ['d-sofyan'], project_type: 'Launch', status: 'ON PROGRESS' },
-  { id: 'p9', project_name: 'Property Awards 2025', start_date: dateOffset(-1), end_date: dateOffset(25), location: 'Bali', pic_designer_id: 'd-sofyan', support_designer_ids: [], project_type: 'Awards', status: 'ON PROGRESS' },
-  { id: 'p10', project_name: 'Luxury Travel Fair', start_date: dateOffset(-12), end_date: dateOffset(18), location: 'Jakarta', pic_designer_id: 'd-mya', support_designer_ids: [], project_type: 'Travel', status: 'ON PROGRESS' },
-  { id: 'p11', project_name: 'Automotive Media Drive', start_date: dateOffset(-25), end_date: dateOffset(-5), location: 'Lombok', pic_designer_id: 'd-pandhu', support_designer_ids: [], project_type: 'Media', status: 'DONE' },
-  { id: 'p12', project_name: 'FMCG Branding Revamp', start_date: dateOffset(-60), end_date: dateOffset(90), location: 'Remote', pic_designer_id: 'd-sofyan', support_designer_ids: [], project_type: 'Branding', status: 'ON PROGRESS' },
-  { id: 'p13', project_name: 'Retailer Gathering', start_date: dateOffset(-4), end_date: dateOffset(6), location: 'Medan', pic_designer_id: 'd-abilio', support_designer_ids: [], project_type: 'Gathering', status: 'ON PROGRESS' },
-  { id: 'p14', project_name: 'Sustainability Forum', start_date: dateOffset(-20), end_date: dateOffset(10), location: 'Jakarta', pic_designer_id: 'd-mya', support_designer_ids: [], project_type: 'Conference', status: 'ON PROGRESS' },
-  { id: 'p15', project_name: 'Gaming Community Meet', start_date: dateOffset(-10), end_date: dateOffset(20), location: 'Jakarta', pic_designer_id: 'd-pandhu', support_designer_ids: [], project_type: 'Gathering', status: 'ON PROGRESS' }
+  { id: 'p1', project_name: 'Global Tech Summit Bali', start_date: dateOffset(-20), end_date: dateOffset(30), locations: ['Bali'], pic_designer_id: 'd-sofyan', support_designer_ids: ['d-pandhu'], project_type: 'Conference', status: 'ON PROGRESS' },
+  { id: 'p2', project_name: 'Nike Sales Kickoff', start_date: dateOffset(-10), end_date: dateOffset(15), locations: ['Jakarta'], pic_designer_id: 'd-mya', support_designer_ids: [], project_type: 'Gathering', status: 'ON PROGRESS' },
+  { id: 'p3', project_name: 'Toyota Dealer Convention', start_date: dateOffset(-5), end_date: dateOffset(20), locations: ['Yogyakarta'], pic_designer_id: 'd-pandhu', support_designer_ids: ['d-abilio'], project_type: 'Conference', status: 'ON PROGRESS' },
+  { id: 'p4', project_name: 'Incentive Trip: Japan 2025', start_date: dateOffset(-40), end_date: dateOffset(60), locations: ['Tokyo'], pic_designer_id: 'd-abilio', support_designer_ids: [], project_type: 'Travel', status: 'ON PROGRESS' },
+  { id: 'p5', project_name: 'Annual Partners Meet', start_date: dateOffset(-2), end_date: dateOffset(10), locations: ['Surabaya'], pic_designer_id: 'd-sofyan', support_designer_ids: [], project_type: 'Gathering', status: 'ON PROGRESS' },
+  { id: 'p6', project_name: 'Pharma Expo Booth', start_date: dateOffset(-15), end_date: dateOffset(5), locations: ['Singapore'], pic_designer_id: 'd-pandhu', support_designer_ids: [], project_type: 'Exhibition', status: 'DONE' },
+  { id: 'p7', project_name: 'Banking Gala Night', start_date: dateOffset(-8), end_date: dateOffset(12), locations: ['Jakarta'], pic_designer_id: 'd-mya', support_designer_ids: [], project_type: 'Gathering', status: 'ON PROGRESS' },
+  { id: 'p8', project_name: 'Telco Launch Event', start_date: dateOffset(-30), end_date: dateOffset(40), locations: ['Bandung'], pic_designer_id: 'd-abilio', support_designer_ids: ['d-sofyan'], project_type: 'Launch', status: 'ON PROGRESS' },
+  { id: 'p9', project_name: 'Property Awards 2025', start_date: dateOffset(-1), end_date: dateOffset(25), locations: ['Bali'], pic_designer_id: 'd-sofyan', support_designer_ids: [], project_type: 'Awards', status: 'ON PROGRESS' },
+  { id: 'p10', project_name: 'Luxury Travel Fair', start_date: dateOffset(-12), end_date: dateOffset(18), locations: ['Jakarta'], pic_designer_id: 'd-mya', support_designer_ids: [], project_type: 'Travel', status: 'ON PROGRESS' },
+  { id: 'p11', project_name: 'Automotive Media Drive', start_date: dateOffset(-25), end_date: dateOffset(-5), locations: ['Lombok'], pic_designer_id: 'd-pandhu', support_designer_ids: [], project_type: 'Media', status: 'DONE' },
+  { id: 'p12', project_name: 'FMCG Branding Revamp', start_date: dateOffset(-60), end_date: dateOffset(90), locations: ['Remote'], pic_designer_id: 'd-sofyan', support_designer_ids: [], project_type: 'Branding', status: 'ON PROGRESS' },
+  { id: 'p13', project_name: 'Retailer Gathering', start_date: dateOffset(-4), end_date: dateOffset(6), locations: ['Medan'], pic_designer_id: 'd-abilio', support_designer_ids: [], project_type: 'Gathering', status: 'ON PROGRESS' },
+  { id: 'p14', project_name: 'Sustainability Forum', start_date: dateOffset(-20), end_date: dateOffset(10), locations: ['Jakarta'], pic_designer_id: 'd-mya', support_designer_ids: [], project_type: 'Conference', status: 'ON PROGRESS' },
+  { id: 'p15', project_name: 'Gaming Community Meet', start_date: dateOffset(-10), end_date: dateOffset(20), locations: ['Jakarta'], pic_designer_id: 'd-pandhu', support_designer_ids: [], project_type: 'Gathering', status: 'ON PROGRESS' }
 ];
 
 // --- Service Inquiries / Leads ---
