@@ -23,7 +23,7 @@ export interface Project {
   project_name: string;
   start_date: string;
   end_date: string;
-  location: string;
+  locations: string[]; // Updated to array
   pic_designer_id: string;
   support_designer_ids: string[];
   project_type: string;
