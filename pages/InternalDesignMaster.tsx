@@ -18,8 +18,19 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
   const [filterDept, setFilterDept] = useState<string>('ALL');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [copySuccess, setCopySuccess] = useState(false);
+  
+  // CRUD States
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<InternalDesign | null>(null);
   const [selectedTask, setSelectedTask] = useState<InternalDesign | null>(null);
-  const lastScrollTime = useRef(0);
+  const [formData, setFormData] = useState<Partial<InternalDesign>>({
+    task_name: '',
+    department_id: '',
+    requester_name: '',
+    deadline: '',
+    brief: '',
+    status: 'NEW'
+  });
 
   const getDeptName = (id: string) => departments.find(d => d.id === id)?.department_name || 'N/A';
 
@@ -31,6 +42,7 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
       progress: internalDesigns.filter(t => t.status === 'ON PROGRESS').length,
       review: internalDesigns.filter(t => t.status === 'ON REVIEW').length,
       done: internalDesigns.filter(t => t.status === 'DONE').length,
+      hold: internalDesigns.filter(t => t.status === 'ON HOLD').length,
       deadlinesToday: internalDesigns.filter(t => t.deadline === todayStr && t.status !== 'DONE').length
     };
   }, [internalDesigns]);
@@ -43,7 +55,6 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
     });
   }, [internalDesigns, filterStatus, filterDept]);
 
-  // Calendar Lane Logic (Simplified for internal tasks)
   const calendarLanes = useMemo(() => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
@@ -74,6 +85,47 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
     navigator.clipboard.writeText(publicUrl);
     setCopySuccess(true);
     setTimeout(() => setCopySuccess(false), 2000);
+  };
+
+  const handleOpenAdd = () => {
+    setEditingTask(null);
+    setFormData({
+      task_name: '',
+      department_id: departments[0]?.id || '',
+      requester_name: '',
+      deadline: new Date().toISOString().split('T')[0],
+      brief: '',
+      status: 'NEW'
+    });
+    setIsFormOpen(true);
+  };
+
+  const handleOpenEdit = (task: InternalDesign) => {
+    setEditingTask(task);
+    setFormData(task);
+    setIsFormOpen(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!supabase || !confirm("Hapus tugas internal ini?")) return;
+    const { error } = await supabase.from('internal_designs').delete().eq('id', id);
+    if (error) alert(error.message);
+    else onUpdate();
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!supabase) return;
+
+    if (editingTask) {
+      const { error } = await supabase.from('internal_designs').update(formData).eq('id', editingTask.id);
+      if (error) alert(error.message);
+      else { onUpdate(); setIsFormOpen(false); }
+    } else {
+      const { error } = await supabase.from('internal_designs').insert([formData]);
+      if (error) alert(error.message);
+      else { onUpdate(); setIsFormOpen(false); }
+    }
   };
 
   const updateStatus = async (id: string, newStatus: InternalStatus) => {
@@ -150,28 +202,46 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight uppercase">Internal Design Tasks</h1>
           <p className="text-slate-600 text-sm mt-1 font-semibold">Manage inter-department creative requests.</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="flex bg-slate-200 p-1 rounded-xl">
             <button onClick={() => setView('list')} className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${view === 'list' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-600'}`}>List</button>
             <button onClick={() => setView('calendar')} className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${view === 'calendar' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-600'}`}>Calendar</button>
           </div>
+          <button onClick={handleOpenAdd} className="px-4 py-2 bg-purple-600 text-white rounded-lg text-xs font-bold uppercase shadow-lg flex items-center gap-2 hover:bg-purple-700 transition-all">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4"/></svg>
+            Add Task
+          </button>
           <button onClick={handleCopyLink} className={`px-4 py-2 rounded-lg text-xs font-bold uppercase transition-all flex items-center gap-2 border ${copySuccess ? 'bg-emerald-50 border-emerald-500 text-emerald-700' : 'bg-white border-slate-300 text-slate-700 hover:border-purple-500'}`}>
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
-            {copySuccess ? 'Link Copied!' : 'Copy Form Link'}
+            {copySuccess ? 'Copied Link!' : 'Form Link'}
           </button>
         </div>
       </header>
 
-      {/* Mini Dashboard Metrik */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-        <MetricCard label="Total Requests" value={stats.total} color="bg-slate-50 text-slate-900" />
-        <MetricCard label="New" value={stats.new} color="bg-blue-50 text-blue-600" />
-        <MetricCard label="In Progress" value={stats.progress} color="bg-amber-50 text-amber-600" />
-        <MetricCard label="In Review" value={stats.review} color="bg-purple-50 text-purple-600" />
-        <MetricCard label="Done" value={stats.done} color="bg-emerald-50 text-emerald-600" />
-        <MetricCard label="Deadlines Today" value={stats.deadlinesToday} color={`${stats.deadlinesToday > 0 ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-slate-50 text-slate-400 opacity-50'}`} />
+      {/* Simplified Status Summary & Deadline Card */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col">
+          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Task Status Summary</span>
+          <div className="grid grid-cols-3 gap-y-4 gap-x-2">
+            <StatusItem label="New" value={stats.new} color="text-blue-600" />
+            <StatusItem label="Progress" value={stats.progress} color="text-amber-600" />
+            <StatusItem label="Review" value={stats.review} color="text-purple-600" />
+            <StatusItem label="Done" value={stats.done} color="text-emerald-600" />
+            <StatusItem label="Hold" value={stats.hold} color="text-slate-400" />
+            <StatusItem label="Total" value={stats.total} color="text-slate-900 font-black" />
+          </div>
+        </div>
+
+        <div className={`p-6 rounded-2xl border flex flex-col justify-center transition-colors duration-300 ${stats.deadlinesToday > 0 ? 'bg-red-600 border-red-700 text-white shadow-lg shadow-red-100' : 'bg-white border-slate-200 text-slate-900'}`}>
+          <span className={`text-[10px] font-black uppercase tracking-widest mb-1 ${stats.deadlinesToday > 0 ? 'text-red-100' : 'text-slate-400'}`}>Deadlines Today</span>
+          <div className="text-4xl font-black">{stats.deadlinesToday}</div>
+          <p className={`text-[10px] font-bold mt-2 uppercase ${stats.deadlinesToday > 0 ? 'text-red-100' : 'text-slate-400'}`}>
+            {stats.deadlinesToday > 0 ? 'Needs immediate attention!' : 'Clear for today.'}
+          </p>
+        </div>
       </div>
 
+      {/* Filter Section */}
       <div className="bg-slate-100 p-4 rounded-2xl flex flex-wrap items-center gap-4 border border-slate-200 shadow-inner">
         <div className="flex flex-col gap-1">
           <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Status Filter</span>
@@ -223,17 +293,21 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
                     <span className="text-xs font-bold text-slate-700">{task.deadline}</span>
                   </td>
                   <td className="px-6 py-4 text-right" onClick={e => e.stopPropagation()}>
-                    <select 
-                      value={task.status} 
-                      onChange={(e) => updateStatus(task.id, e.target.value as InternalStatus)}
-                      className="text-[9px] font-black border-slate-200 rounded-lg p-1.5 bg-slate-50 outline-none focus:ring-2 focus:ring-purple-500 uppercase cursor-pointer"
-                    >
-                      <option value="NEW">Set NEW</option>
-                      <option value="ON PROGRESS">Set PROGRESS</option>
-                      <option value="ON REVIEW">Set REVIEW</option>
-                      <option value="ON HOLD">Set HOLD</option>
-                      <option value="DONE">Set DONE</option>
-                    </select>
+                    <div className="flex items-center justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => handleOpenEdit(task)} className="text-purple-600 text-[10px] font-black uppercase">Edit</button>
+                      <button onClick={() => handleDelete(task.id)} className="text-red-500 text-[10px] font-black uppercase">Del</button>
+                      <select 
+                        value={task.status} 
+                        onChange={(e) => updateStatus(task.id, e.target.value as InternalStatus)}
+                        className="text-[9px] font-black border-slate-200 rounded-lg p-1.5 bg-slate-50 outline-none focus:ring-2 focus:ring-purple-500 uppercase cursor-pointer"
+                      >
+                        <option value="NEW">NEW</option>
+                        <option value="ON PROGRESS">PROGRESS</option>
+                        <option value="ON REVIEW">REVIEW</option>
+                        <option value="ON HOLD">HOLD</option>
+                        <option value="DONE">DONE</option>
+                      </select>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -263,6 +337,7 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
         </div>
       )}
 
+      {/* Detail Modal */}
       {selectedTask && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6 backdrop-blur-sm bg-slate-900/40" onClick={() => setSelectedTask(null)}>
           <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl p-8 animate-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
@@ -287,18 +362,60 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
                 </div>
               </div>
             </div>
-            <button onClick={() => setSelectedTask(null)} className="w-full mt-8 py-3 bg-slate-900 text-white rounded-xl font-bold uppercase tracking-widest text-xs">Close Details</button>
+            <div className="flex gap-4 mt-8">
+              <button onClick={() => handleOpenEdit(selectedTask)} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold uppercase tracking-widest text-xs">Edit Task</button>
+              <button onClick={() => setSelectedTask(null)} className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold uppercase tracking-widest text-xs">Close</button>
+            </div>
           </div>
+        </div>
+      )}
+
+      {/* CRUD Form Modal */}
+      {isFormOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 backdrop-blur-sm bg-slate-900/40">
+          <form onSubmit={handleSave} className="bg-white w-full max-w-lg rounded-3xl shadow-2xl p-8 animate-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
+            <h2 className="text-xl font-bold text-slate-900 uppercase mb-6">{editingTask ? 'Edit Internal Task' : 'New Internal Task'}</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Task Name</label>
+                <input type="text" required value={formData.task_name} onChange={e => setFormData({...formData, task_name: e.target.value})} className="w-full p-3 rounded-xl border border-slate-200 text-sm font-bold outline-none focus:ring-2 focus:ring-purple-600" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Requester Name</label>
+                  <input type="text" required value={formData.requester_name} onChange={e => setFormData({...formData, requester_name: e.target.value})} className="w-full p-3 rounded-xl border border-slate-200 text-sm font-bold outline-none focus:ring-2 focus:ring-purple-600" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Deadline</label>
+                  <input type="date" required value={formData.deadline} onChange={e => setFormData({...formData, deadline: e.target.value})} className="w-full p-3 rounded-xl border border-slate-200 text-sm font-bold outline-none focus:ring-2 focus:ring-purple-600" />
+                </div>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Department</label>
+                <select required value={formData.department_id} onChange={e => setFormData({...formData, department_id: e.target.value})} className="w-full p-3 rounded-xl border border-slate-200 text-sm font-bold outline-none focus:ring-2 focus:ring-purple-600">
+                  {departments.map(d => <option key={d.id} value={d.id}>{d.department_name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Brief</label>
+                <textarea value={formData.brief} onChange={e => setFormData({...formData, brief: e.target.value})} className="w-full p-3 rounded-xl border border-slate-200 text-sm font-bold outline-none focus:ring-2 focus:ring-purple-600" rows={4} />
+              </div>
+            </div>
+            <div className="flex gap-4 mt-8">
+              <button type="submit" className="flex-1 py-3 bg-purple-600 text-white rounded-xl font-bold uppercase tracking-widest text-xs">Save Task</button>
+              <button type="button" onClick={() => setIsFormOpen(false)} className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold uppercase tracking-widest text-xs">Cancel</button>
+            </div>
+          </form>
         </div>
       )}
     </div>
   );
 };
 
-const MetricCard = ({ label, value, color }: { label: string, value: number, color: string }) => (
-  <div className={`p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-center ${color}`}>
-    <span className="text-[8px] font-black uppercase tracking-widest opacity-70 mb-1">{label}</span>
-    <span className="text-xl font-black leading-none">{value}</span>
+const StatusItem = ({ label, value, color }: { label: string, value: number, color: string }) => (
+  <div className="flex flex-col">
+    <span className="text-[8px] font-black uppercase text-slate-400 tracking-tighter mb-0.5">{label}</span>
+    <span className={`text-sm font-bold ${color}`}>{value}</span>
   </div>
 );
 
