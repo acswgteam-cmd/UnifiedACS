@@ -15,6 +15,7 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [newLocInput, setNewLocInput] = useState('');
   const lastScrollTime = useRef(0);
   
   // States for Filtering
@@ -28,7 +29,7 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
     project_name: '',
     start_date: '',
     end_date: '',
-    location: '',
+    locations: [],
     pic_designer_id: designers[0]?.id || '',
     support_designer_ids: [],
     project_type: 'EVENT',
@@ -39,7 +40,7 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
   const getDesignerName = (id: string) => designers.find(d => d.id === id)?.name || 'N/A';
   
   const uniqueLocations = useMemo(() => {
-    const locs = projects.map(p => p.location).filter(Boolean);
+    const locs = projects.flatMap(p => p.locations || []).filter(Boolean);
     return Array.from(new Set(locs)).sort();
   }, [projects]);
 
@@ -48,7 +49,7 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
       const matchType = filterType === 'ALL' || p.project_type === filterType;
       const matchPIC = filterPIC === 'ALL' || p.pic_designer_id === filterPIC;
       const matchSupport = filterSupport === 'ALL' || (p.support_designer_ids && p.support_designer_ids.includes(filterSupport));
-      const matchLoc = filterLocation === 'ALL' || p.location === filterLocation;
+      const matchLoc = filterLocation === 'ALL' || (p.locations && p.locations.includes(filterLocation));
       const matchStatus = filterStatus === 'ALL' || p.status === filterStatus;
       return matchType && matchPIC && matchSupport && matchLoc && matchStatus;
     });
@@ -93,12 +94,25 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
     }
   };
 
+  const addLocation = () => {
+    if (!newLocInput.trim()) return;
+    const current = formData.locations || [];
+    if (!current.includes(newLocInput.trim())) {
+      setFormData({ ...formData, locations: [...current, newLocInput.trim()] });
+    }
+    setNewLocInput('');
+  };
+
+  const removeLocation = (loc: string) => {
+    setFormData({ ...formData, locations: (formData.locations || []).filter(l => l !== loc) });
+  };
+
   const resetForm = () => {
     setFormData({
       project_name: '',
       start_date: '',
       end_date: '',
-      location: '',
+      locations: [],
       pic_designer_id: designers[0]?.id || '',
       support_designer_ids: [],
       project_type: 'EVENT',
@@ -107,6 +121,7 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
     });
     setEditingId(null);
     setIsAdding(false);
+    setNewLocInput('');
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -133,7 +148,7 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
   };
 
   const handleEdit = (p: Project) => {
-    setFormData({ ...p, support_designer_ids: p.support_designer_ids || [] });
+    setFormData({ ...p, support_designer_ids: p.support_designer_ids || [], locations: p.locations || [] });
     setEditingId(p.id);
     setIsAdding(true);
     setView('list');
@@ -231,7 +246,7 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
                       PIC: {getDesignerName(project.pic_designer_id)}
                     </span>
                     <span className="text-[7px] font-bold opacity-70 mt-0.5 truncate uppercase italic">
-                      @{project.location || 'HQ'}
+                      Loc: {project.locations && project.locations.length > 0 ? project.locations.join(', ') : 'HQ'}
                     </span>
                   </div>
                 </div>
@@ -344,19 +359,44 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
               <label className={labelClass}>End Date</label>
               <input type="date" required value={formData.end_date} onChange={e => setFormData({...formData, end_date: e.target.value})} className={inputClass} />
             </div>
-            <div>
-              <label className={labelClass}>Location</label>
-              <input type="text" list="location-suggestions" placeholder="e.g. Remote, HQ" value={formData.location || ''} onChange={e => setFormData({...formData, location: e.target.value})} className={inputClass} />
+            
+            <div className="md:col-span-2">
+              <label className={labelClass}>Locations</label>
+              <div className="flex gap-2 mb-2">
+                <input 
+                  type="text" 
+                  list="location-suggestions" 
+                  placeholder="Type location and press Add" 
+                  value={newLocInput} 
+                  onChange={e => setNewLocInput(e.target.value)} 
+                  className={inputClass}
+                  onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addLocation())}
+                />
+                <button type="button" onClick={addLocation} className="px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-bold shadow-md">Add</button>
+              </div>
+              <div className="flex flex-wrap gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl min-h-[46px]">
+                {formData.locations?.length === 0 && <span className="text-[10px] text-slate-400 font-bold italic uppercase">No locations added.</span>}
+                {formData.locations?.map(loc => (
+                  <span key={loc} className="flex items-center gap-2 px-3 py-1 bg-white border border-slate-300 text-slate-800 rounded-full text-[10px] font-black uppercase shadow-sm">
+                    {loc}
+                    <button type="button" onClick={() => removeLocation(loc)} className="text-red-500 hover:text-red-700">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                  </span>
+                ))}
+              </div>
               <datalist id="location-suggestions">
                 {uniqueLocations.map(loc => <option key={loc} value={loc} />)}
               </datalist>
             </div>
+
             <div className="relative">
               <label className={labelClass}>PIC Designer (Primary)</label>
               <select value={formData.pic_designer_id} onChange={e => setFormData({...formData, pic_designer_id: e.target.value})} className={inputClass}>
                 {designers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
               </select>
             </div>
+
             <div className="md:col-span-1">
               <label className={labelClass}>Support Designers</label>
               <div className="flex flex-wrap gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl min-h-[46px]">
@@ -371,6 +411,7 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
                 })}
               </div>
             </div>
+
             <div className="md:col-span-3">
               <label className={labelClass}>Keterangan / Notes</label>
               <textarea rows={3} value={formData.notes || ''} onChange={e => setFormData({...formData, notes: e.target.value})} className={inputClass} placeholder="Catatan tambahan mengenai project ini..." />
@@ -415,7 +456,11 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
                       <td className="px-6 py-4">
                         <div className="flex flex-col">
                           <span className="text-[11px] font-black">{p.start_date} <span className="text-slate-400">→</span> {p.end_date}</span>
-                          <span className="text-[9px] text-slate-400 uppercase font-black">{p.location || 'No Location'}</span>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {p.locations && p.locations.length > 0 ? p.locations.map(loc => (
+                              <span key={loc} className="text-[8px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded border border-slate-200 uppercase whitespace-nowrap">{loc}</span>
+                            )) : <span className="text-[9px] text-slate-400 uppercase font-black">No Location</span>}
+                          </div>
                         </div>
                       </td>
                       <td className="px-6 py-4">
@@ -470,9 +515,16 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div><span className="text-[10px] font-bold text-slate-400 uppercase">PIC Designer</span><p className="font-bold text-slate-800">{getDesignerName(selectedProject.pic_designer_id)}</p></div>
-                <div><span className="text-[10px] font-bold text-slate-400 uppercase">Location</span><p className="font-bold text-slate-800">{selectedProject.location || 'Remote/HQ'}</p></div>
                 <div><span className="text-[10px] font-bold text-slate-400 uppercase">Timeline</span><p className="font-bold text-slate-800 text-xs uppercase">{selectedProject.start_date} to {selectedProject.end_date}</p></div>
                 <div><span className="text-[10px] font-bold text-slate-400 uppercase">Type</span><p className="font-bold text-indigo-600 text-xs uppercase">{selectedProject.project_type}</p></div>
+              </div>
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 uppercase">Locations</span>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {selectedProject.locations && selectedProject.locations.length > 0 ? selectedProject.locations.map(loc => (
+                    <span key={loc} className="px-2 py-1 bg-slate-100 text-[10px] font-black rounded border border-slate-200 uppercase">{loc}</span>
+                  )) : <p className="font-bold text-slate-400 text-xs italic">Remote/HQ</p>}
+                </div>
               </div>
               <div><span className="text-[10px] font-bold text-slate-400 uppercase">Keterangan / Notes</span><div className="p-4 bg-slate-50 rounded-xl text-sm italic text-slate-700 whitespace-pre-wrap">{selectedProject.notes || 'No notes provided.'}</div></div>
               {selectedProject.support_designer_ids && selectedProject.support_designer_ids.length > 0 && (
