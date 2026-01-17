@@ -29,9 +29,14 @@ const PublicInternalForm: React.FC<Props> = ({ onHostSubmit, departments }) => {
     if (!isAuthorized) return;
     setLoading(true);
 
+    // Pastikan data yang dikirim bersih (string kosong diubah ke null untuk UUID)
     const taskData = {
-      ...formData,
-      status: 'NEW' // Default status
+      task_name: formData.task_name,
+      department_id: formData.department_id || null,
+      requester_name: formData.requester_name,
+      deadline: formData.deadline,
+      brief: formData.brief || '',
+      status: 'NEW' 
     };
 
     try {
@@ -42,7 +47,8 @@ const PublicInternalForm: React.FC<Props> = ({ onHostSubmit, departments }) => {
       onHostSubmit?.();
       setSubmitted(true);
     } catch (err: any) {
-      alert(`Submission failed: ${err.message}`);
+      console.error("Internal Form Error:", err);
+      alert(`Submission failed: ${err.message}. Pastikan tabel 'internal_designs' sudah dibuat di Supabase.`);
     } finally {
       setLoading(false);
     }
@@ -51,7 +57,11 @@ const PublicInternalForm: React.FC<Props> = ({ onHostSubmit, departments }) => {
   const inputClass = "w-full rounded-xl border-slate-300 text-slate-900 text-base p-4 border focus:ring-4 focus:ring-purple-100 focus:border-purple-600 outline-none transition-all placeholder-slate-400 bg-white shadow-sm font-medium appearance-none";
   const labelClass = "text-sm font-semibold text-slate-900 uppercase tracking-wide mb-2 block ml-1";
 
-  if (!isAuthorized) return <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6 text-white font-bold">403 UNAUTHORIZED PORTAL</div>;
+  if (!isAuthorized) return (
+    <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6 text-white font-bold">
+      403 UNAUTHORIZED PORTAL
+    </div>
+  );
 
   if (submitted) {
     return (
