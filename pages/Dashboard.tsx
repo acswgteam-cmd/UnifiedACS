@@ -24,6 +24,25 @@ const Dashboard: React.FC<Props> = ({ state }) => {
     const totalProjects = projects.length; 
     const totalLeads = leads.length;
 
+    // --- Keyword Analysis Logic ---
+    const wordCounts: Record<string, number> = {};
+    filteredLogs.forEach(log => {
+      if (!log.artwork_name) return;
+      // Get first word, remove non-alphanumeric if needed, uppercase
+      const firstWord = log.artwork_name.trim().split(/[\s-]+/)[0].toUpperCase();
+      // Only count if word length > 1 to avoid initials like "A" "B" unless meaningful
+      if (firstWord.length > 1) {
+        wordCounts[firstWord] = (wordCounts[firstWord] || 0) + 1;
+      }
+    });
+
+    // Convert to array, sort by count desc, take top 5
+    const topKeywords = Object.entries(wordCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([word, count]) => ({ word, count }));
+    // -----------------------------
+
     const countByContext = (ctx: WorkContext) => filteredLogs.filter(l => l.work_context === ctx).length;
     const artworksProject = countByContext(WorkContext.PROJECT);
     const artworksLead = countByContext(WorkContext.LEAD);
@@ -113,7 +132,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
     return {
       totalArtworks, totalProjects, totalLeads,
       artworksProject, artworksLead, artworksInternal,
-      teamStats, departmentStats,
+      teamStats, departmentStats, topKeywords, // Added topKeywords
       globalTypeSplit, globalContextSplit,
       monthlyTrends: getMonthlyTrends(),
       avgDurProj: calcAvgDuration(WorkContext.PROJECT),
@@ -152,7 +171,13 @@ const Dashboard: React.FC<Props> = ({ state }) => {
 
       {/* KPI Row */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <KPICard label="Total Artworks" value={analytics.totalArtworks} sub="Production Output" color="border-indigo-600" />
+        <KPICard 
+          label="Total Artworks" 
+          value={analytics.totalArtworks} 
+          sub="Production Output" 
+          color="border-indigo-600"
+          keywords={analytics.topKeywords} // Pass keywords here
+        />
         <KPICard label="Active Projects" value={analytics.totalProjects} sub="Managed Timelines" color="border-blue-600" />
         <KPICard label="Active Leads" value={analytics.totalLeads} sub="Service Inquiries" color="border-emerald-600" />
       </div>
@@ -206,7 +231,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
 
         <section className={cardClass}>
           <h2 className="text-sm font-bold text-slate-900 uppercase tracking-tight mb-4">Distribution Split</h2>
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-8 h-full justify-center py-4">
             <PieRow title="By Artwork Type" data={analytics.globalTypeSplit} total={analytics.totalArtworks} />
             <div className="h-px bg-slate-100"></div>
             <PieRow title="By Work Context" data={analytics.globalContextSplit} total={analytics.totalArtworks} />
@@ -306,11 +331,24 @@ const LegendDot = ({ color, label }: { color: string, label: string }) => (
   </div>
 );
 
-const KPICard = ({ label, value, sub, color }: any) => (
+const KPICard = ({ label, value, sub, color, keywords }: any) => (
   <div className={`bg-white p-6 rounded-3xl border border-slate-200 shadow-sm border-l-8 ${color}`}>
     <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-1">{label}</span>
     <div className="text-3xl font-bold text-slate-900 tracking-tight">{value}</div>
-    <p className="text-[10px] font-medium text-slate-400 uppercase mt-1">{sub}</p>
+    <p className="text-[10px] font-medium text-slate-400 uppercase mt-1 mb-3">{sub}</p>
+    
+    {keywords && keywords.length > 0 && (
+      <div className="pt-3 border-t border-slate-100">
+        <span className="text-[8px] font-black text-slate-400 uppercase tracking-wide block mb-1.5">Top Keywords</span>
+        <div className="flex flex-wrap gap-1">
+          {keywords.map((k: any) => (
+            <span key={k.word} className="px-1.5 py-0.5 bg-slate-100 text-slate-600 rounded text-[9px] font-bold uppercase border border-slate-200">
+              {k.word} <span className="text-[7px] text-slate-400">({k.count})</span>
+            </span>
+          ))}
+        </div>
+      </div>
+    )}
   </div>
 );
 
@@ -345,21 +383,36 @@ const VolumeCard = ({ title, count, duration, typeSplit, color }: any) => {
 };
 
 const PieRow = ({ title, data, total }: any) => (
-  <div className="flex items-center gap-5">
-    <div className="w-16 h-16 rounded-full shadow-inner border-2 border-white relative flex-shrink-0" 
-      style={{ background: `conic-gradient(${data.map((d:any, i:number) => {
-        const percentage = total ? (d.count / total) * 100 : 0;
-        const start = data.slice(0, i).reduce((acc:any, curr:any) => acc + (total ? (curr.count / total) * 100 : 0), 0);
-        return `${d.color} ${start}% ${start + percentage}%`;
-      }).join(', ')})` }}
-    ></div>
-    <div className="flex-1 space-y-1.5">
-      <p className="text-[9px] font-bold text-slate-400 uppercase mb-1 tracking-wider">{title}</p>
+  <div className="flex flex-col sm:flex-row items-center gap-6">
+    <div className="relative w-28 h-28 flex-shrink-0">
+      {/* Donut Ring using Conic Gradient */}
+      <div 
+        className="w-full h-full rounded-full" 
+        style={{ 
+          background: `conic-gradient(${data.map((d:any, i:number) => {
+            const percentage = total ? (d.count / total) * 100 : 0;
+            const start = data.slice(0, i).reduce((acc:any, curr:any) => acc + (total ? (curr.count / total) * 100 : 0), 0);
+            return `${d.color} ${start}% ${start + percentage}%`;
+          }).join(', ')})` 
+        }}
+      ></div>
+      {/* Center Hole */}
+      <div className="absolute inset-0 m-auto w-16 h-16 bg-white rounded-full flex flex-col items-center justify-center shadow-sm">
+         <span className="text-lg font-black text-slate-900 leading-none">{total}</span>
+         <span className="text-[8px] font-bold text-slate-400 uppercase mt-0.5">Total</span>
+      </div>
+    </div>
+    
+    <div className="flex-1 w-full space-y-2">
+      <p className="text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-wider border-b border-slate-100 pb-1 text-center sm:text-left">{title}</p>
       {data.map((d:any) => (
         <div key={d.type || d.context} className="flex justify-between items-center text-[10px] font-bold text-slate-700">
-          <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: d.color }}></div><span className="uppercase truncate max-w-[85px]">{d.type || d.context}</span></div>
-          <span className="text-slate-900 font-bold bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">
-            {d.count} <span className="text-slate-400 text-[8px] font-medium ml-0.5">({total ? Math.round((d.count / total) * 100) : 0}%)</span>
+          <div className="flex items-center gap-2">
+            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: d.color }}></div>
+            <span className="uppercase truncate max-w-[85px]">{d.type || d.context}</span>
+          </div>
+          <span className="text-slate-900 font-bold bg-slate-50 px-2 py-0.5 rounded border border-slate-100 min-w-[3rem] text-center">
+            {d.count} <span className="text-slate-400 text-[8px] font-medium opacity-70">({total ? Math.round((d.count / total) * 100) : 0}%)</span>
           </span>
         </div>
       ))}
