@@ -38,20 +38,23 @@ const Dashboard: React.FC<Props> = ({ state }) => {
         .map(([label, count]) => ({ label, count }));
     };
 
-    // --- Active Projects Stats ---
-    const activeProjects = projects.filter(p => p.status === 'ON PROGRESS');
-    const projectPICs = getTopCounts(activeProjects, p => designers.find(d => d.id === p.pic_designer_id)?.name || 'Unknown');
-    const projectLocs = getTopCounts(activeProjects, p => (p as any).locations || (p as any).location || []);
+    // --- Projects Stats (ALL Statuses) ---
+    // Previously filtered for 'ON PROGRESS', now using all projects
+    const allProjects = projects;
+    const projectPICs = getTopCounts(allProjects, p => designers.find(d => d.id === p.pic_designer_id)?.name || 'Unknown');
+    const projectLocs = getTopCounts(allProjects, p => (p as any).locations || (p as any).location || []);
 
-    // --- Active Leads Stats ---
-    const activeLeads = leads.filter(l => l.status === 'ON PROGRESS');
-    const leadGrades = getTopCounts(activeLeads, l => l.lead_grade);
-    const leadRequesters = getTopCounts(activeLeads, l => l.requester);
+    // --- Leads Stats (ALL Statuses) ---
+    // Previously filtered for 'ON PROGRESS', now using all leads
+    const allLeads = leads;
+    const leadGrades = getTopCounts(allLeads, l => l.lead_grade);
+    const leadRequesters = getTopCounts(allLeads, l => l.requester);
 
-    // --- Internal Tasks Stats ---
-    const activeInternal = internalDesigns.filter(t => t.status !== 'DONE'); // All pending tasks
-    const internalDepts = getTopCounts(activeInternal, t => departments.find(d => d.id === t.department_id)?.department_name || 'Unknown');
-    const internalRequesters = getTopCounts(activeInternal, t => t.requester_name);
+    // --- Internal Tasks Stats (ALL Statuses) ---
+    // Previously filtered for !== 'DONE', now using all internal designs
+    const allInternal = internalDesigns;
+    const internalDepts = getTopCounts(allInternal, t => departments.find(d => d.id === t.department_id)?.department_name || 'Unknown');
+    const internalRequesters = getTopCounts(allInternal, t => t.requester_name);
 
     // --- Keyword Analysis Logic (Existing) ---
     const wordCounts: Record<string, number> = {};
@@ -157,9 +160,9 @@ const Dashboard: React.FC<Props> = ({ state }) => {
 
     return {
       totalArtworks, 
-      activeProjectsCount: activeProjects.length,
-      activeLeadsCount: activeLeads.length,
-      activeInternalCount: activeInternal.length,
+      totalProjectsCount: allProjects.length,
+      totalLeadsCount: allLeads.length,
+      totalInternalCount: allInternal.length,
       artworksProject, artworksLead, artworksInternal,
       teamStats, departmentStats, topKeywords,
       globalTypeSplit, globalContextSplit,
@@ -179,7 +182,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
         type: t,
         percentage: artworksInternal ? Math.round((filteredLogs.filter(l => l.work_context === WorkContext.INTERNAL && l.artwork_type === t).length / artworksInternal) * 100) : 0
       })),
-      // Stats for Cards
+      // Stats for Cards (Based on All items)
       statsData: {
         projects: { pics: projectPICs, locs: projectLocs },
         leads: { grades: leadGrades, reqs: leadRequesters },
@@ -214,9 +217,9 @@ const Dashboard: React.FC<Props> = ({ state }) => {
           keywords={analytics.topKeywords}
         />
         <KPICard 
-          label="Active Projects" 
-          value={analytics.activeProjectsCount} 
-          sub="On Progress" 
+          label="Total Projects" 
+          value={analytics.totalProjectsCount} 
+          sub="All Statuses" 
           color="border-blue-600"
           statsList={[
             { title: "Top 3 PIC", items: analytics.statsData.projects.pics },
@@ -224,9 +227,9 @@ const Dashboard: React.FC<Props> = ({ state }) => {
           ]}
         />
         <KPICard 
-          label="Active Leads" 
-          value={analytics.activeLeadsCount} 
-          sub="On Progress" 
+          label="Total Leads" 
+          value={analytics.totalLeadsCount} 
+          sub="All Statuses" 
           color="border-emerald-600" 
           statsList={[
              { title: "By Grade", items: analytics.statsData.leads.grades },
@@ -234,9 +237,9 @@ const Dashboard: React.FC<Props> = ({ state }) => {
           ]}
         />
         <KPICard 
-          label="Active Tasks" 
-          value={analytics.activeInternalCount} 
-          sub="Internal Requests" 
+          label="Total Tasks" 
+          value={analytics.totalInternalCount} 
+          sub="All Statuses" 
           color="border-purple-600" 
           statsList={[
              { title: "Top Depts", items: analytics.statsData.internal.depts },
