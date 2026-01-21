@@ -56,12 +56,14 @@ const Dashboard: React.FC<Props> = ({ state }) => {
       const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
       const trends = [];
       const now = new Date();
+      // Reverse loop to get past 6 months up to now
       for (let i = 5; i >= 0; i--) {
         const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
         const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
         const monthLogs = artworkLogs.filter(l => l.start_date.startsWith(monthKey));
         trends.push({
           label: monthNames[d.getMonth()],
+          fullDate: `${monthNames[d.getMonth()]} ${d.getFullYear()}`,
           "2D Design": monthLogs.filter(l => l.artwork_type === "2D Design").length,
           "3D Design": monthLogs.filter(l => l.artwork_type === "3D Design").length,
           "Video": monthLogs.filter(l => l.artwork_type === "Video").length,
@@ -177,7 +179,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
             <TrendLineChart 
               data={analytics.monthlyTrends} 
               keys={["2D Design", "3D Design", "Video"]} 
-              labels={["", "", ""]}
+              labels={["2D", "3D", "VDO"]}
               colors={["#3b82f6", "#10b981", "#f97316"]} 
             />
           </div>
@@ -196,7 +198,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
             <TrendLineChart 
               data={analytics.monthlyTrends} 
               keys={[WorkContext.PROJECT, WorkContext.LEAD, WorkContext.INTERNAL]} 
-              labels={["", "", ""]}
+              labels={["PRJ", "LED", "INT"]}
               colors={["#2563eb", "#059669", "#7c3aed"]} 
             />
           </div>
@@ -366,49 +368,164 @@ const PieRow = ({ title, data, total }: any) => (
 );
 
 const TrendLineChart = ({ data, keys, labels, colors }: any) => {
-  const width = 400; const height = 200; const padding = 35;
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+  const width = 400; 
+  const height = 200; 
+  const padding = 35;
   const maxValue = Math.max(...data.flatMap((d:any) => keys.map((k:string) => d[k])), 5);
+
   const getY = (val: number) => height - padding - (val / maxValue) * (height - padding * 2);
   const getX = (idx: number) => padding + (idx / (data.length - 1)) * (width - padding * 2);
-  
+
+  // Helper to create Smooth Bezier Curve Path
+  const getSmoothPath = (key: string) => {
+    const points = data.map((d: any, i: number) => ({ x: getX(i), y: getY(d[key]) }));
+    if (points.length === 0) return "";
+    
+    // Start at first point
+    let d = `M ${points[0].x},${points[0].y}`;
+    
+    // Cubic bezier implementation
+    for (let i = 0; i < points.length - 1; i++) {
+      const p0 = points[i === 0 ? 0 : i - 1];
+      const p1 = points[i];
+      const p2 = points[i + 1];
+      const p3 = points[i + 2] || p2;
+
+      const cp1x = p1.x + (p2.x - p0.x) / 6;
+      const cp1y = p1.y + (p2.y - p0.y) / 6;
+
+      const cp2x = p2.x - (p3.x - p1.x) / 6;
+      const cp2y = p2.y - (p3.y - p1.y) / 6;
+
+      d += ` C ${cp1x},${cp1y} ${cp2x},${cp2y} ${p2.x},${p2.y}`;
+    }
+    return d;
+  };
+
+  // Helper to create Area Fill Path (closed loop)
+  const getAreaPath = (key: string) => {
+    const line = getSmoothPath(key);
+    if (!line) return "";
+    const lastX = getX(data.length - 1);
+    const firstX = getX(0);
+    const bottomY = height - padding;
+    return `${line} L ${lastX},${bottomY} L ${firstX},${bottomY} Z`;
+  };
+
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" preserveAspectRatio="none">
-      {[0, 0.5, 1].map(p => <line key={p} x1={padding} y1={getY(maxValue * p)} x2={width - padding} y2={getY(maxValue * p)} stroke="#f1f5f9" strokeWidth="1" strokeDasharray="4 4" />)}
-      
-      {keys.map((key:string, kIdx:number) => {
-        const lastVal = data[data.length - 1][key];
-        return (
+    <div className="relative w-full h-full" onMouseLeave={() => setHoverIndex(null)}>
+      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" preserveAspectRatio="none">
+        <defs>
+          {colors.map((color: string, i: number) => (
+            <linearGradient key={`grad-${i}`} id={`grad-${i}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={color} stopOpacity="0.4" />
+              <stop offset="100%" stopColor={color} stopOpacity="0.0" />
+            </linearGradient>
+          ))}
+        </defs>
+
+        {/* Grid Lines */}
+        {[0, 0.5, 1].map(p => <line key={p} x1={padding} y1={getY(maxValue * p)} x2={width - padding} y2={getY(maxValue * p)} stroke="#f1f5f9" strokeWidth="1" strokeDasharray="4 4" />)}
+        
+        {/* Render Areas and Lines */}
+        {keys.map((key:string, kIdx:number) => (
           <g key={key}>
-            <polyline 
-              points={data.map((d:any, i:number) => `${getX(i)},${getY(d[key])}`).join(" ")} 
+            {/* Area Fill */}
+            <path 
+              d={getAreaPath(key)} 
+              fill={`url(#grad-${kIdx})`} 
+              className="transition-all duration-300"
+            />
+            {/* Line Stroke */}
+            <path 
+              d={getSmoothPath(key)} 
               fill="none" 
               stroke={colors[kIdx]} 
-              strokeWidth="3.5" 
+              strokeWidth={hoverIndex !== null ? "2.5" : "3.5"} 
               strokeLinecap="round" 
               strokeLinejoin="round" 
+              className="transition-all duration-300 shadow-sm"
             />
-            {/* Small text label near the latest point */}
-            <text 
-              x={getX(data.length - 1) + 4} 
-              y={getY(lastVal)} 
-              fontSize="8" 
-              fontWeight="900" 
-              fill={colors[kIdx]} 
-              alignmentBaseline="middle"
-              className="uppercase tracking-tighter"
-            >
-              {labels[kIdx]}
-            </text>
-            <circle cx={getX(data.length - 1)} cy={getY(lastVal)} r="4" fill="white" stroke={colors[kIdx]} strokeWidth="2.5" />
-            <text x={getX(data.length - 1)} y={getY(lastVal) - 10} textAnchor="middle" fontSize="9" fontWeight="bold" fill={colors[kIdx]}>{lastVal}</text>
           </g>
-        );
-      })}
+        ))}
 
-      {data.map((d:any, i:number) => (
-        <text key={i} x={getX(i)} y={height - 10} textAnchor="middle" fontSize="9" fontWeight="bold" className="fill-slate-400 uppercase tracking-tighter">{d.label}</text>
-      ))}
-    </svg>
+        {/* X Axis Labels */}
+        {data.map((d:any, i:number) => (
+          <text key={i} x={getX(i)} y={height - 10} textAnchor="middle" fontSize="9" fontWeight="bold" className="fill-slate-400 uppercase tracking-tighter">
+            {d.label}
+          </text>
+        ))}
+
+        {/* Hover Interaction Layer */}
+        {hoverIndex !== null && (
+          <g>
+            {/* Vertical Marker Line */}
+            <line 
+              x1={getX(hoverIndex)} 
+              y1={padding} 
+              x2={getX(hoverIndex)} 
+              y2={height - padding} 
+              stroke="#cbd5e1" 
+              strokeWidth="1" 
+              strokeDasharray="4 2" 
+            />
+            
+            {/* Dots at intersection points */}
+            {keys.map((key: string, kIdx: number) => (
+              <circle 
+                key={`dot-${kIdx}`}
+                cx={getX(hoverIndex)} 
+                cy={getY(data[hoverIndex][key])} 
+                r="4" 
+                fill="white" 
+                stroke={colors[kIdx]} 
+                strokeWidth="2.5" 
+                className="transition-all duration-150"
+              />
+            ))}
+          </g>
+        )}
+
+        {/* Invisible Hit Areas for Mouse Events */}
+        {data.map((d: any, i: number) => (
+          <rect
+            key={`hit-${i}`}
+            x={getX(i) - ((width - padding * 2) / (data.length - 1)) / 2}
+            y={0}
+            width={(width - padding * 2) / (data.length - 1)}
+            height={height}
+            fill="transparent"
+            onMouseEnter={() => setHoverIndex(i)}
+          />
+        ))}
+      </svg>
+
+      {/* Floating Tooltip (HTML overlay) */}
+      {hoverIndex !== null && (
+        <div 
+          className="absolute z-10 bg-slate-900/95 backdrop-blur-sm text-white p-3 rounded-xl shadow-xl pointer-events-none transform -translate-x-1/2 -translate-y-full border border-slate-700/50"
+          style={{ 
+            left: `${(getX(hoverIndex) / width) * 100}%`, 
+            top: '20px' 
+          }}
+        >
+          <p className="text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest text-center border-b border-slate-700 pb-1">
+            {data[hoverIndex].fullDate}
+          </p>
+          <div className="flex gap-4">
+            {keys.map((key: string, kIdx: number) => (
+              <div key={key} className="flex flex-col items-center">
+                <span className="text-[9px] font-bold uppercase mb-0.5" style={{ color: colors[kIdx] }}>{labels[kIdx]}</span>
+                <span className="text-sm font-black">{data[hoverIndex][key]}</span>
+              </div>
+            ))}
+          </div>
+          {/* Tooltip Triangle */}
+          <div className="absolute left-1/2 -bottom-1.5 w-3 h-3 bg-slate-900 rotate-45 transform -translate-x-1/2 border-r border-b border-slate-700/50"></div>
+        </div>
+      )}
+    </div>
   );
 };
 
