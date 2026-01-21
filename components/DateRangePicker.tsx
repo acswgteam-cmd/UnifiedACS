@@ -48,21 +48,40 @@ const DateRangePicker: React.FC<Props> = ({ onChange, onReset }) => {
 
   const applyPreset = (preset: string) => {
     const now = new Date();
-    let start = new Date();
-    let end = new Date();
+    // Clone dates to avoid mutation issues
+    let start = new Date(now);
+    let end = new Date(now);
 
     switch (preset) {
       case 'today':
+        // Start and End are already 'now'
         break;
       case 'yesterday':
         start.setDate(now.getDate() - 1);
         end.setDate(now.getDate() - 1);
         break;
+      case 'this-week':
+        const day = now.getDay(); // 0 (Sun) to 6 (Sat)
+        // Adjust to make Monday (1) the first day
+        const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+        start = new Date(now.setDate(diff));
+        end = new Date(now.setDate(start.getDate() + 6));
+        break;
+      case 'this-month':
+        start = new Date(now.getFullYear(), now.getMonth(), 1);
+        end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        break;
+      case 'this-year':
+        start = new Date(now.getFullYear(), 0, 1);
+        end = new Date(now.getFullYear(), 11, 31);
+        break;
       case 'last-week':
         start.setDate(now.getDate() - 7);
+        // end remains today
         break;
       case 'last-month':
         start.setMonth(now.getMonth() - 1);
+        // end remains today
         break;
       case 'last-quarter':
         start.setMonth(now.getMonth() - 3);
@@ -72,6 +91,8 @@ const DateRangePicker: React.FC<Props> = ({ onChange, onReset }) => {
     setRange({ start, end });
     onChange(formatDate(start), formatDate(end));
     setIsOpen(false);
+    // Update view to start date
+    setViewDate(new Date(start));
   };
 
   const calendarDays = useMemo(() => {
@@ -120,21 +141,34 @@ const DateRangePicker: React.FC<Props> = ({ onChange, onReset }) => {
       {isOpen && (
         <div className="absolute top-full right-0 mt-2 bg-white rounded-3xl shadow-2xl border border-slate-100 p-5 z-50 flex gap-6 min-w-[480px] animate-in fade-in zoom-in-95 duration-200">
           {/* Presets Sidebar */}
-          <div className="w-24 flex flex-col gap-2.5 border-r border-slate-100 pr-4">
-            {['today', 'yesterday', 'last-week', 'last-month', 'last-quarter'].map((p) => (
+          <div className="w-28 flex flex-col gap-1.5 border-r border-slate-100 pr-4">
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Current</span>
+            {['today', 'this-week', 'this-month', 'this-year'].map((p) => (
               <button 
                 key={p} 
                 onClick={() => applyPreset(p)}
-                className="text-left text-xs font-bold text-slate-500 hover:text-blue-600 transition-colors capitalize"
+                className="text-left text-xs font-bold text-slate-600 hover:text-blue-600 transition-colors capitalize py-1 px-2 rounded hover:bg-slate-50"
               >
                 {p.replace('-', ' ')}
               </button>
             ))}
+            <div className="h-px bg-slate-100 my-1"></div>
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">History</span>
+             {['yesterday', 'last-week', 'last-month', 'last-quarter'].map((p) => (
+              <button 
+                key={p} 
+                onClick={() => applyPreset(p)}
+                className="text-left text-xs font-bold text-slate-400 hover:text-blue-600 transition-colors capitalize py-1 px-2 rounded hover:bg-slate-50"
+              >
+                {p.replace('-', ' ')}
+              </button>
+            ))}
+
             <button 
               onClick={() => { setRange({ start: null, end: null }); onReset(); setIsOpen(false); }}
-              className="mt-auto text-left text-xs font-black text-blue-500 hover:text-blue-700 transition-colors"
+              className="mt-auto text-left text-xs font-black text-blue-500 hover:text-blue-700 transition-colors pt-2"
             >
-              Reset
+              Reset Filter
             </button>
           </div>
 
