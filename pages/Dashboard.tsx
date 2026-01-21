@@ -12,7 +12,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
   const [filterEnd, setFilterEnd] = useState<string>('');
 
   const analytics = useMemo(() => {
-    const { artworkLogs, projects, leads, designers, departments } = state;
+    const { artworkLogs, projects, leads, designers, departments, internalDesigns } = state;
 
     const filteredLogs = artworkLogs.filter(log => {
       const startMatch = !filterStart || log.start_date >= filterStart;
@@ -21,22 +21,48 @@ const Dashboard: React.FC<Props> = ({ state }) => {
     });
 
     const totalArtworks = filteredLogs.length;
-    const totalProjects = projects.length; 
-    const totalLeads = leads.length;
+    
+    // --- Helper for Counting ---
+    const getTopCounts = (items: any[], keyExtractor: (item: any) => string | string[], limit = 3) => {
+      const counts: Record<string, number> = {};
+      items.forEach(item => {
+        const keyOrKeys = keyExtractor(item);
+        const keys = Array.isArray(keyOrKeys) ? keyOrKeys : [keyOrKeys];
+        keys.forEach(k => {
+          if (k) counts[k] = (counts[k] || 0) + 1;
+        });
+      });
+      return Object.entries(counts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, limit)
+        .map(([label, count]) => ({ label, count }));
+    };
 
-    // --- Keyword Analysis Logic ---
+    // --- Active Projects Stats ---
+    const activeProjects = projects.filter(p => p.status === 'ON PROGRESS');
+    const projectPICs = getTopCounts(activeProjects, p => designers.find(d => d.id === p.pic_designer_id)?.name || 'Unknown');
+    const projectLocs = getTopCounts(activeProjects, p => (p as any).locations || (p as any).location || []);
+
+    // --- Active Leads Stats ---
+    const activeLeads = leads.filter(l => l.status === 'ON PROGRESS');
+    const leadGrades = getTopCounts(activeLeads, l => l.lead_grade);
+    const leadRequesters = getTopCounts(activeLeads, l => l.requester);
+
+    // --- Internal Tasks Stats ---
+    const activeInternal = internalDesigns.filter(t => t.status !== 'DONE'); // All pending tasks
+    const internalDepts = getTopCounts(activeInternal, t => departments.find(d => d.id === t.department_id)?.department_name || 'Unknown');
+    const internalRequesters = getTopCounts(activeInternal, t => t.requester_name);
+
+    // --- Keyword Analysis Logic (Existing) ---
     const wordCounts: Record<string, number> = {};
     filteredLogs.forEach(log => {
       if (!log.artwork_name) return;
-      // Get first word, remove non-alphanumeric if needed, uppercase
       const firstWord = log.artwork_name.trim().split(/[\s-]+/)[0].toUpperCase();
-      // Only count if word length > 1 to avoid initials like "A" "B" unless meaningful
       if (firstWord.length > 1) {
         wordCounts[firstWord] = (wordCounts[firstWord] || 0) + 1;
       }
     });
 
-    // Convert to array, sort by count desc, take top 5
     const topKeywords = Object.entries(wordCounts)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
@@ -130,9 +156,12 @@ const Dashboard: React.FC<Props> = ({ state }) => {
     }).sort((a, b) => b.totalArtworks - a.totalArtworks);
 
     return {
-      totalArtworks, totalProjects, totalLeads,
+      totalArtworks, 
+      activeProjectsCount: activeProjects.length,
+      activeLeadsCount: activeLeads.length,
+      activeInternalCount: activeInternal.length,
       artworksProject, artworksLead, artworksInternal,
-      teamStats, departmentStats, topKeywords, // Added topKeywords
+      teamStats, departmentStats, topKeywords,
       globalTypeSplit, globalContextSplit,
       monthlyTrends: getMonthlyTrends(),
       avgDurProj: calcAvgDuration(WorkContext.PROJECT),
@@ -150,6 +179,12 @@ const Dashboard: React.FC<Props> = ({ state }) => {
         type: t,
         percentage: artworksInternal ? Math.round((filteredLogs.filter(l => l.work_context === WorkContext.INTERNAL && l.artwork_type === t).length / artworksInternal) * 100) : 0
       })),
+      // Stats for Cards
+      statsData: {
+        projects: { pics: projectPICs, locs: projectLocs },
+        leads: { grades: leadGrades, reqs: leadRequesters },
+        internal: { depts: internalDepts, reqs: internalRequesters }
+      }
     };
   }, [state, filterStart, filterEnd]);
 
@@ -170,16 +205,44 @@ const Dashboard: React.FC<Props> = ({ state }) => {
       </header>
 
       {/* KPI Row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
         <KPICard 
           label="Total Artworks" 
           value={analytics.totalArtworks} 
-          sub="Production Output" 
+          sub="Filtered Output" 
           color="border-indigo-600"
-          keywords={analytics.topKeywords} // Pass keywords here
+          keywords={analytics.topKeywords}
         />
-        <KPICard label="Active Projects" value={analytics.totalProjects} sub="Managed Timelines" color="border-blue-600" />
-        <KPICard label="Active Leads" value={analytics.totalLeads} sub="Service Inquiries" color="border-emerald-600" />
+        <KPICard 
+          label="Active Projects" 
+          value={analytics.activeProjectsCount} 
+          sub="On Progress" 
+          color="border-blue-600"
+          statsList={[
+            { title: "Top 3 PIC", items: analytics.statsData.projects.pics },
+            { title: "Top 3 Locations", items: analytics.statsData.projects.locs }
+          ]}
+        />
+        <KPICard 
+          label="Active Leads" 
+          value={analytics.activeLeadsCount} 
+          sub="On Progress" 
+          color="border-emerald-600" 
+          statsList={[
+             { title: "By Grade", items: analytics.statsData.leads.grades },
+             { title: "Top Requesters", items: analytics.statsData.leads.reqs }
+          ]}
+        />
+        <KPICard 
+          label="Active Tasks" 
+          value={analytics.activeInternalCount} 
+          sub="Internal Requests" 
+          color="border-purple-600" 
+          statsList={[
+             { title: "Top Depts", items: analytics.statsData.internal.depts },
+             { title: "Top Requesters", items: analytics.statsData.internal.reqs }
+          ]}
+        />
       </div>
 
       {/* Volume Insights Row */}
@@ -331,24 +394,48 @@ const LegendDot = ({ color, label }: { color: string, label: string }) => (
   </div>
 );
 
-const KPICard = ({ label, value, sub, color, keywords }: any) => (
-  <div className={`bg-white p-6 rounded-3xl border border-slate-200 shadow-sm border-l-8 ${color}`}>
-    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-1">{label}</span>
-    <div className="text-3xl font-bold text-slate-900 tracking-tight">{value}</div>
-    <p className="text-[10px] font-medium text-slate-400 uppercase mt-1 mb-3">{sub}</p>
+const KPICard = ({ label, value, sub, color, keywords, statsList }: any) => (
+  <div className={`bg-white p-6 rounded-3xl border border-slate-200 shadow-sm border-l-8 flex flex-col h-full ${color}`}>
+    <div className="mb-4">
+      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-1">{label}</span>
+      <div className="text-3xl font-bold text-slate-900 tracking-tight">{value}</div>
+      <p className="text-[10px] font-medium text-slate-400 uppercase mt-1">{sub}</p>
+    </div>
     
-    {keywords && keywords.length > 0 && (
-      <div className="pt-3 border-t border-slate-100">
-        <span className="text-[8px] font-black text-slate-400 uppercase tracking-wide block mb-1.5">Top Keywords</span>
-        <div className="flex flex-wrap gap-1">
-          {keywords.map((k: any) => (
-            <span key={k.word} className="px-1.5 py-0.5 bg-slate-100 text-slate-600 rounded text-[9px] font-bold uppercase border border-slate-200">
-              {k.word} <span className="text-[7px] text-slate-400">({k.count})</span>
-            </span>
+    <div className="mt-auto">
+      {/* Existing Keyword Logic */}
+      {keywords && keywords.length > 0 && (
+        <div className="pt-3 border-t border-slate-100">
+          <span className="text-[8px] font-black text-slate-400 uppercase tracking-wide block mb-1.5">Top Keywords</span>
+          <div className="flex flex-wrap gap-1">
+            {keywords.map((k: any) => (
+              <span key={k.word} className="px-1.5 py-0.5 bg-slate-100 text-slate-600 rounded text-[9px] font-bold uppercase border border-slate-200">
+                {k.word} <span className="text-[7px] text-slate-400">({k.count})</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* New Stats List Logic */}
+      {statsList && statsList.length > 0 && (
+        <div className="pt-3 border-t border-slate-100 grid grid-cols-2 gap-3">
+          {statsList.map((list: any, idx: number) => (
+            <div key={idx}>
+              <span className="text-[8px] font-black text-slate-400 uppercase tracking-wide block mb-1.5 truncate">{list.title}</span>
+              <div className="flex flex-col gap-1">
+                {list.items.map((item: any, i: number) => (
+                  <div key={i} className="flex justify-between items-center text-[9px]">
+                    <span className="font-bold text-slate-600 truncate max-w-[70%]">{item.label}</span>
+                    <span className="font-black text-slate-900 bg-slate-50 px-1 rounded">{item.count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
-      </div>
-    )}
+      )}
+    </div>
   </div>
 );
 
