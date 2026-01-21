@@ -31,7 +31,7 @@ const App: React.FC = () => {
 
   const fetchData = async () => {
     if (!supabase || useDemoMode) return;
-    setLoading(true);
+    // Don't set loading to true here to avoid flashing UI on background updates
     try {
       const [designersRes, departmentsRes, projectsRes, leadsRes, internalRes, logsRes] = await Promise.all([
         supabase.from('designers').select('*').order('name'),
@@ -52,17 +52,38 @@ const App: React.FC = () => {
       });
     } catch (error) {
       console.error("Fetch error:", error);
-    } finally {
-      setLoading(false);
     }
   };
 
+  // Initial Load
   useEffect(() => {
     if (isSupabaseConfigured && !useDemoMode) {
-      fetchData();
+      setLoading(true);
+      fetchData().then(() => setLoading(false));
     } else if (useDemoMode) {
       setState(INITIAL_STATE);
     }
+  }, [useDemoMode]);
+
+  // REALTIME SUBSCRIPTION setup
+  useEffect(() => {
+    if (!supabase || useDemoMode) return;
+
+    // Subscribe to all changes in the 'public' schema
+    const channel = supabase.channel('db-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public' },
+        (payload) => {
+          console.log('Realtime change detected:', payload);
+          fetchData(); // Trigger data refresh automatically
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [useDemoMode]);
 
   if (!isSupabaseConfigured && !useDemoMode) {
@@ -89,7 +110,9 @@ const App: React.FC = () => {
     if (useDemoMode || !supabase) return;
     const { error } = await supabase.from('artwork_logs').insert([log]);
     if (error) alert(`Error: ${error.message}`);
-    else fetchData();
+    // No need to manually fetchData() here anymore, the subscription will catch it,
+    // but keeping it doesn't hurt for immediate optimistic feeling if realtime lags slightly.
+    else fetchData(); 
   };
 
   const handleUpdateLog = async (log: ArtworkLog) => {
