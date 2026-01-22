@@ -39,24 +39,21 @@ const Dashboard: React.FC<Props> = ({ state }) => {
     };
 
     // --- Projects Stats (ALL Statuses) ---
-    // Previously filtered for 'ON PROGRESS', now using all projects
     const allProjects = projects;
     const projectPICs = getTopCounts(allProjects, p => designers.find(d => d.id === p.pic_designer_id)?.name || 'Unknown');
     const projectLocs = getTopCounts(allProjects, p => (p as any).locations || (p as any).location || []);
 
     // --- Leads Stats (ALL Statuses) ---
-    // Previously filtered for 'ON PROGRESS', now using all leads
     const allLeads = leads;
     const leadGrades = getTopCounts(allLeads, l => l.lead_grade);
     const leadRequesters = getTopCounts(allLeads, l => l.requester);
 
     // --- Internal Tasks Stats (ALL Statuses) ---
-    // Previously filtered for !== 'DONE', now using all internal designs
     const allInternal = internalDesigns;
     const internalDepts = getTopCounts(allInternal, t => departments.find(d => d.id === t.department_id)?.department_name || 'Unknown');
     const internalRequesters = getTopCounts(allInternal, t => t.requester_name);
 
-    // --- Keyword Analysis Logic (Existing) ---
+    // --- Keyword Analysis Logic ---
     const wordCounts: Record<string, number> = {};
     filteredLogs.forEach(log => {
       if (!log.artwork_name) return;
@@ -120,7 +117,10 @@ const Dashboard: React.FC<Props> = ({ state }) => {
           [WorkContext.INTERNAL]: monthLogs.filter(l => l.work_context === WorkContext.INTERNAL).length,
         });
       }
-      return trends;
+      return trends; // Chronological order (oldest to newest) is handled by loop logic relative to array index if we unshift, but here we push.
+      // Actually the loop goes i=5 down to 0. 
+      // i=5 is 5 months ago. i=0 is current month.
+      // So pushing them creates chronological order: [Month-5, Month-4, ..., Current]
     };
 
     const departmentStats = departments.map(dept => {
@@ -134,7 +134,9 @@ const Dashboard: React.FC<Props> = ({ state }) => {
           total: logs.length
         }
       };
-    }).sort((a, b) => b.counts.total - a.counts.total);
+    })
+    .filter(d => d.counts.total > 0) // Filter out departments with 0 artworks
+    .sort((a, b) => b.counts.total - a.counts.total);
 
     const teamStats = designers.map(d => {
       const logs = filteredLogs.filter(l => l.pic_designer_id === d.id);
@@ -266,7 +268,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
                <LegendDot color="bg-orange-500" label="Video" />
             </div>
           </div>
-          <div className="h-[240px] w-full">
+          <div className="h-[240px] w-full mb-4">
             <TrendLineChart 
               data={analytics.monthlyTrends} 
               keys={["2D Design", "3D Design", "Video"]} 
@@ -274,6 +276,14 @@ const Dashboard: React.FC<Props> = ({ state }) => {
               colors={["#3b82f6", "#10b981", "#f97316"]} 
             />
           </div>
+          <TrendDataList 
+            data={analytics.monthlyTrends} 
+            cols={[
+              { key: '2D Design', label: '2D', color: 'text-blue-600' },
+              { key: '3D Design', label: '3D', color: 'text-emerald-600' },
+              { key: 'Video', label: 'Video', color: 'text-orange-600' }
+            ]} 
+          />
         </section>
 
         <section className={cardClass}>
@@ -285,7 +295,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
                <LegendDot color="bg-purple-600" label="Int" />
             </div>
           </div>
-          <div className="h-[240px] w-full">
+          <div className="h-[240px] w-full mb-4">
             <TrendLineChart 
               data={analytics.monthlyTrends} 
               keys={[WorkContext.PROJECT, WorkContext.LEAD, WorkContext.INTERNAL]} 
@@ -293,6 +303,14 @@ const Dashboard: React.FC<Props> = ({ state }) => {
               colors={["#2563eb", "#059669", "#7c3aed"]} 
             />
           </div>
+          <TrendDataList 
+            data={analytics.monthlyTrends} 
+            cols={[
+              { key: WorkContext.PROJECT, label: 'PRJ', color: 'text-blue-700' },
+              { key: WorkContext.LEAD, label: 'LED', color: 'text-emerald-700' },
+              { key: WorkContext.INTERNAL, label: 'INT', color: 'text-purple-700' }
+            ]} 
+          />
         </section>
 
         <section className={cardClass}>
@@ -317,7 +335,11 @@ const Dashboard: React.FC<Props> = ({ state }) => {
         </div>
         <div className="max-h-[400px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-200">
           <div className="space-y-6">
-            {analytics.departmentStats.map(dept => {
+            {analytics.departmentStats.length === 0 ? (
+               <div className="text-center py-8 text-xs font-bold text-slate-400 italic border border-dashed border-slate-200 rounded-xl">
+                 No department activity found in this period.
+               </div>
+            ) : analytics.departmentStats.map(dept => {
               const deptTotal = dept.counts.total || 0;
               const globalMax = Math.max(...analytics.departmentStats.map(d => d.counts.total)) || 1;
               return (
@@ -389,6 +411,34 @@ const Dashboard: React.FC<Props> = ({ state }) => {
 };
 
 // --- Sub-Components ---
+
+const TrendDataList = ({ data, cols }: { data: any[], cols: { key: string, label: string, color: string }[] }) => {
+  // Use a copy reversed to show newest first, or keep consistent with chart
+  const renderData = data; 
+
+  return (
+    <div className="border-t border-slate-100 pt-3 mt-auto">
+      <div className="grid grid-cols-4 gap-2 mb-2 px-2">
+         <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Month</div>
+         {cols.map((c, i) => (
+           <div key={i} className={`text-[9px] font-black uppercase text-center tracking-widest ${c.color}`}>{c.label}</div>
+         ))}
+      </div>
+      <div className="max-h-[120px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-100 pr-1">
+        {renderData.map((d, i) => (
+          <div key={i} className="grid grid-cols-4 gap-2 py-1.5 border-b border-slate-50 last:border-0 hover:bg-slate-50 rounded px-2">
+            <div className="text-[10px] font-bold text-slate-600 truncate">{d.label}</div>
+            {cols.map((c, idx) => (
+              <div key={idx} className="text-[10px] font-black text-slate-900 text-center">
+                {d[c.key] || 0}
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 const LegendDot = ({ color, label }: { color: string, label: string }) => (
   <div className="flex items-center gap-1.5">
