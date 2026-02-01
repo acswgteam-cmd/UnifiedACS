@@ -2,6 +2,7 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { Project, Designer } from '../types';
 import { supabase } from '../lib/supabase';
+import { SURVEY_FORM_SECRET } from '../App';
 
 // Nama bulan untuk tampilan kalender
 const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -19,6 +20,7 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [newLocInput, setNewLocInput] = useState('');
+  const [copySuccess, setCopySuccess] = useState(false);
   const lastScrollTime = useRef(0);
   
   // States for Filtering
@@ -94,6 +96,13 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
     });
     return lanes;
   }, [filteredProjects, currentDate]);
+
+  const handleCopySurveyLink = () => {
+    const publicUrl = `${window.location.origin}${window.location.pathname}#/portal/v1/survey/${SURVEY_FORM_SECRET}`;
+    navigator.clipboard.writeText(publicUrl);
+    setCopySuccess(true);
+    setTimeout(() => setCopySuccess(false), 2000);
+  };
 
   const toggleSupportDesigner = (id: string) => {
     const current = formData.support_designer_ids || [];
@@ -249,6 +258,12 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
           <p className="text-slate-600 text-sm mt-1 font-bold">Manage event project timelines.</p>
         </div>
         <div className="flex items-center gap-4">
+           {/* Copy Survey Link Button */}
+          <button onClick={handleCopySurveyLink} className={`px-4 py-2 rounded-lg text-xs font-bold uppercase transition-all flex items-center gap-2 border ${copySuccess ? 'bg-emerald-50 border-emerald-500 text-emerald-700' : 'bg-white border-slate-300 text-slate-700 hover:border-indigo-500'}`}>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
+            {copySuccess ? 'Survey Link Copied!' : 'Eval Survey Link'}
+          </button>
+          
           <div className="flex bg-slate-200 p-1 rounded-xl">
             <button onClick={() => setView('list')} className={`px-4 py-1.5 rounded-lg text-xs font-black transition-all ${view === 'list' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600'}`}>List</button>
             <button onClick={() => setView('calendar')} className={`px-4 py-1.5 rounded-lg text-xs font-black transition-all ${view === 'calendar' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600'}`}>Calendar</button>
