@@ -136,17 +136,31 @@ const Dashboard: React.FC<Props> = ({ state }) => {
     .sort((a, b) => b.counts.total - a.counts.total);
 
     // --- TEAM EVALUATION LOGIC ---
-    // Calculate average evaluation score for each designer
+    // Calculate stats for each designer
     const teamStats = designers.map(d => {
       const logs = filteredLogs.filter(l => l.pic_designer_id === d.id);
-      const uniqueProjects = new Set(logs.filter(l => l.work_context === WorkContext.PROJECT).map(l => l.project_id)).size;
-      const uniqueLeads = new Set(logs.filter(l => l.work_context === WorkContext.LEAD).map(l => l.lead_id)).size;
-      const completedLogs = logs.filter(l => l.end_date);
-      const totalDays = completedLogs.reduce((acc, l) => {
-        const start = new Date(l.start_date);
-        const end = new Date(l.end_date!);
-        return acc + (Math.max(0, (end.getTime() - start.getTime()) / (1000 * 3600 * 24)) + 1);
-      }, 0);
+      
+      // Metric 1: Total Projects (PIC + Support)
+      // Check Project Table directly, not logs, to find involvement
+      const projectsInvolvedCount = projects.filter(p => 
+        p.pic_designer_id === d.id || (p.support_designer_ids || []).includes(d.id)
+      ).length;
+
+      // Metric 2: Total Leads Handled (based on logs work context LEAD)
+      // Using unique Lead IDs from logs to see how many distinct leads they worked on
+      const uniqueLeads = new Set(logs.filter(l => l.work_context === WorkContext.LEAD && l.lead_id).map(l => l.lead_id)).size;
+
+      // Metric 3: Lead Duration (Avg Days for LEAD context logs)
+      const leadLogs = logs.filter(l => l.work_context === WorkContext.LEAD && l.end_date);
+      let avgLeadDuration = "0.0";
+      if (leadLogs.length > 0) {
+        const totalLeadDays = leadLogs.reduce((acc, l) => {
+            const start = new Date(l.start_date);
+            const end = new Date(l.end_date!);
+            return acc + (Math.max(0, (end.getTime() - start.getTime()) / (1000 * 3600 * 24)) + 1);
+        }, 0);
+        avgLeadDuration = (totalLeadDays / leadLogs.length).toFixed(1);
+      }
 
       // --- Survey Score Calculation ---
       // Find projects where this designer is PIC or Support
@@ -156,18 +170,35 @@ const Dashboard: React.FC<Props> = ({ state }) => {
       
       const relevantSurveys = projectSurveys.filter(s => involvedProjectIds.includes(s.project_id));
       
-      let avgRatingStr = "N/A";
+      let avgRatingStr = null;
+      let detailedScores: any = null;
       
       if (relevantSurveys.length > 0) {
         let totalScoreSum = 0;
+        // Accumulators for individual criteria
+        let accSpeed = 0, accQual = 0, accAcc = 0, accCoord = 0;
+
         relevantSurveys.forEach(survey => {
-          // Average of the 7 questions (max 3)
           const sum7 = survey.rating_speed + survey.rating_quality + survey.rating_accuracy + 
                        survey.rating_coord_internal + survey.rating_coord_client + 
                        survey.rating_problem_solving + survey.rating_agility;
           totalScoreSum += (sum7 / 7);
+
+          accSpeed += survey.rating_speed;
+          accQual += survey.rating_quality;
+          accAcc += survey.rating_accuracy;
+          // Avg of coord internal & client for simplicity in breakdown
+          accCoord += (survey.rating_coord_internal + survey.rating_coord_client) / 2;
         });
+        
         avgRatingStr = (totalScoreSum / relevantSurveys.length).toFixed(1); // e.g. "2.8"
+        
+        detailedScores = {
+           speed: (accSpeed / relevantSurveys.length).toFixed(1),
+           quality: (accQual / relevantSurveys.length).toFixed(1),
+           accuracy: (accAcc / relevantSurveys.length).toFixed(1),
+           coord: (accCoord / relevantSurveys.length).toFixed(1),
+        };
       }
 
       return {
@@ -176,10 +207,11 @@ const Dashboard: React.FC<Props> = ({ state }) => {
         leadArtworks: logs.filter(l => l.work_context === WorkContext.LEAD).length,
         internalArtworks: logs.filter(l => l.work_context === WorkContext.INTERNAL).length,
         totalArtworks: logs.length,
-        uniqueProjects,
+        uniqueProjectsInvolved: projectsInvolvedCount,
         uniqueLeads,
-        avgDuration: completedLogs.length ? (totalDays / completedLogs.length).toFixed(1) : "0.0",
-        avgRating: avgRatingStr
+        avgLeadDuration,
+        avgRating: avgRatingStr,
+        detailedScores
       };
     }).sort((a, b) => b.totalArtworks - a.totalArtworks);
 
@@ -411,19 +443,45 @@ const Dashboard: React.FC<Props> = ({ state }) => {
                   <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">{ds.role}</p>
                 </div>
               </div>
+              
               <div className="grid grid-cols-3 gap-2 mb-6">
-                <MetricBox label="Projects" value={ds.uniqueProjects} color="text-blue-700" bg="bg-blue-50" />
-                <MetricBox label="Avg Score" value={ds.avgRating} color="text-orange-600" bg="bg-orange-50" icon="★" />
-                <MetricBox label="Avg Days" value={ds.avgDuration} unit="d" color="text-indigo-700" bg="bg-indigo-50" />
+                <MetricBox label="Projects" value={ds.uniqueProjectsInvolved} color="text-blue-700" bg="bg-blue-50" />
+                <MetricBox label="Leads" value={ds.uniqueLeads} color="text-emerald-700" bg="bg-emerald-50" />
+                <MetricBox label="Avg Lead Days" value={ds.avgLeadDuration} unit="d" color="text-indigo-700" bg="bg-indigo-50" />
               </div>
+              
               <div className="space-y-3 pt-4 border-t border-slate-100">
                 <StatBar label="Project" value={ds.projectArtworks} max={ds.totalArtworks} color="bg-blue-600" />
                 <StatBar label="Lead" value={ds.leadArtworks} max={ds.totalArtworks} color="bg-emerald-600" />
                 <StatBar label="Internal" value={ds.internalArtworks} max={ds.totalArtworks} color="bg-purple-600" />
               </div>
+              
               <div className="mt-6 pt-4 border-t border-slate-100 flex justify-between items-center">
                 <span className="text-[10px] font-bold text-slate-900 uppercase">Total Logged</span>
                 <span className="text-xl font-bold text-indigo-600 tracking-tighter">{ds.totalArtworks}</span>
+              </div>
+
+              {/* EVALUATION SCORE SECTION (Bottom) */}
+              <div className="mt-4 pt-4 border-t border-dashed border-slate-200">
+                <div className="flex justify-between items-center mb-2">
+                   <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Performance Eval</span>
+                   {ds.avgRating ? (
+                     <span className="bg-orange-100 text-orange-700 px-2 py-0.5 rounded text-[10px] font-black border border-orange-200">
+                       {ds.avgRating} / 3.0
+                     </span>
+                   ) : (
+                     <span className="text-[9px] text-slate-300 font-bold italic">No data</span>
+                   )}
+                </div>
+                
+                {ds.detailedScores && (
+                  <div className="grid grid-cols-2 gap-2 mt-2">
+                     <TinyScore label="Speed" val={ds.detailedScores.speed} />
+                     <TinyScore label="Qual" val={ds.detailedScores.quality} />
+                     <TinyScore label="Accur" val={ds.detailedScores.accuracy} />
+                     <TinyScore label="Coord" val={ds.detailedScores.coord} />
+                  </div>
+                )}
               </div>
             </div>
           ))}
@@ -434,6 +492,13 @@ const Dashboard: React.FC<Props> = ({ state }) => {
 };
 
 // --- Sub-Components ---
+
+const TinyScore = ({ label, val }: { label: string, val: string }) => (
+  <div className="flex justify-between items-center bg-slate-50 px-2 py-1 rounded">
+    <span className="text-[8px] font-bold text-slate-500 uppercase">{label}</span>
+    <span className="text-[9px] font-black text-slate-800">{val}</span>
+  </div>
+);
 
 const TrendDataList = ({ data, cols }: { data: any[], cols: { key: string, label: string, color: string }[] }) => {
   const renderData = data; 
