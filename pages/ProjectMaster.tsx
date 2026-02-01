@@ -34,10 +34,6 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, projectSurveys = 
   const [newLocInput, setNewLocInput] = useState('');
   const [copySuccess, setCopySuccess] = useState(false);
   
-  // States for Survey Editing
-  const [isEditingSurvey, setIsEditingSurvey] = useState(false);
-  const [surveyFormData, setSurveyFormData] = useState<Partial<ProjectSurvey>>({});
-  
   // States for Filtering
   const [filterType, setFilterType] = useState('ALL');
   const [filterPIC, setFilterPIC] = useState('ALL');
@@ -223,24 +219,8 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, projectSurveys = 
   };
 
   // --- SURVEY HANDLERS ---
-  const handleEditSurvey = (survey: ProjectSurvey) => {
-    setSurveyFormData(survey);
-    setIsEditingSurvey(true);
-  };
-
-  const handleSaveSurvey = async () => {
-    if (!supabase || !surveyFormData.id) return;
-    const { error } = await supabase.from('project_surveys').update(surveyFormData).eq('id', surveyFormData.id);
-    if (error) {
-      alert(`Error updating survey: ${error.message}`);
-    } else {
-      onUpdate();
-      setIsEditingSurvey(false);
-    }
-  };
-
   const handleDeleteSurvey = async (id: string) => {
-    if (!supabase || !confirm("Are you sure you want to delete this evaluation?")) return;
+    if (!supabase || !confirm("Are you sure you want to delete this evaluation result? This cannot be undone.")) return;
     const { error } = await supabase.from('project_surveys').delete().eq('id', id);
     if (error) alert(error.message);
     else onUpdate();
@@ -391,7 +371,7 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, projectSurveys = 
                     const locs = (p as any).locations || (p as any).location || [];
                     const normalizedLocs = Array.isArray(locs) ? locs : [locs];
                     return (
-                      <tr key={p.id} onClick={() => { setSelectedProject(p); setIsEditingSurvey(false); }} className="hover:bg-slate-50 transition-colors cursor-pointer">
+                      <tr key={p.id} onClick={() => { setSelectedProject(p); }} className="hover:bg-slate-50 transition-colors cursor-pointer">
                         <td className="px-6 py-4"><div className="flex flex-col gap-2"><span className={`px-2 py-0.5 rounded-full border text-[8px] font-black uppercase self-start ${getStatusBadge(p.status)}`}>{p.status}</span><span className="font-black uppercase">{p.project_name}</span></div></td>
                         <td className="px-6 py-4"><div className="flex flex-col"><span className="text-[11px] font-black">{p.start_date} → {p.end_date}</span><div className="flex flex-wrap gap-1 mt-1">{normalizedLocs.map(l => <span key={l} className="text-[8px] bg-slate-100 px-1.5 py-0.5 rounded border uppercase">{l}</span>)}</div></div></td>
                         <td className="px-6 py-4">
@@ -454,7 +434,7 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, projectSurveys = 
 
               {(() => {
                 const survey = projectSurveys.find(s => s.project_id === selectedProject.id);
-                if (!survey && !isEditingSurvey) {
+                if (!survey) {
                   return (
                     <div className="p-6 bg-slate-50 rounded-xl border border-dashed border-slate-300 text-center">
                       <p className="text-xs font-bold text-slate-400 italic">No evaluation submitted yet.</p>
@@ -465,48 +445,20 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, projectSurveys = 
                   );
                 }
 
-                if (isEditingSurvey) {
-                   // Form Editing Mode
-                   return (
-                     <div className="space-y-4 animate-in fade-in duration-300 bg-slate-50 p-6 rounded-2xl border border-slate-200">
-                        {Object.entries(SURVEY_LABELS).map(([key, label]) => (
-                          <div key={key}>
-                            <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">{label}</label>
-                            <input 
-                              type="number" 
-                              min="1" max="3"
-                              value={(surveyFormData as any)[key] || 0}
-                              onChange={(e) => setSurveyFormData(prev => ({ ...prev, [key]: parseInt(e.target.value) }))}
-                              className="w-full p-2 border border-slate-300 rounded-lg text-sm font-bold"
-                            />
-                          </div>
-                        ))}
-                        <div>
-                          <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Notes</label>
-                          <textarea 
-                            value={surveyFormData.notes || ''}
-                            onChange={(e) => setSurveyFormData(prev => ({ ...prev, notes: e.target.value }))}
-                            className="w-full p-2 border border-slate-300 rounded-lg text-sm"
-                            rows={2}
-                          />
-                        </div>
-                        <div className="flex gap-2 pt-2">
-                          <button onClick={handleSaveSurvey} className="flex-1 bg-indigo-600 text-white text-xs font-bold uppercase py-2.5 rounded-lg">Save Evaluation</button>
-                          <button onClick={() => { setIsEditingSurvey(false); setSurveyFormData({}); }} className="flex-1 bg-slate-200 text-slate-600 text-xs font-bold uppercase py-2.5 rounded-lg">Cancel</button>
-                        </div>
-                     </div>
-                   );
-                }
-
-                // Display Mode (Read Only)
+                // Display Mode (Read Only with Delete button in header)
                 return (
                   <div className="bg-slate-50 rounded-2xl border border-slate-200 p-6 relative">
-                    <div className="absolute top-4 right-4 flex gap-2">
-                      <button onClick={() => handleEditSurvey(survey!)} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white rounded transition-colors" title="Edit">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                      </button>
-                      <button onClick={() => handleDeleteSurvey(survey!.id)} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-white rounded transition-colors" title="Delete">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    {/* Header with date and Delete button aligned */}
+                    <div className="flex justify-between items-center border-b border-slate-200 pb-3 mb-4">
+                      <div className="text-[9px] font-bold text-slate-400 uppercase">
+                        Submitted: {new Date(survey!.created_at).toLocaleDateString()}
+                      </div>
+                      <button 
+                        onClick={() => handleDeleteSurvey(survey!.id)} 
+                        className="px-3 py-1 bg-red-50 text-red-600 text-[9px] font-black uppercase rounded hover:bg-red-100 transition-colors border border-red-200"
+                        title="Delete Evaluation"
+                      >
+                        Delete Result
                       </button>
                     </div>
 
@@ -532,9 +484,6 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, projectSurveys = 
                         <p className="text-xs text-slate-700 italic mt-1 bg-white p-3 rounded-lg border border-slate-100">{survey.notes}</p>
                       </div>
                     )}
-                    <div className="text-right mt-4 text-[9px] font-bold text-slate-400 uppercase">
-                      Submitted: {new Date(survey!.created_at).toLocaleDateString()}
-                    </div>
                   </div>
                 );
               })()}
