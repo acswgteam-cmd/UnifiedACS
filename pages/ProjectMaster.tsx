@@ -1,19 +1,31 @@
 
 import React, { useState, useMemo, useRef } from 'react';
-import { Project, Designer } from '../types';
+import { Project, Designer, ProjectSurvey } from '../types';
 import { supabase } from '../lib/supabase';
 import { SURVEY_FORM_SECRET } from '../App';
 
 // Nama bulan untuk tampilan kalender
 const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
+// Survey Question Keys mapping for display
+const SURVEY_LABELS: Record<string, string> = {
+  rating_speed: 'Kecepatan Delivery Output',
+  rating_quality: 'Kualitas Output Final',
+  rating_accuracy: 'Akurasi Implementasi Brief',
+  rating_coord_internal: 'Koordinasi Internal Tim',
+  rating_coord_client: 'Koordinasi dengan Klien',
+  rating_problem_solving: 'Problem Solving Capability',
+  rating_agility: 'Agility terhadap Perubahan'
+};
+
 interface Props {
   projects: Project[];
   designers: Designer[];
+  projectSurveys?: ProjectSurvey[];
   onUpdate: () => void;
 }
 
-const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
+const ProjectMaster: React.FC<Props> = ({ projects, designers, projectSurveys = [], onUpdate }) => {
   const [view, setView] = useState<'list' | 'calendar'>('list');
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -21,7 +33,10 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [newLocInput, setNewLocInput] = useState('');
   const [copySuccess, setCopySuccess] = useState(false);
-  const lastScrollTime = useRef(0);
+  
+  // States for Survey Editing
+  const [isEditingSurvey, setIsEditingSurvey] = useState(false);
+  const [surveyFormData, setSurveyFormData] = useState<Partial<ProjectSurvey>>({});
   
   // States for Filtering
   const [filterType, setFilterType] = useState('ALL');
@@ -207,6 +222,30 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
     }
   };
 
+  // --- SURVEY HANDLERS ---
+  const handleEditSurvey = (survey: ProjectSurvey) => {
+    setSurveyFormData(survey);
+    setIsEditingSurvey(true);
+  };
+
+  const handleSaveSurvey = async () => {
+    if (!supabase || !surveyFormData.id) return;
+    const { error } = await supabase.from('project_surveys').update(surveyFormData).eq('id', surveyFormData.id);
+    if (error) {
+      alert(`Error updating survey: ${error.message}`);
+    } else {
+      onUpdate();
+      setIsEditingSurvey(false);
+    }
+  };
+
+  const handleDeleteSurvey = async (id: string) => {
+    if (!supabase || !confirm("Are you sure you want to delete this evaluation?")) return;
+    const { error } = await supabase.from('project_surveys').delete().eq('id', id);
+    if (error) alert(error.message);
+    else onUpdate();
+  };
+
   const renderCalendar = () => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
@@ -352,7 +391,7 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
                     const locs = (p as any).locations || (p as any).location || [];
                     const normalizedLocs = Array.isArray(locs) ? locs : [locs];
                     return (
-                      <tr key={p.id} onClick={() => setSelectedProject(p)} className="hover:bg-slate-50 transition-colors cursor-pointer">
+                      <tr key={p.id} onClick={() => { setSelectedProject(p); setIsEditingSurvey(false); }} className="hover:bg-slate-50 transition-colors cursor-pointer">
                         <td className="px-6 py-4"><div className="flex flex-col gap-2"><span className={`px-2 py-0.5 rounded-full border text-[8px] font-black uppercase self-start ${getStatusBadge(p.status)}`}>{p.status}</span><span className="font-black uppercase">{p.project_name}</span></div></td>
                         <td className="px-6 py-4"><div className="flex flex-col"><span className="text-[11px] font-black">{p.start_date} → {p.end_date}</span><div className="flex flex-wrap gap-1 mt-1">{normalizedLocs.map(l => <span key={l} className="text-[8px] bg-slate-100 px-1.5 py-0.5 rounded border uppercase">{l}</span>)}</div></div></td>
                         <td className="px-6 py-4">
@@ -383,8 +422,9 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
 
       {selectedProject && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6 backdrop-blur-sm bg-slate-900/40" onClick={() => setSelectedProject(null)}>
-          <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl p-8 animate-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
+          <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl p-8 animate-in zoom-in duration-200 overflow-y-auto max-h-[90vh]" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-start mb-6"><div className="flex items-center gap-2"><span className={`px-2 py-0.5 rounded-full border text-[9px] font-black uppercase ${getStatusBadge(selectedProject.status)}`}>{selectedProject.status}</span><h2 className="text-xl font-bold text-slate-900">{selectedProject.project_name}</h2></div><button onClick={() => setSelectedProject(null)} className="p-1 text-slate-400 hover:text-slate-900"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg></button></div>
+            
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div><span className="text-[10px] font-bold text-slate-400 uppercase">PIC</span><p className="font-bold text-slate-800">{getDesignerName(selectedProject.pic_designer_id)}</p></div>
@@ -403,7 +443,104 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, onUpdate }) => {
               <div><span className="text-[10px] font-bold text-slate-400 uppercase">Locations</span><div className="flex flex-wrap gap-2 mt-1">{Array.isArray((selectedProject as any).locations) && (selectedProject as any).locations.length > 0 ? (selectedProject as any).locations.map((loc:string) => <span key={loc} className="px-2 py-1 bg-slate-100 text-[10px] font-black rounded border uppercase">{loc}</span>) : (typeof (selectedProject as any).locations === 'string' && (selectedProject as any).locations ? <span className="px-2 py-1 bg-slate-100 text-[10px] font-black rounded border uppercase">{(selectedProject as any).locations}</span> : <p className="font-bold text-slate-400 text-xs italic">HQ</p>)}</div></div>
               <div><span className="text-[10px] font-bold text-slate-400 uppercase">Notes / Keterangan</span><div className="p-4 bg-slate-50 rounded-xl text-sm italic text-slate-700 whitespace-pre-wrap">{selectedProject.notes || 'No notes.'}</div></div>
             </div>
-            <button onClick={() => setSelectedProject(null)} className="w-full mt-8 py-3 bg-slate-900 text-white rounded-xl font-bold uppercase text-xs">Close</button>
+
+            {/* SURVEY EVALUATION SECTION */}
+            <div className="mt-8 pt-6 border-t border-slate-200">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide flex items-center gap-2">
+                  <span className="text-xl">📊</span> Post-Project Evaluation
+                </h3>
+              </div>
+
+              {(() => {
+                const survey = projectSurveys.find(s => s.project_id === selectedProject.id);
+                if (!survey && !isEditingSurvey) {
+                  return (
+                    <div className="p-6 bg-slate-50 rounded-xl border border-dashed border-slate-300 text-center">
+                      <p className="text-xs font-bold text-slate-400 italic">No evaluation submitted yet.</p>
+                      <button onClick={handleCopySurveyLink} className="mt-2 text-[10px] font-black text-indigo-600 uppercase hover:underline">
+                        Copy Survey Link
+                      </button>
+                    </div>
+                  );
+                }
+
+                if (isEditingSurvey) {
+                   // Form Editing Mode
+                   return (
+                     <div className="space-y-4 animate-in fade-in duration-300 bg-slate-50 p-6 rounded-2xl border border-slate-200">
+                        {Object.entries(SURVEY_LABELS).map(([key, label]) => (
+                          <div key={key}>
+                            <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">{label}</label>
+                            <input 
+                              type="number" 
+                              min="1" max="3"
+                              value={(surveyFormData as any)[key] || 0}
+                              onChange={(e) => setSurveyFormData(prev => ({ ...prev, [key]: parseInt(e.target.value) }))}
+                              className="w-full p-2 border border-slate-300 rounded-lg text-sm font-bold"
+                            />
+                          </div>
+                        ))}
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Notes</label>
+                          <textarea 
+                            value={surveyFormData.notes || ''}
+                            onChange={(e) => setSurveyFormData(prev => ({ ...prev, notes: e.target.value }))}
+                            className="w-full p-2 border border-slate-300 rounded-lg text-sm"
+                            rows={2}
+                          />
+                        </div>
+                        <div className="flex gap-2 pt-2">
+                          <button onClick={handleSaveSurvey} className="flex-1 bg-indigo-600 text-white text-xs font-bold uppercase py-2.5 rounded-lg">Save Evaluation</button>
+                          <button onClick={() => { setIsEditingSurvey(false); setSurveyFormData({}); }} className="flex-1 bg-slate-200 text-slate-600 text-xs font-bold uppercase py-2.5 rounded-lg">Cancel</button>
+                        </div>
+                     </div>
+                   );
+                }
+
+                // Display Mode (Read Only)
+                return (
+                  <div className="bg-slate-50 rounded-2xl border border-slate-200 p-6 relative">
+                    <div className="absolute top-4 right-4 flex gap-2">
+                      <button onClick={() => handleEditSurvey(survey!)} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white rounded transition-colors" title="Edit">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                      </button>
+                      <button onClick={() => handleDeleteSurvey(survey!.id)} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-white rounded transition-colors" title="Delete">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 mb-6">
+                      {Object.entries(SURVEY_LABELS).map(([key, label]) => {
+                         const score = (survey as any)[key];
+                         let color = 'bg-slate-200 text-slate-500';
+                         if (score === 3) color = 'bg-emerald-100 text-emerald-700';
+                         else if (score === 2) color = 'bg-blue-100 text-blue-700';
+                         else if (score === 1) color = 'bg-amber-100 text-amber-700';
+                         
+                         return (
+                           <div key={key} className="flex justify-between items-center border-b border-slate-200 pb-2 last:border-0 md:last:border-b">
+                             <span className="text-[10px] font-bold text-slate-600 uppercase w-3/4 pr-2">{label}</span>
+                             <span className={`text-[10px] font-black px-2 py-0.5 rounded ${color}`}>{score} / 3</span>
+                           </div>
+                         );
+                      })}
+                    </div>
+                    {survey?.notes && (
+                      <div className="mt-4">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase">Additional Notes</span>
+                        <p className="text-xs text-slate-700 italic mt-1 bg-white p-3 rounded-lg border border-slate-100">{survey.notes}</p>
+                      </div>
+                    )}
+                    <div className="text-right mt-4 text-[9px] font-bold text-slate-400 uppercase">
+                      Submitted: {new Date(survey!.created_at).toLocaleDateString()}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+
+            <button onClick={() => setSelectedProject(null)} className="w-full mt-8 py-3 bg-slate-900 text-white rounded-xl font-bold uppercase text-xs">Close Details</button>
           </div>
         </div>
       )}
