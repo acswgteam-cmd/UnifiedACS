@@ -10,12 +10,14 @@ import LeadMaster from './pages/LeadMaster';
 import InternalDesignMaster from './pages/InternalDesignMaster';
 import PublicLeadForm from './pages/PublicLeadForm';
 import PublicInternalForm from './pages/PublicInternalForm';
+import PublicProjectSurvey from './pages/PublicProjectSurvey';
 import Dashboard from './pages/Dashboard';
 import { supabase, isSupabaseConfigured } from './lib/supabase';
 import { INITIAL_STATE } from './data/mockData';
 
 export const PUBLIC_FORM_SECRET = 'acs-creative-portal-v1-992837465';
 export const INTERNAL_FORM_SECRET = 'acs-internal-request-v1-554219830';
+export const SURVEY_FORM_SECRET = 'acs-project-eval-v1-11223344';
 
 const App: React.FC = () => {
   const [useDemoMode, setUseDemoMode] = useState(false);
@@ -134,6 +136,7 @@ const App: React.FC = () => {
       <Routes>
         <Route path="/portal/v1/inquiry/:token" element={<PublicLeadForm onHostSubmit={() => fetchData()} currentLeads={state.leads} />} />
         <Route path="/portal/v1/internal/:token" element={<PublicInternalForm onHostSubmit={() => fetchData()} departments={state.departments} />} />
+        <Route path="/portal/v1/survey/:token" element={<PublicProjectSurvey />} />
         
         <Route path="/admin/*" element={
           <div className="flex h-screen overflow-hidden bg-slate-50 text-slate-900">

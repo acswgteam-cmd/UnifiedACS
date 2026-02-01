@@ -73,6 +73,20 @@ export interface ArtworkLog {
   notes?: string;
 }
 
+export interface ProjectSurvey {
+  id: string;
+  project_id: string;
+  rating_speed: number;
+  rating_quality: number;
+  rating_accuracy: number;
+  rating_coord_internal: number;
+  rating_coord_client: number;
+  rating_problem_solving: number;
+  rating_agility: number;
+  notes?: string;
+  created_at: string;
+}
+
 export interface AppState {
   designers: Designer[];
   departments: Department[];

@@ -5,7 +5,9 @@ Sistem manajemen log artwork terpadu yang terintegrasi dengan Supabase.
 
 ## 🚀 Database Setup (PENTING)
 
-Jika Anda melihat error "table not found", Anda perlu menjalankan perintah SQL berikut di **Supabase SQL Editor**:
+Jalankan perintah SQL ini di **Supabase SQL Editor** untuk membuat tabel yang dibutuhkan.
+
+### 1. Core Master Data (Jalankan Pertama)
 
 ```sql
 -- Tabel Master Departments
@@ -24,7 +26,11 @@ CREATE TABLE designers (
   active BOOLEAN DEFAULT true,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+```
 
+### 2. Operational Tables (Jalankan Kedua)
+
+```sql
 -- Tabel Master Projects
 CREATE TABLE projects (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -54,7 +60,7 @@ CREATE TABLE leads (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- Tabel Internal Design Tasks (BARU)
+-- Tabel Internal Design Tasks
 CREATE TABLE internal_designs (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   task_name TEXT NOT NULL,
@@ -65,14 +71,18 @@ CREATE TABLE internal_designs (
   status TEXT DEFAULT 'NEW',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+```
 
--- Tabel Artwork Logs
+### 3. Transactional & Features (Jalankan Ketiga)
+
+```sql
+-- Tabel Artwork Logs (Pencatatan harian)
 CREATE TABLE artwork_logs (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   work_context TEXT NOT NULL,
   project_id UUID REFERENCES projects(id),
   lead_id UUID REFERENCES leads(id),
-  internal_design_id UUID REFERENCES internal_designs(id), -- Kolom Baru
+  internal_design_id UUID REFERENCES internal_designs(id),
   department_id UUID REFERENCES departments(id),
   artwork_name TEXT NOT NULL,
   artwork_type TEXT NOT NULL,
@@ -84,11 +94,27 @@ CREATE TABLE artwork_logs (
   notes TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+-- Tabel Project Surveys (Form Evaluasi Kinerja)
+CREATE TABLE project_surveys (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  project_id UUID REFERENCES projects(id) NOT NULL UNIQUE,
+  rating_speed INTEGER NOT NULL,
+  rating_quality INTEGER NOT NULL,
+  rating_accuracy INTEGER NOT NULL,
+  rating_coord_internal INTEGER NOT NULL,
+  rating_coord_client INTEGER NOT NULL,
+  rating_problem_solving INTEGER NOT NULL,
+  rating_agility INTEGER NOT NULL,
+  notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
 ```
 
 ## 🛠 Features
 - **Dashboard Analytics**: Visualisasi produksi bulanan (2D, 3D, Video).
 - **Internal Design Portal**: Form khusus untuk permintaan antar departemen.
+- **Project Evaluation**: Form survei kinerja tim per project.
 - **Project & Lead Master**: Manajemen timeline event dan proposal.
 - **Secure Links**: Link form publik yang diamankan dengan token rahasia.
 
