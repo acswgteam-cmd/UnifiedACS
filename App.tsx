@@ -27,21 +27,22 @@ const App: React.FC = () => {
     projects: [],
     leads: [],
     internalDesigns: [],
-    artworkLogs: []
+    artworkLogs: [],
+    projectSurveys: []
   });
   const [loading, setLoading] = useState(isSupabaseConfigured);
 
   const fetchData = async () => {
     if (!supabase || useDemoMode) return;
-    // Don't set loading to true here to avoid flashing UI on background updates
     try {
-      const [designersRes, departmentsRes, projectsRes, leadsRes, internalRes, logsRes] = await Promise.all([
+      const [designersRes, departmentsRes, projectsRes, leadsRes, internalRes, logsRes, surveysRes] = await Promise.all([
         supabase.from('designers').select('*').order('name'),
         supabase.from('departments').select('*').order('department_name'),
         supabase.from('projects').select('*').order('created_at', { ascending: false }),
         supabase.from('leads').select('*').order('created_at', { ascending: false }),
         supabase.from('internal_designs').select('*').order('created_at', { ascending: false }),
-        supabase.from('artwork_logs').select('*').order('created_at', { ascending: false })
+        supabase.from('artwork_logs').select('*').order('created_at', { ascending: false }),
+        supabase.from('project_surveys').select('*')
       ]);
 
       setState({
@@ -50,7 +51,8 @@ const App: React.FC = () => {
         projects: projectsRes.data || [],
         leads: leadsRes.data || [],
         internalDesigns: internalRes.data || [],
-        artworkLogs: logsRes.data || []
+        artworkLogs: logsRes.data || [],
+        projectSurveys: surveysRes.data || []
       });
     } catch (error) {
       console.error("Fetch error:", error);
@@ -63,7 +65,7 @@ const App: React.FC = () => {
       setLoading(true);
       fetchData().then(() => setLoading(false));
     } else if (useDemoMode) {
-      setState(INITIAL_STATE);
+      setState({ ...INITIAL_STATE, projectSurveys: [] });
     }
   }, [useDemoMode]);
 
@@ -101,7 +103,7 @@ const App: React.FC = () => {
           </p>
           <div className="space-y-4">
             <button onClick={() => window.location.reload()} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold">Refresh</button>
-            <button onClick={() => { setState(INITIAL_STATE); setUseDemoMode(true); }} className="w-full py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold">Demo Mode</button>
+            <button onClick={() => { setState({ ...INITIAL_STATE, projectSurveys: [] }); setUseDemoMode(true); }} className="w-full py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold">Demo Mode</button>
           </div>
         </div>
       </div>
@@ -112,8 +114,6 @@ const App: React.FC = () => {
     if (useDemoMode || !supabase) return;
     const { error } = await supabase.from('artwork_logs').insert([log]);
     if (error) alert(`Error: ${error.message}`);
-    // No need to manually fetchData() here anymore, the subscription will catch it,
-    // but keeping it doesn't hurt for immediate optimistic feeling if realtime lags slightly.
     else fetchData(); 
   };
 
@@ -162,7 +162,7 @@ const App: React.FC = () => {
                   <Route path="/artwork-logs" element={<ArtworkLogPage state={state} onAdd={handleAddLog} onUpdate={handleUpdateLog} onDelete={handleDeleteLog} />} />
                   <Route path="/masters/departments" element={<DepartmentMaster departments={state.departments} onUpdate={fetchData} />} />
                   <Route path="/masters/designers" element={<DesignerMaster designers={state.designers} onUpdate={fetchData} />} />
-                  <Route path="/masters/projects" element={<ProjectMaster projects={state.projects} designers={state.designers} onUpdate={fetchData} />} />
+                  <Route path="/masters/projects" element={<ProjectMaster projects={state.projects} designers={state.designers} projectSurveys={state.projectSurveys} onUpdate={fetchData} />} />
                   <Route path="/masters/leads" element={<LeadMaster leads={state.leads} onUpdate={fetchData} />} />
                   <Route path="/masters/internal" element={<InternalDesignMaster internalDesigns={state.internalDesigns} departments={state.departments} onUpdate={fetchData} />} />
                 </Routes>
