@@ -92,6 +92,7 @@ export interface AppState {
   departments: Department[];
   projects: Project[];
   leads: Lead[];
-  internalDesigns: InternalDesign[]; // Entitas Baru
+  internalDesigns: InternalDesign[];
   artworkLogs: ArtworkLog[];
+  projectSurveys: ProjectSurvey[];
 }
