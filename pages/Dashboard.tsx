@@ -10,6 +10,9 @@ interface Props {
 const Dashboard: React.FC<Props> = ({ state }) => {
   const [filterStart, setFilterStart] = useState<string>('');
   const [filterEnd, setFilterEnd] = useState<string>('');
+  
+  // State for the Notes Modal
+  const [viewNotes, setViewNotes] = useState<{ name: string; notes: any[] } | null>(null);
 
   const analytics = useMemo(() => {
     const { artworkLogs, projects, leads, designers, departments, internalDesigns, projectSurveys } = state;
@@ -172,11 +175,12 @@ const Dashboard: React.FC<Props> = ({ state }) => {
       
       let avgRatingStr = null;
       let detailedScores: any = null;
+      let evalNotes: any[] = [];
       
       if (relevantSurveys.length > 0) {
         let totalScoreSum = 0;
         // Accumulators for individual criteria
-        let accSpeed = 0, accQual = 0, accAcc = 0, accCoord = 0;
+        let accSpeed = 0, accQual = 0, accAcc = 0, accCoordInt = 0, accCoordExt = 0, accProb = 0, accAgility = 0;
 
         relevantSurveys.forEach(survey => {
           const sum7 = survey.rating_speed + survey.rating_quality + survey.rating_accuracy + 
@@ -187,8 +191,20 @@ const Dashboard: React.FC<Props> = ({ state }) => {
           accSpeed += survey.rating_speed;
           accQual += survey.rating_quality;
           accAcc += survey.rating_accuracy;
-          // Avg of coord internal & client for simplicity in breakdown
-          accCoord += (survey.rating_coord_internal + survey.rating_coord_client) / 2;
+          accCoordInt += survey.rating_coord_internal;
+          accCoordExt += survey.rating_coord_client;
+          accProb += survey.rating_problem_solving;
+          accAgility += survey.rating_agility;
+
+          // Collect notes
+          if (survey.notes) {
+            evalNotes.push({
+              id: survey.id,
+              project_name: projects.find(p => p.id === survey.project_id)?.project_name || 'Unknown Project',
+              note: survey.notes,
+              date: survey.created_at
+            });
+          }
         });
         
         avgRatingStr = (totalScoreSum / relevantSurveys.length).toFixed(1); // e.g. "2.8"
@@ -197,7 +213,10 @@ const Dashboard: React.FC<Props> = ({ state }) => {
            speed: (accSpeed / relevantSurveys.length).toFixed(1),
            quality: (accQual / relevantSurveys.length).toFixed(1),
            accuracy: (accAcc / relevantSurveys.length).toFixed(1),
-           coord: (accCoord / relevantSurveys.length).toFixed(1),
+           coord_int: (accCoordInt / relevantSurveys.length).toFixed(1),
+           coord_ext: (accCoordExt / relevantSurveys.length).toFixed(1),
+           prob_solve: (accProb / relevantSurveys.length).toFixed(1),
+           agility: (accAgility / relevantSurveys.length).toFixed(1)
         };
       }
 
@@ -211,7 +230,8 @@ const Dashboard: React.FC<Props> = ({ state }) => {
         uniqueLeads,
         avgLeadDuration,
         avgRating: avgRatingStr,
-        detailedScores
+        detailedScores,
+        evalNotes
       };
     }).sort((a, b) => b.totalArtworks - a.totalArtworks);
 
@@ -252,7 +272,36 @@ const Dashboard: React.FC<Props> = ({ state }) => {
   const labelClass = "text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 block";
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 pb-12">
+    <div className="space-y-6 animate-in fade-in duration-500 pb-12 relative">
+      {/* NOTES MODAL */}
+      {viewNotes && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm" onClick={() => setViewNotes(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 max-h-[80vh] overflow-hidden flex flex-col animate-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4 pb-4 border-b border-slate-100">
+              <h3 className="font-bold text-slate-900 uppercase tracking-tight">Evaluation Notes: {viewNotes.name}</h3>
+              <button onClick={() => setViewNotes(null)} className="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-700">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+            </div>
+            <div className="overflow-y-auto pr-2 space-y-3">
+              {viewNotes.notes.length === 0 ? (
+                <p className="text-center text-xs text-slate-400 italic py-8">No additional notes recorded in surveys.</p>
+              ) : (
+                viewNotes.notes.map((note: any, idx: number) => (
+                  <div key={idx} className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-[10px] font-black text-indigo-600 uppercase truncate max-w-[70%]">{note.project_name}</span>
+                      <span className="text-[9px] font-bold text-slate-400">{new Date(note.date).toLocaleDateString()}</span>
+                    </div>
+                    <p className="text-xs text-slate-700 font-medium leading-relaxed italic">"{note.note}"</p>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight uppercase">Executive Studio Hub</h1>
@@ -447,7 +496,8 @@ const Dashboard: React.FC<Props> = ({ state }) => {
               <div className="grid grid-cols-3 gap-2 mb-6">
                 <MetricBox label="Projects" value={ds.uniqueProjectsInvolved} color="text-blue-700" bg="bg-blue-50" />
                 <MetricBox label="Leads" value={ds.uniqueLeads} color="text-emerald-700" bg="bg-emerald-50" />
-                <MetricBox label="Avg Lead Days" value={ds.avgLeadDuration} unit="d" color="text-indigo-700" bg="bg-indigo-50" />
+                {/* Changed Label Here */}
+                <MetricBox label="Lead Days" value={ds.avgLeadDuration} unit="d" color="text-indigo-700" bg="bg-indigo-50" />
               </div>
               
               <div className="space-y-3 pt-4 border-t border-slate-100">
@@ -463,10 +513,17 @@ const Dashboard: React.FC<Props> = ({ state }) => {
 
               {/* EVALUATION SCORE SECTION (Bottom) */}
               <div className="mt-4 pt-4 border-t border-dashed border-slate-200">
-                <div className="flex justify-between items-center mb-2">
-                   <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Performance Eval</span>
+                <div 
+                  className="flex justify-between items-center mb-2 cursor-pointer hover:bg-slate-50 rounded p-1 -mx-1 transition-colors"
+                  onClick={() => setViewNotes({ name: ds.name, notes: ds.evalNotes })}
+                  title="View evaluation notes"
+                >
+                   <div className="flex items-center gap-1.5">
+                     <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Performance Eval</span>
+                     {ds.evalNotes.length > 0 && <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span>}
+                   </div>
                    {ds.avgRating ? (
-                     <span className="bg-orange-100 text-orange-700 px-2 py-0.5 rounded text-[10px] font-black border border-orange-200">
+                     <span className="bg-orange-100 text-orange-700 px-2 py-0.5 rounded text-[10px] font-black border border-orange-200 hover:bg-orange-200 transition-colors">
                        {ds.avgRating} / 3.0
                      </span>
                    ) : (
@@ -479,7 +536,10 @@ const Dashboard: React.FC<Props> = ({ state }) => {
                      <TinyScore label="Speed" val={ds.detailedScores.speed} />
                      <TinyScore label="Qual" val={ds.detailedScores.quality} />
                      <TinyScore label="Accur" val={ds.detailedScores.accuracy} />
-                     <TinyScore label="Coord" val={ds.detailedScores.coord} />
+                     <TinyScore label="Int. Co" val={ds.detailedScores.coord_int} />
+                     <TinyScore label="Ext. Co" val={ds.detailedScores.coord_ext} />
+                     <TinyScore label="Prob Solv" val={ds.detailedScores.prob_solve} />
+                     <TinyScore label="Agility" val={ds.detailedScores.agility} />
                   </div>
                 )}
               </div>
@@ -494,8 +554,8 @@ const Dashboard: React.FC<Props> = ({ state }) => {
 // --- Sub-Components ---
 
 const TinyScore = ({ label, val }: { label: string, val: string }) => (
-  <div className="flex justify-between items-center bg-slate-50 px-2 py-1 rounded">
-    <span className="text-[8px] font-bold text-slate-500 uppercase">{label}</span>
+  <div className="flex justify-between items-center bg-slate-50 px-2 py-1 rounded border border-slate-100">
+    <span className="text-[7px] font-bold text-slate-500 uppercase tracking-tighter">{label}</span>
     <span className="text-[9px] font-black text-slate-800">{val}</span>
   </div>
 );
