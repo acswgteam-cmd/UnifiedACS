@@ -12,7 +12,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
   const [filterEnd, setFilterEnd] = useState<string>('');
 
   const analytics = useMemo(() => {
-    const { artworkLogs, projects, leads, designers, departments, internalDesigns } = state;
+    const { artworkLogs, projects, leads, designers, departments, internalDesigns, projectSurveys } = state;
 
     const filteredLogs = artworkLogs.filter(log => {
       const startMatch = !filterStart || log.start_date >= filterStart;
@@ -117,10 +117,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
           [WorkContext.INTERNAL]: monthLogs.filter(l => l.work_context === WorkContext.INTERNAL).length,
         });
       }
-      return trends; // Chronological order (oldest to newest) is handled by loop logic relative to array index if we unshift, but here we push.
-      // Actually the loop goes i=5 down to 0. 
-      // i=5 is 5 months ago. i=0 is current month.
-      // So pushing them creates chronological order: [Month-5, Month-4, ..., Current]
+      return trends; 
     };
 
     const departmentStats = departments.map(dept => {
@@ -138,6 +135,8 @@ const Dashboard: React.FC<Props> = ({ state }) => {
     .filter(d => d.counts.total > 0) // Filter out departments with 0 artworks
     .sort((a, b) => b.counts.total - a.counts.total);
 
+    // --- TEAM EVALUATION LOGIC ---
+    // Calculate average evaluation score for each designer
     const teamStats = designers.map(d => {
       const logs = filteredLogs.filter(l => l.pic_designer_id === d.id);
       const uniqueProjects = new Set(logs.filter(l => l.work_context === WorkContext.PROJECT).map(l => l.project_id)).size;
@@ -148,6 +147,29 @@ const Dashboard: React.FC<Props> = ({ state }) => {
         const end = new Date(l.end_date!);
         return acc + (Math.max(0, (end.getTime() - start.getTime()) / (1000 * 3600 * 24)) + 1);
       }, 0);
+
+      // --- Survey Score Calculation ---
+      // Find projects where this designer is PIC or Support
+      const involvedProjectIds = projects.filter(p => 
+        p.pic_designer_id === d.id || (p.support_designer_ids || []).includes(d.id)
+      ).map(p => p.id);
+      
+      const relevantSurveys = projectSurveys.filter(s => involvedProjectIds.includes(s.project_id));
+      
+      let avgRatingStr = "N/A";
+      
+      if (relevantSurveys.length > 0) {
+        let totalScoreSum = 0;
+        relevantSurveys.forEach(survey => {
+          // Average of the 7 questions (max 3)
+          const sum7 = survey.rating_speed + survey.rating_quality + survey.rating_accuracy + 
+                       survey.rating_coord_internal + survey.rating_coord_client + 
+                       survey.rating_problem_solving + survey.rating_agility;
+          totalScoreSum += (sum7 / 7);
+        });
+        avgRatingStr = (totalScoreSum / relevantSurveys.length).toFixed(1); // e.g. "2.8"
+      }
+
       return {
         ...d,
         projectArtworks: logs.filter(l => l.work_context === WorkContext.PROJECT).length,
@@ -156,7 +178,8 @@ const Dashboard: React.FC<Props> = ({ state }) => {
         totalArtworks: logs.length,
         uniqueProjects,
         uniqueLeads,
-        avgDuration: completedLogs.length ? (totalDays / completedLogs.length).toFixed(1) : "0.0"
+        avgDuration: completedLogs.length ? (totalDays / completedLogs.length).toFixed(1) : "0.0",
+        avgRating: avgRatingStr
       };
     }).sort((a, b) => b.totalArtworks - a.totalArtworks);
 
@@ -375,7 +398,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
 
       {/* DESIGNER PERFORMANCE HORIZONTAL */}
       <div className="pt-2">
-        <span className={labelClass}>Team Output Performance</span>
+        <span className={labelClass}>Team Output & Performance</span>
         <div className="flex overflow-x-auto flex-nowrap gap-6 mt-4 pb-4 snap-x scrollbar-thin scrollbar-thumb-slate-300">
           {analytics.teamStats.map(ds => (
             <div key={ds.id} className="flex-shrink-0 w-[300px] snap-start bg-white p-6 rounded-3xl border border-slate-200 shadow-sm group">
@@ -389,9 +412,9 @@ const Dashboard: React.FC<Props> = ({ state }) => {
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-2 mb-6">
-                <MetricBox label="Event" value={ds.uniqueProjects} color="text-blue-700" bg="bg-blue-50" />
-                <MetricBox label="Lead" value={ds.uniqueLeads} color="text-emerald-700" bg="bg-emerald-50" />
-                <MetricBox label="Avg" value={ds.avgDuration} unit="d" color="text-indigo-700" bg="bg-indigo-50" />
+                <MetricBox label="Projects" value={ds.uniqueProjects} color="text-blue-700" bg="bg-blue-50" />
+                <MetricBox label="Avg Score" value={ds.avgRating} color="text-orange-600" bg="bg-orange-50" icon="★" />
+                <MetricBox label="Avg Days" value={ds.avgDuration} unit="d" color="text-indigo-700" bg="bg-indigo-50" />
               </div>
               <div className="space-y-3 pt-4 border-t border-slate-100">
                 <StatBar label="Project" value={ds.projectArtworks} max={ds.totalArtworks} color="bg-blue-600" />
@@ -413,9 +436,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
 // --- Sub-Components ---
 
 const TrendDataList = ({ data, cols }: { data: any[], cols: { key: string, label: string, color: string }[] }) => {
-  // Use a copy reversed to show newest first, or keep consistent with chart
   const renderData = data; 
-
   return (
     <div className="border-t border-slate-100 pt-3 mt-auto">
       <div className="grid grid-cols-4 gap-2 mb-2 px-2">
@@ -456,7 +477,6 @@ const KPICard = ({ label, value, sub, color, keywords, statsList }: any) => (
     </div>
     
     <div className="mt-auto">
-      {/* Existing Keyword Logic */}
       {keywords && keywords.length > 0 && (
         <div className="pt-3 border-t border-slate-100">
           <span className="text-[8px] font-black text-slate-400 uppercase tracking-wide block mb-1.5">Top Keywords</span>
@@ -470,7 +490,6 @@ const KPICard = ({ label, value, sub, color, keywords, statsList }: any) => (
         </div>
       )}
 
-      {/* New Stats List Logic */}
       {statsList && statsList.length > 0 && (
         <div className="pt-3 border-t border-slate-100 grid grid-cols-2 gap-3">
           {statsList.map((list: any, idx: number) => (
@@ -525,7 +544,6 @@ const VolumeCard = ({ title, count, duration, typeSplit, color }: any) => {
 const PieRow = ({ title, data, total }: any) => (
   <div className="flex flex-col sm:flex-row items-center gap-6">
     <div className="relative w-28 h-28 flex-shrink-0">
-      {/* Donut Ring using Conic Gradient */}
       <div 
         className="w-full h-full rounded-full" 
         style={{ 
@@ -536,7 +554,6 @@ const PieRow = ({ title, data, total }: any) => (
           }).join(', ')})` 
         }}
       ></div>
-      {/* Center Hole */}
       <div className="absolute inset-0 m-auto w-16 h-16 bg-white rounded-full flex flex-col items-center justify-center shadow-sm">
          <span className="text-lg font-black text-slate-900 leading-none">{total}</span>
          <span className="text-[8px] font-bold text-slate-400 uppercase mt-0.5">Total</span>
@@ -570,33 +587,24 @@ const TrendLineChart = ({ data, keys, labels, colors }: any) => {
   const getY = (val: number) => height - padding - (val / maxValue) * (height - padding * 2);
   const getX = (idx: number) => padding + (idx / (data.length - 1)) * (width - padding * 2);
 
-  // Helper to create Smooth Bezier Curve Path
   const getSmoothPath = (key: string) => {
     const points = data.map((d: any, i: number) => ({ x: getX(i), y: getY(d[key]) }));
     if (points.length === 0) return "";
-    
-    // Start at first point
     let d = `M ${points[0].x},${points[0].y}`;
-    
-    // Cubic bezier implementation
     for (let i = 0; i < points.length - 1; i++) {
       const p0 = points[i === 0 ? 0 : i - 1];
       const p1 = points[i];
       const p2 = points[i + 1];
       const p3 = points[i + 2] || p2;
-
       const cp1x = p1.x + (p2.x - p0.x) / 6;
       const cp1y = p1.y + (p2.y - p0.y) / 6;
-
       const cp2x = p2.x - (p3.x - p1.x) / 6;
       const cp2y = p2.y - (p3.y - p1.y) / 6;
-
       d += ` C ${cp1x},${cp1y} ${cp2x},${cp2y} ${p2.x},${p2.y}`;
     }
     return d;
   };
 
-  // Helper to create Area Fill Path (closed loop)
   const getAreaPath = (key: string) => {
     const line = getSmoothPath(key);
     if (!line) return "";
@@ -617,95 +625,33 @@ const TrendLineChart = ({ data, keys, labels, colors }: any) => {
             </linearGradient>
           ))}
         </defs>
-
-        {/* Grid Lines */}
         {[0, 0.5, 1].map(p => <line key={p} x1={padding} y1={getY(maxValue * p)} x2={width - padding} y2={getY(maxValue * p)} stroke="#f1f5f9" strokeWidth="1" strokeDasharray="4 4" />)}
-        
-        {/* Render Areas and Lines */}
         {keys.map((key:string, kIdx:number) => (
           <g key={key}>
-            {/* Area Fill */}
-            <path 
-              d={getAreaPath(key)} 
-              fill={`url(#grad-${kIdx})`} 
-              className="transition-all duration-300"
-            />
-            {/* Line Stroke */}
-            <path 
-              d={getSmoothPath(key)} 
-              fill="none" 
-              stroke={colors[kIdx]} 
-              strokeWidth={hoverIndex !== null ? "2.5" : "3.5"} 
-              strokeLinecap="round" 
-              strokeLinejoin="round" 
-              className="transition-all duration-300 shadow-sm"
-            />
+            <path d={getAreaPath(key)} fill={`url(#grad-${kIdx})`} className="transition-all duration-300" />
+            <path d={getSmoothPath(key)} fill="none" stroke={colors[kIdx]} strokeWidth={hoverIndex !== null ? "2.5" : "3.5"} strokeLinecap="round" strokeLinejoin="round" className="transition-all duration-300 shadow-sm" />
           </g>
         ))}
-
-        {/* X Axis Labels */}
         {data.map((d:any, i:number) => (
           <text key={i} x={getX(i)} y={height - 10} textAnchor="middle" fontSize="9" fontWeight="bold" className="fill-slate-400 uppercase tracking-tighter">
             {d.label}
           </text>
         ))}
-
-        {/* Hover Interaction Layer */}
         {hoverIndex !== null && (
           <g>
-            {/* Vertical Marker Line */}
-            <line 
-              x1={getX(hoverIndex)} 
-              y1={padding} 
-              x2={getX(hoverIndex)} 
-              y2={height - padding} 
-              stroke="#cbd5e1" 
-              strokeWidth="1" 
-              strokeDasharray="4 2" 
-            />
-            
-            {/* Dots at intersection points */}
+            <line x1={getX(hoverIndex)} y1={padding} x2={getX(hoverIndex)} y2={height - padding} stroke="#cbd5e1" strokeWidth="1" strokeDasharray="4 2" />
             {keys.map((key: string, kIdx: number) => (
-              <circle 
-                key={`dot-${kIdx}`}
-                cx={getX(hoverIndex)} 
-                cy={getY(data[hoverIndex][key])} 
-                r="4" 
-                fill="white" 
-                stroke={colors[kIdx]} 
-                strokeWidth="2.5" 
-                className="transition-all duration-150"
-              />
+              <circle key={`dot-${kIdx}`} cx={getX(hoverIndex)} cy={getY(data[hoverIndex][key])} r="4" fill="white" stroke={colors[kIdx]} strokeWidth="2.5" className="transition-all duration-150" />
             ))}
           </g>
         )}
-
-        {/* Invisible Hit Areas for Mouse Events */}
         {data.map((d: any, i: number) => (
-          <rect
-            key={`hit-${i}`}
-            x={getX(i) - ((width - padding * 2) / (data.length - 1)) / 2}
-            y={0}
-            width={(width - padding * 2) / (data.length - 1)}
-            height={height}
-            fill="transparent"
-            onMouseEnter={() => setHoverIndex(i)}
-          />
+          <rect key={`hit-${i}`} x={getX(i) - ((width - padding * 2) / (data.length - 1)) / 2} y={0} width={(width - padding * 2) / (data.length - 1)} height={height} fill="transparent" onMouseEnter={() => setHoverIndex(i)} />
         ))}
       </svg>
-
-      {/* Floating Tooltip (HTML overlay) */}
       {hoverIndex !== null && (
-        <div 
-          className="absolute z-10 bg-slate-900/95 backdrop-blur-sm text-white p-3 rounded-xl shadow-xl pointer-events-none transform -translate-x-1/2 -translate-y-full border border-slate-700/50"
-          style={{ 
-            left: `${(getX(hoverIndex) / width) * 100}%`, 
-            top: '20px' 
-          }}
-        >
-          <p className="text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest text-center border-b border-slate-700 pb-1">
-            {data[hoverIndex].fullDate}
-          </p>
+        <div className="absolute z-10 bg-slate-900/95 backdrop-blur-sm text-white p-3 rounded-xl shadow-xl pointer-events-none transform -translate-x-1/2 -translate-y-full border border-slate-700/50" style={{ left: `${(getX(hoverIndex) / width) * 100}%`, top: '20px' }}>
+          <p className="text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest text-center border-b border-slate-700 pb-1">{data[hoverIndex].fullDate}</p>
           <div className="flex gap-4">
             {keys.map((key: string, kIdx: number) => (
               <div key={key} className="flex flex-col items-center">
@@ -714,7 +660,6 @@ const TrendLineChart = ({ data, keys, labels, colors }: any) => {
               </div>
             ))}
           </div>
-          {/* Tooltip Triangle */}
           <div className="absolute left-1/2 -bottom-1.5 w-3 h-3 bg-slate-900 rotate-45 transform -translate-x-1/2 border-r border-b border-slate-700/50"></div>
         </div>
       )}
@@ -727,10 +672,13 @@ const StackedSegment = ({ count, total, globalMax, color }: any) => {
   return <div className={`h-full ${color} border-r border-white/20 transition-all duration-1000`} style={{ width: `${(count / globalMax) * 100}%` }}></div>;
 };
 
-const MetricBox = ({ label, value, unit, color, bg }: any) => (
+const MetricBox = ({ label, value, unit, color, bg, icon }: any) => (
   <div className={`flex flex-col items-center justify-center p-2.5 rounded-2xl ${bg} border border-white shadow-sm transition-transform hover:scale-[1.05]`}>
     <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter mb-0.5">{label}</span>
-    <div className={`text-xl font-bold leading-none tracking-tighter ${color}`}>{value}<span className="text-[10px] ml-0.5 opacity-60 font-black">{unit}</span></div>
+    <div className={`text-xl font-bold leading-none tracking-tighter ${color} flex items-center`}>
+      {value}
+      <span className="text-[10px] ml-0.5 opacity-60 font-black">{unit || icon}</span>
+    </div>
   </div>
 );
 
