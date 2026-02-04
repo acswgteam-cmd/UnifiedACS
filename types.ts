@@ -33,6 +33,16 @@ export interface Project {
   status: 'ON HOLD' | 'ON PROGRESS' | 'DONE';
 }
 
+export interface ProjectChecklist {
+  id: string;
+  project_id: string;
+  task_name: string;
+  size: string;
+  quantity: number;
+  notes: string;
+  status: 'NONE' | 'ON PROGRESS' | 'DONE';
+}
+
 export interface Lead {
   id: string;
   lead_name: string;
@@ -95,4 +105,5 @@ export interface AppState {
   internalDesigns: InternalDesign[];
   artworkLogs: ArtworkLog[];
   projectSurveys: ProjectSurvey[];
+  projectChecklists: ProjectChecklist[];
 }
