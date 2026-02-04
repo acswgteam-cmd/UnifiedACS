@@ -1,7 +1,7 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
-import { Project } from '../types';
+import { Project, ProjectChecklist, ChecklistTemplate, ChecklistTemplateItem } from '../types';
 import { supabase } from '../lib/supabase';
 import { SURVEY_FORM_SECRET } from '../App';
 
@@ -76,41 +76,45 @@ const PublicProjectSurvey: React.FC = () => {
   const isAuthorized = token === SURVEY_FORM_SECRET;
 
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const [activeTab, setActiveTab] = useState<'evaluation' | 'checklist'>('evaluation');
   
+  // Data State
   const [projects, setProjects] = useState<Project[]>([]);
   const [surveyedProjectIds, setSurveyedProjectIds] = useState<Set<string>>(new Set());
-  
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  
+  // Evaluation State
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
   const [ratings, setRatings] = useState<Record<string, number>>({});
   const [notes, setNotes] = useState('');
 
-  // 1. Fetch Data
+  // Checklist State
+  const [checklists, setChecklists] = useState<ProjectChecklist[]>([]);
+  const [templates, setTemplates] = useState<ChecklistTemplate[]>([]);
+  const [templateItems, setTemplateItems] = useState<ChecklistTemplateItem[]>([]);
+  const [newItem, setNewItem] = useState({ task_name: '', size: '', quantity: 1, notes: '' });
+
+  // 1. Fetch Projects & Templates (Initial Load)
   useEffect(() => {
     if (!isAuthorized || !supabase) return;
 
     const loadData = async () => {
       setLoading(true);
       try {
-        // Fetch Projects (Only DONE or ON PROGRESS)
-        const { data: projData, error: projError } = await supabase
-          .from('projects')
-          .select('*')
-          .in('status', ['DONE', 'ON PROGRESS'])
-          .order('end_date', { ascending: false });
-        
-        if (projError) throw projError;
+        const [projRes, survRes, tplRes, tplItemsRes] = await Promise.all([
+          supabase.from('projects').select('*').in('status', ['DONE', 'ON PROGRESS']).order('end_date', { ascending: false }),
+          supabase.from('project_surveys').select('project_id'),
+          supabase.from('checklist_templates').select('*').order('name'),
+          supabase.from('checklist_template_items').select('*')
+        ]);
 
-        // Fetch Existing Surveys (to lock them)
-        const { data: survData, error: survError } = await supabase
-          .from('project_surveys')
-          .select('project_id');
-        
-        if (survError) throw survError;
+        if (projRes.error) throw projRes.error;
 
-        setProjects(projData || []);
-        setSurveyedProjectIds(new Set(survData?.map(s => s.project_id) || []));
+        setProjects(projRes.data || []);
+        setSurveyedProjectIds(new Set(survRes.data?.map(s => s.project_id) || []));
+        setTemplates(tplRes.data || []);
+        setTemplateItems(tplItemsRes.data || []);
       } catch (err) {
         console.error(err);
       } finally {
@@ -121,16 +125,32 @@ const PublicProjectSurvey: React.FC = () => {
     loadData();
   }, [isAuthorized]);
 
+  // 2. Fetch Checklists when a project is selected
+  useEffect(() => {
+    if (!selectedProject || !supabase) return;
+    fetchChecklists();
+  }, [selectedProject]);
+
+  const fetchChecklists = async () => {
+    if (!selectedProject || !supabase) return;
+    const { data } = await supabase.from('project_checklists').select('*').eq('project_id', selectedProject.id).order('created_at');
+    setChecklists(data || []);
+  };
+
+  const activeTemplatesInProject = useMemo(() => {
+    const templateIds = new Set<string>();
+    checklists.forEach(cl => {
+      if (cl.source_template_id) templateIds.add(cl.source_template_id);
+    });
+    return templateIds;
+  }, [checklists]);
+
+  // --- SURVEY HANDLERS ---
   const handleRatingChange = (questionId: string, val: number) => {
     setRatings(prev => ({ ...prev, [questionId]: val }));
   };
 
-  const isFormValid = () => {
-    // Check if all 7 questions have a value
-    return SURVEY_QUESTIONS.every(q => ratings[q.id] !== undefined);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmitSurvey = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedProject || !supabase) return;
     
@@ -151,10 +171,9 @@ const PublicProjectSurvey: React.FC = () => {
       const { error } = await supabase.from('project_surveys').insert([payload]);
 
       if (error) {
-        if (error.code === '23505') { // Unique violation
+        if (error.code === '23505') {
           alert("Survey for this project has already been submitted!");
           setSurveyedProjectIds(prev => new Set(prev).add(selectedProject.id));
-          setSelectedProject(null);
         } else {
           throw error;
         }
@@ -168,11 +187,66 @@ const PublicProjectSurvey: React.FC = () => {
     }
   };
 
+  // --- CHECKLIST HANDLERS ---
+  const handleAddItem = async () => {
+    if (!selectedProject || !newItem.task_name.trim() || !supabase) return;
+    const payload = {
+      project_id: selectedProject.id,
+      task_name: newItem.task_name,
+      size: newItem.size,
+      quantity: newItem.quantity,
+      notes: newItem.notes,
+      status: 'NONE'
+    };
+    const { error } = await supabase.from('project_checklists').insert([payload]);
+    if (error) alert(error.message);
+    else {
+      setNewItem({ task_name: '', size: '', quantity: 1, notes: '' });
+      fetchChecklists();
+    }
+  };
+
+  const handleDeleteItem = async (id: string) => {
+    if (!supabase || !confirm("Delete item?")) return;
+    await supabase.from('project_checklists').delete().eq('id', id);
+    fetchChecklists();
+  };
+
+  const handleToggleTemplate = async (templateId: string) => {
+    if (!selectedProject || !supabase) return;
+
+    if (activeTemplatesInProject.has(templateId)) {
+      // Remove Items (Un-click) logic disabled for public view to prevent accidental bulk deletion
+      // OR implement strict warning. For now, let's just allow adding.
+      if (!confirm("Remove all items from this template?")) return;
+      await supabase.from('project_checklists').delete().eq('project_id', selectedProject.id).eq('source_template_id', templateId);
+      fetchChecklists();
+    } else {
+      // Add Items
+      const itemsToAdd = templateItems
+        .filter(ti => ti.template_id === templateId)
+        .map(ti => ({
+          project_id: selectedProject.id,
+          task_name: ti.task_name,
+          size: ti.size,
+          notes: ti.notes,
+          quantity: 1,
+          status: 'NONE',
+          source_template_id: templateId
+        }));
+      
+      if (itemsToAdd.length === 0) return alert("Empty template");
+
+      await supabase.from('project_checklists').insert(itemsToAdd);
+      fetchChecklists();
+    }
+  };
+
   // --- RENDERING ---
 
   if (!isAuthorized) return (
     <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6 text-white font-bold">
-      403 UNAUTHORIZED SURVEY ACCESS
+      403 UNAUTHORIZED
     </div>
   );
 
@@ -184,7 +258,7 @@ const PublicProjectSurvey: React.FC = () => {
             <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"/></svg>
           </div>
           <h1 className="text-2xl font-bold text-slate-900 mb-2">Thank You!</h1>
-          <p className="text-slate-700 mb-8 font-medium">Your evaluation has been recorded. Your feedback helps us improve our creative delivery.</p>
+          <p className="text-slate-700 mb-8 font-medium">Your evaluation has been recorded.</p>
           <button onClick={() => { setSubmitted(false); setSelectedProject(null); setRatings({}); setNotes(''); window.location.reload(); }} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg">Back to Projects</button>
         </div>
       </div>
@@ -197,9 +271,9 @@ const PublicProjectSurvey: React.FC = () => {
       <div className="min-h-screen bg-slate-100 py-12 px-6">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12">
-            <div className="inline-block px-4 py-1.5 bg-slate-900 text-white rounded-full text-[10px] font-bold uppercase tracking-widest mb-4">Internal Team Portal</div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase">Project Evaluation Survey</h1>
-            <p className="text-slate-500 mt-2 font-medium">Select a project below to evaluate the design team's performance.</p>
+            <div className="inline-block px-4 py-1.5 bg-slate-900 text-white rounded-full text-[10px] font-bold uppercase tracking-widest mb-4">ACS Project Portal</div>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase">Select Project</h1>
+            <p className="text-slate-500 mt-2 font-medium">Choose a project to evaluate or manage design requests.</p>
           </div>
 
           {loading ? (
@@ -211,20 +285,14 @@ const PublicProjectSurvey: React.FC = () => {
                 return (
                   <button 
                     key={p.id}
-                    disabled={isDone}
-                    onClick={() => setSelectedProject(p)}
-                    className={`text-left relative p-6 rounded-2xl border transition-all duration-300 group flex flex-col h-full
-                      ${isDone 
-                        ? 'bg-slate-50 border-slate-200 opacity-60 cursor-not-allowed grayscale' 
-                        : 'bg-white border-slate-200 shadow-sm hover:shadow-xl hover:border-indigo-300 hover:-translate-y-1'
-                      }
-                    `}
+                    onClick={() => { setSelectedProject(p); setActiveTab('evaluation'); }}
+                    className="text-left relative p-6 rounded-2xl border transition-all duration-300 group flex flex-col h-full bg-white border-slate-200 shadow-sm hover:shadow-xl hover:border-indigo-300 hover:-translate-y-1"
                   >
                     <div className="flex items-center justify-between mb-4">
                       <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase border ${p.status === 'DONE' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
                         {p.status}
                       </span>
-                      {isDone && <span className="text-[9px] font-black text-slate-500 uppercase bg-slate-200 px-2 py-0.5 rounded">Evaluated</span>}
+                      {isDone && <span className="text-[9px] font-black text-slate-500 uppercase bg-slate-200 px-2 py-0.5 rounded">Eval Done</span>}
                     </div>
                     <h3 className="text-lg font-black text-slate-900 uppercase leading-tight mb-2 group-hover:text-indigo-600 transition-colors">{p.project_name}</h3>
                     <div className="mt-auto pt-4 border-t border-slate-100 w-full">
@@ -236,9 +304,6 @@ const PublicProjectSurvey: React.FC = () => {
                   </button>
                 );
               })}
-              {projects.length === 0 && (
-                <div className="col-span-full text-center py-20 text-slate-400 font-bold italic">No projects available for evaluation.</div>
-              )}
             </div>
           )}
         </div>
@@ -246,80 +311,233 @@ const PublicProjectSurvey: React.FC = () => {
     );
   }
 
-  // --- SCREEN 2: EVALUATION FORM ---
+  // --- SCREEN 2: PROJECT HUB (TABS) ---
   return (
-    <div className="min-h-screen bg-slate-100 py-12 px-6">
-      <div className="max-w-3xl mx-auto">
-        <button onClick={() => setSelectedProject(null)} className="mb-6 flex items-center gap-2 text-slate-500 font-bold text-xs uppercase hover:text-indigo-600 transition-colors">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 19l-7-7 7-7"/></svg>
-          Back to List
-        </button>
+    <div className="min-h-screen bg-slate-50 flex flex-col">
+      {/* Header */}
+      <div className="bg-white border-b border-slate-200 px-6 py-4 sticky top-0 z-30">
+        <div className="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+           <div className="flex items-center gap-4">
+             <button onClick={() => setSelectedProject(null)} className="p-2 bg-slate-100 rounded-lg hover:bg-slate-200 text-slate-500 transition-colors">
+               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+             </button>
+             <div>
+                <h1 className="text-xl font-black text-slate-900 uppercase tracking-tighter leading-none">{selectedProject.project_name}</h1>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Project Portal</span>
+             </div>
+           </div>
+           
+           <div className="flex bg-slate-100 p-1 rounded-xl">
+             <button 
+               onClick={() => setActiveTab('evaluation')}
+               className={`px-6 py-2 rounded-lg text-xs font-black uppercase tracking-wide transition-all ${activeTab === 'evaluation' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+             >
+               Evaluation Survey
+             </button>
+             <button 
+               onClick={() => setActiveTab('checklist')}
+               className={`px-6 py-2 rounded-lg text-xs font-black uppercase tracking-wide transition-all ${activeTab === 'checklist' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+             >
+               Design Checklist
+             </button>
+           </div>
+        </div>
+      </div>
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden">
-          <div className="bg-slate-900 p-8 text-white">
-            <span className="text-[10px] font-black uppercase tracking-widest opacity-70 mb-2 block">Evaluating Project</span>
-            <h1 className="text-2xl font-black uppercase tracking-tight mb-1">{selectedProject.project_name}</h1>
-            <p className="text-sm font-medium opacity-80">{selectedProject.project_type} &bull; Ended {selectedProject.end_date}</p>
-          </div>
-
-          <div className="p-8 md:p-12 space-y-10">
-            {SURVEY_QUESTIONS.map((q) => (
-              <div key={q.id} className="animate-in slide-in-from-bottom duration-500">
-                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide mb-4">{q.label}</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {q.options.map((opt) => {
-                    const isSelected = ratings[q.id] === opt.val;
-                    return (
-                      <button
-                        key={opt.val}
-                        type="button"
-                        onClick={() => handleRatingChange(q.id, opt.val)}
-                        className={`p-4 rounded-xl border-2 text-left transition-all duration-200 flex flex-col gap-1
-                          ${isSelected 
-                            ? 'border-indigo-600 bg-indigo-50 text-indigo-700 shadow-inner' 
-                            : 'border-slate-100 bg-white text-slate-500 hover:border-slate-300 hover:bg-slate-50'
-                          }
-                        `}
+      <div className="flex-1 overflow-y-auto px-6 py-8">
+        <div className="max-w-5xl mx-auto">
+          
+          {/* TAB 1: EVALUATION */}
+          {activeTab === 'evaluation' && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
+               {surveyedProjectIds.has(selectedProject.id) ? (
+                 <div className="p-10 bg-white rounded-3xl border border-slate-200 text-center shadow-sm">
+                    <div className="text-4xl mb-4">✅</div>
+                    <h2 className="text-xl font-bold text-slate-900">Evaluation Completed</h2>
+                    <p className="text-slate-500 text-sm mt-2">Thank you for submitting your feedback for this project.</p>
+                 </div>
+               ) : (
+                 <form onSubmit={handleSubmitSurvey} className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div className="p-8 border-b border-slate-100">
+                      <h2 className="text-lg font-bold text-slate-900 uppercase tracking-wide">Performance Survey</h2>
+                      <p className="text-xs text-slate-500 mt-1">Rate the design team's performance for this specific project.</p>
+                    </div>
+                    <div className="p-8 space-y-8">
+                      {SURVEY_QUESTIONS.map((q) => (
+                        <div key={q.id}>
+                          <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide mb-3">{q.label}</h3>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            {q.options.map((opt) => {
+                              const isSelected = ratings[q.id] === opt.val;
+                              return (
+                                <button
+                                  key={opt.val}
+                                  type="button"
+                                  onClick={() => handleRatingChange(q.id, opt.val)}
+                                  className={`p-4 rounded-xl border text-left transition-all duration-200 flex flex-col gap-1
+                                    ${isSelected 
+                                      ? 'border-indigo-600 bg-indigo-50 text-indigo-700 shadow-inner ring-1 ring-indigo-600' 
+                                      : 'border-slate-200 bg-white text-slate-500 hover:border-indigo-300'
+                                    }
+                                  `}
+                                >
+                                  <span className="text-xs font-bold uppercase leading-tight">{opt.text}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                      <div>
+                        <label className="text-sm font-bold text-slate-900 uppercase tracking-wide mb-3 block">Additional Notes</label>
+                        <textarea 
+                          rows={3}
+                          maxLength={200}
+                          placeholder="Any specific feedback..."
+                          value={notes}
+                          onChange={e => setNotes(e.target.value)}
+                          className="w-full p-4 rounded-xl border border-slate-200 text-sm font-medium outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 transition-colors"
+                        />
+                      </div>
+                      <button 
+                        type="submit" 
+                        disabled={submitting || !SURVEY_QUESTIONS.every(q => ratings[q.id] !== undefined)}
+                        className="w-full py-4 rounded-xl font-bold text-sm shadow-lg uppercase tracking-widest bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                       >
-                        <span className={`text-xl font-black ${isSelected ? 'text-indigo-600' : 'text-slate-300'}`}>{opt.val}</span>
-                        <span className="text-xs font-bold uppercase leading-tight">{opt.text}</span>
+                        {submitting ? 'Submitting...' : 'Submit Evaluation'}
                       </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-
-            <div className="pt-4 border-t border-slate-100">
-              <label className="text-sm font-bold text-slate-900 uppercase tracking-wide mb-3 block">8. Catatan Tambahan (Opsional)</label>
-              <textarea 
-                rows={3}
-                maxLength={200}
-                placeholder="Hambatan, improvement area, ide optimasi workflow..."
-                value={notes}
-                onChange={e => setNotes(e.target.value)}
-                className="w-full p-4 rounded-xl border-2 border-slate-200 text-sm font-medium outline-none focus:border-indigo-600 focus:ring-0 transition-colors bg-slate-50 focus:bg-white"
-              />
-              <div className="text-right text-[10px] font-bold text-slate-400 mt-2 uppercase">{notes.length}/200 Karakter</div>
+                    </div>
+                 </form>
+               )}
             </div>
+          )}
 
-            <button 
-              type="submit" 
-              disabled={submitting || !isFormValid()}
-              className={`w-full py-5 rounded-2xl font-bold text-lg shadow-xl uppercase tracking-widest transition-all
-                ${!isFormValid() 
-                  ? 'bg-slate-200 text-slate-400 cursor-not-allowed' 
-                  : 'bg-indigo-600 text-white shadow-indigo-200 hover:bg-indigo-700 hover:shadow-2xl hover:-translate-y-1'
-                }
-              `}
-            >
-              {submitting ? 'Submitting...' : 'Submit Evaluation'}
-            </button>
-            {!isFormValid() && (
-              <p className="text-center text-xs font-bold text-red-400 uppercase">Please answer all 7 questions</p>
-            )}
-          </div>
-        </form>
+          {/* TAB 2: CHECKLIST */}
+          {activeTab === 'checklist' && (
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
+               {/* Template Selector */}
+               <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-3">Quick Add from Templates</span>
+                  <div className="flex flex-wrap gap-2">
+                     {templates.map(t => {
+                       const isActive = activeTemplatesInProject.has(t.id);
+                       return (
+                         <button 
+                            key={t.id}
+                            onClick={() => handleToggleTemplate(t.id)}
+                            className={`px-4 py-2 rounded-lg text-xs font-black uppercase border transition-all ${
+                              isActive 
+                              ? 'bg-indigo-50 border-indigo-200 text-indigo-700' 
+                              : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-600'
+                            }`}
+                         >
+                           {isActive ? '✓ ' : '+ '} {t.name}
+                         </button>
+                       );
+                     })}
+                     {templates.length === 0 && <span className="text-xs text-slate-400 italic">No templates available.</span>}
+                  </div>
+               </div>
+
+               {/* Checklist Table */}
+               <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                  <div className="p-6 border-b border-slate-100">
+                    <h2 className="text-lg font-bold text-slate-900 uppercase tracking-wide">Design Request List</h2>
+                    <p className="text-xs text-slate-500 mt-1">List all design assets needed for this project.</p>
+                  </div>
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-200">
+                      <tr>
+                        <th className="px-6 py-4 text-center w-12">#</th>
+                        <th className="px-6 py-4">Design Item</th>
+                        <th className="px-6 py-4 w-32">Size</th>
+                        <th className="px-6 py-4 text-center w-20">Qty</th>
+                        <th className="px-6 py-4">Notes</th>
+                        <th className="px-6 py-4 w-32">Status</th>
+                        <th className="px-6 py-4 text-right w-16">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
+                      {checklists.map((cl, idx) => (
+                        <tr key={cl.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-6 py-4 text-center text-slate-400">{idx + 1}</td>
+                          <td className="px-6 py-4">
+                             <div className="text-slate-900 uppercase font-black">{cl.task_name}</div>
+                             {cl.source_template_id && <span className="bg-indigo-50 text-indigo-600 text-[8px] px-1.5 rounded uppercase font-bold mt-1 inline-block">Template</span>}
+                          </td>
+                          <td className="px-6 py-4">{cl.size || '-'}</td>
+                          <td className="px-6 py-4 text-center">{cl.quantity}</td>
+                          <td className="px-6 py-4 text-slate-500 italic font-medium">{cl.notes || '-'}</td>
+                          <td className="px-6 py-4">
+                             <span className={`text-[9px] font-black uppercase px-2 py-1 rounded border ${
+                                cl.status === 'DONE' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
+                                cl.status === 'ON PROGRESS' ? 'bg-amber-100 text-amber-700 border-amber-200' :
+                                'bg-slate-100 text-slate-500 border-slate-200'
+                              }`}>
+                                {cl.status}
+                              </span>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                             <button onClick={() => handleDeleteItem(cl.id)} className="text-red-400 hover:text-red-600 p-1">
+                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                             </button>
+                          </td>
+                        </tr>
+                      ))}
+                      
+                      {/* ADD ROW */}
+                      <tr className="bg-indigo-50/30">
+                        <td className="px-6 py-4 text-center text-indigo-400 font-black">+</td>
+                        <td className="px-6 py-4">
+                          <input 
+                            placeholder="Add Item Name..." 
+                            className="w-full bg-white border border-slate-300 rounded px-2 py-2 text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
+                            value={newItem.task_name}
+                            onChange={e => setNewItem({...newItem, task_name: e.target.value})}
+                            onKeyDown={e => e.key === 'Enter' && handleAddItem()}
+                          />
+                        </td>
+                        <td className="px-6 py-4">
+                          <input 
+                            placeholder="Size" 
+                            className="w-full bg-white border border-slate-300 rounded px-2 py-2 text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
+                            value={newItem.size}
+                            onChange={e => setNewItem({...newItem, size: e.target.value})}
+                            onKeyDown={e => e.key === 'Enter' && handleAddItem()}
+                          />
+                        </td>
+                        <td className="px-6 py-4">
+                          <input 
+                            type="number"
+                            placeholder="1" 
+                            className="w-full bg-white border border-slate-300 rounded px-2 py-2 text-xs font-bold text-center focus:ring-2 focus:ring-indigo-500 outline-none"
+                            value={newItem.quantity}
+                            onChange={e => setNewItem({...newItem, quantity: parseInt(e.target.value) || 0})}
+                            onKeyDown={e => e.key === 'Enter' && handleAddItem()}
+                          />
+                        </td>
+                        <td className="px-6 py-4">
+                          <input 
+                            placeholder="Notes..." 
+                            className="w-full bg-white border border-slate-300 rounded px-2 py-2 text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
+                            value={newItem.notes}
+                            onChange={e => setNewItem({...newItem, notes: e.target.value})}
+                            onKeyDown={e => e.key === 'Enter' && handleAddItem()}
+                          />
+                        </td>
+                        <td className="px-6 py-4 text-center text-[10px] text-slate-400 font-bold italic">Pending</td>
+                        <td className="px-6 py-4 text-right">
+                          <button onClick={handleAddItem} className="bg-indigo-600 text-white px-3 py-1.5 rounded text-[10px] font-black uppercase hover:bg-indigo-700 shadow-sm">Add</button>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  {checklists.length === 0 && <div className="p-8 text-center text-xs text-slate-400 font-bold italic">No items yet. Add manually or pick a template above.</div>}
+               </div>
+            </div>
+          )}
+
+        </div>
       </div>
     </div>
   );
