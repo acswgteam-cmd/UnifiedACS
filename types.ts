@@ -33,6 +33,19 @@ export interface Project {
   status: 'ON HOLD' | 'ON PROGRESS' | 'DONE';
 }
 
+export interface ChecklistTemplate {
+  id: string;
+  name: string;
+}
+
+export interface ChecklistTemplateItem {
+  id: string;
+  template_id: string;
+  task_name: string;
+  size: string;
+  notes: string;
+}
+
 export interface ProjectChecklist {
   id: string;
   project_id: string;
@@ -41,6 +54,7 @@ export interface ProjectChecklist {
   quantity: number;
   notes: string;
   status: 'NONE' | 'ON PROGRESS' | 'DONE';
+  source_template_id?: string | null; // To track if this item came from a template
 }
 
 export interface Lead {
@@ -106,4 +120,6 @@ export interface AppState {
   artworkLogs: ArtworkLog[];
   projectSurveys: ProjectSurvey[];
   projectChecklists: ProjectChecklist[];
+  checklistTemplates: ChecklistTemplate[];
+  checklistTemplateItems: ChecklistTemplateItem[];
 }
