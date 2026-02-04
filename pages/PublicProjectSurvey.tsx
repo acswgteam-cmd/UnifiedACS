@@ -76,7 +76,8 @@ const PublicProjectSurvey: React.FC = () => {
   const isAuthorized = token === SURVEY_FORM_SECRET;
 
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'evaluation' | 'checklist'>('evaluation');
+  // Default tab changed to 'checklist'
+  const [activeTab, setActiveTab] = useState<'evaluation' | 'checklist'>('checklist');
   
   // Data State
   const [projects, setProjects] = useState<Project[]>([]);
@@ -95,6 +96,10 @@ const PublicProjectSurvey: React.FC = () => {
   const [templateItems, setTemplateItems] = useState<ChecklistTemplateItem[]>([]);
   const [newItem, setNewItem] = useState({ task_name: '', size: '', quantity: 1, notes: '' });
 
+  const isEditable = useMemo(() => {
+    return selectedProject?.status === 'ON PROGRESS';
+  }, [selectedProject]);
+
   // 1. Fetch Projects & Templates (Initial Load)
   useEffect(() => {
     if (!isAuthorized || !supabase) return;
@@ -103,7 +108,7 @@ const PublicProjectSurvey: React.FC = () => {
       setLoading(true);
       try {
         const [projRes, survRes, tplRes, tplItemsRes] = await Promise.all([
-          supabase.from('projects').select('*').in('status', ['DONE', 'ON PROGRESS']).order('end_date', { ascending: false }),
+          supabase.from('projects').select('*').in('status', ['DONE', 'ON PROGRESS', 'ON HOLD']).order('end_date', { ascending: false }),
           supabase.from('project_surveys').select('project_id'),
           supabase.from('checklist_templates').select('*').order('name'),
           supabase.from('checklist_template_items').select('*')
@@ -190,6 +195,8 @@ const PublicProjectSurvey: React.FC = () => {
   // --- CHECKLIST HANDLERS ---
   const handleAddItem = async () => {
     if (!selectedProject || !newItem.task_name.trim() || !supabase) return;
+    if (!isEditable) return; // Guard clause
+
     const payload = {
       project_id: selectedProject.id,
       task_name: newItem.task_name,
@@ -208,16 +215,17 @@ const PublicProjectSurvey: React.FC = () => {
 
   const handleDeleteItem = async (id: string) => {
     if (!supabase || !confirm("Delete item?")) return;
+    if (!isEditable) return; // Guard clause
+
     await supabase.from('project_checklists').delete().eq('id', id);
     fetchChecklists();
   };
 
   const handleToggleTemplate = async (templateId: string) => {
     if (!selectedProject || !supabase) return;
+    if (!isEditable) return; // Guard clause
 
     if (activeTemplatesInProject.has(templateId)) {
-      // Remove Items (Un-click) logic disabled for public view to prevent accidental bulk deletion
-      // OR implement strict warning. For now, let's just allow adding.
       if (!confirm("Remove all items from this template?")) return;
       await supabase.from('project_checklists').delete().eq('project_id', selectedProject.id).eq('source_template_id', templateId);
       fetchChecklists();
@@ -285,11 +293,11 @@ const PublicProjectSurvey: React.FC = () => {
                 return (
                   <button 
                     key={p.id}
-                    onClick={() => { setSelectedProject(p); setActiveTab('evaluation'); }}
+                    onClick={() => { setSelectedProject(p); setActiveTab('checklist'); }}
                     className="text-left relative p-6 rounded-2xl border transition-all duration-300 group flex flex-col h-full bg-white border-slate-200 shadow-sm hover:shadow-xl hover:border-indigo-300 hover:-translate-y-1"
                   >
                     <div className="flex items-center justify-between mb-4">
-                      <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase border ${p.status === 'DONE' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
+                      <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase border ${p.status === 'DONE' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : p.status === 'ON HOLD' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
                         {p.status}
                       </span>
                       {isDone && <span className="text-[9px] font-black text-slate-500 uppercase bg-slate-200 px-2 py-0.5 rounded">Eval Done</span>}
@@ -327,18 +335,26 @@ const PublicProjectSurvey: React.FC = () => {
              </div>
            </div>
            
-           <div className="flex bg-slate-100 p-1 rounded-xl">
-             <button 
-               onClick={() => setActiveTab('evaluation')}
-               className={`px-6 py-2 rounded-lg text-xs font-black uppercase tracking-wide transition-all ${activeTab === 'evaluation' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-             >
-               Evaluation Survey
-             </button>
+           <div className="flex bg-slate-100 p-1 rounded-xl gap-1">
+             {/* DESIGN CHECKLIST TAB (First) */}
              <button 
                onClick={() => setActiveTab('checklist')}
                className={`px-6 py-2 rounded-lg text-xs font-black uppercase tracking-wide transition-all ${activeTab === 'checklist' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
              >
                Design Checklist
+             </button>
+             
+             {/* EVALUATION SURVEY TAB (Second, Distinct Style) */}
+             <button 
+               onClick={() => setActiveTab('evaluation')}
+               className={`px-6 py-2 rounded-lg text-xs font-black uppercase tracking-wide transition-all flex items-center gap-1.5 ${
+                 activeTab === 'evaluation' 
+                 ? 'bg-amber-400 text-amber-900 shadow-md ring-1 ring-amber-500/20' 
+                 : 'text-slate-500 hover:text-amber-700 hover:bg-amber-50'
+               }`}
+             >
+               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+               Evaluation Survey
              </button>
            </div>
         </div>
@@ -347,96 +363,38 @@ const PublicProjectSurvey: React.FC = () => {
       <div className="flex-1 overflow-y-auto px-6 py-8">
         <div className="max-w-5xl mx-auto">
           
-          {/* TAB 1: EVALUATION */}
-          {activeTab === 'evaluation' && (
-            <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
-               {surveyedProjectIds.has(selectedProject.id) ? (
-                 <div className="p-10 bg-white rounded-3xl border border-slate-200 text-center shadow-sm">
-                    <div className="text-4xl mb-4">✅</div>
-                    <h2 className="text-xl font-bold text-slate-900">Evaluation Completed</h2>
-                    <p className="text-slate-500 text-sm mt-2">Thank you for submitting your feedback for this project.</p>
-                 </div>
-               ) : (
-                 <form onSubmit={handleSubmitSurvey} className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div className="p-8 border-b border-slate-100">
-                      <h2 className="text-lg font-bold text-slate-900 uppercase tracking-wide">Performance Survey</h2>
-                      <p className="text-xs text-slate-500 mt-1">Rate the design team's performance for this specific project.</p>
-                    </div>
-                    <div className="p-8 space-y-8">
-                      {SURVEY_QUESTIONS.map((q) => (
-                        <div key={q.id}>
-                          <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide mb-3">{q.label}</h3>
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                            {q.options.map((opt) => {
-                              const isSelected = ratings[q.id] === opt.val;
-                              return (
-                                <button
-                                  key={opt.val}
-                                  type="button"
-                                  onClick={() => handleRatingChange(q.id, opt.val)}
-                                  className={`p-4 rounded-xl border text-left transition-all duration-200 flex flex-col gap-1
-                                    ${isSelected 
-                                      ? 'border-indigo-600 bg-indigo-50 text-indigo-700 shadow-inner ring-1 ring-indigo-600' 
-                                      : 'border-slate-200 bg-white text-slate-500 hover:border-indigo-300'
-                                    }
-                                  `}
-                                >
-                                  <span className="text-xs font-bold uppercase leading-tight">{opt.text}</span>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      ))}
-                      <div>
-                        <label className="text-sm font-bold text-slate-900 uppercase tracking-wide mb-3 block">Additional Notes</label>
-                        <textarea 
-                          rows={3}
-                          maxLength={200}
-                          placeholder="Any specific feedback..."
-                          value={notes}
-                          onChange={e => setNotes(e.target.value)}
-                          className="w-full p-4 rounded-xl border border-slate-200 text-sm font-medium outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 transition-colors"
-                        />
-                      </div>
-                      <button 
-                        type="submit" 
-                        disabled={submitting || !SURVEY_QUESTIONS.every(q => ratings[q.id] !== undefined)}
-                        className="w-full py-4 rounded-xl font-bold text-sm shadow-lg uppercase tracking-widest bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                      >
-                        {submitting ? 'Submitting...' : 'Submit Evaluation'}
-                      </button>
-                    </div>
-                 </form>
-               )}
-            </div>
-          )}
-
-          {/* TAB 2: CHECKLIST */}
+          {/* TAB 2 (Now displayed first if active): CHECKLIST */}
           {activeTab === 'checklist' && (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
                {/* Template Selector */}
                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-3">Quick Add from Templates</span>
-                  <div className="flex flex-wrap gap-2">
-                     {templates.map(t => {
-                       const isActive = activeTemplatesInProject.has(t.id);
-                       return (
-                         <button 
-                            key={t.id}
-                            onClick={() => handleToggleTemplate(t.id)}
-                            className={`px-4 py-2 rounded-lg text-xs font-black uppercase border transition-all ${
-                              isActive 
-                              ? 'bg-indigo-50 border-indigo-200 text-indigo-700' 
-                              : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-600'
-                            }`}
-                         >
-                           {isActive ? '✓ ' : '+ '} {t.name}
-                         </button>
-                       );
-                     })}
-                     {templates.length === 0 && <span className="text-xs text-slate-400 italic">No templates available.</span>}
-                  </div>
+                  {isEditable ? (
+                    <div className="flex flex-wrap gap-2">
+                       {templates.map(t => {
+                         const isActive = activeTemplatesInProject.has(t.id);
+                         return (
+                           <button 
+                              key={t.id}
+                              onClick={() => handleToggleTemplate(t.id)}
+                              className={`px-4 py-2 rounded-lg text-xs font-black uppercase border transition-all ${
+                                isActive 
+                                ? 'bg-indigo-50 border-indigo-200 text-indigo-700' 
+                                : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-600'
+                              }`}
+                           >
+                             {isActive ? '✓ ' : '+ '} {t.name}
+                           </button>
+                         );
+                       })}
+                       {templates.length === 0 && <span className="text-xs text-slate-400 italic">No templates available.</span>}
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-xs font-bold text-amber-600 bg-amber-50 p-3 rounded-xl border border-amber-100">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                        Project Status is {selectedProject.status}. Checklist modification is locked.
+                    </div>
+                  )}
                </div>
 
                {/* Checklist Table */}
@@ -478,62 +436,133 @@ const PublicProjectSurvey: React.FC = () => {
                               </span>
                           </td>
                           <td className="px-6 py-4 text-right">
-                             <button onClick={() => handleDeleteItem(cl.id)} className="text-red-400 hover:text-red-600 p-1">
-                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                             </button>
+                             {isEditable && (
+                               <button onClick={() => handleDeleteItem(cl.id)} className="text-red-400 hover:text-red-600 p-1">
+                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                               </button>
+                             )}
                           </td>
                         </tr>
                       ))}
                       
-                      {/* ADD ROW */}
-                      <tr className="bg-indigo-50/30">
-                        <td className="px-6 py-4 text-center text-indigo-400 font-black">+</td>
-                        <td className="px-6 py-4">
-                          <input 
-                            placeholder="Add Item Name..." 
-                            className="w-full bg-white border border-slate-300 rounded px-2 py-2 text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
-                            value={newItem.task_name}
-                            onChange={e => setNewItem({...newItem, task_name: e.target.value})}
-                            onKeyDown={e => e.key === 'Enter' && handleAddItem()}
-                          />
-                        </td>
-                        <td className="px-6 py-4">
-                          <input 
-                            placeholder="Size" 
-                            className="w-full bg-white border border-slate-300 rounded px-2 py-2 text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
-                            value={newItem.size}
-                            onChange={e => setNewItem({...newItem, size: e.target.value})}
-                            onKeyDown={e => e.key === 'Enter' && handleAddItem()}
-                          />
-                        </td>
-                        <td className="px-6 py-4">
-                          <input 
-                            type="number"
-                            placeholder="1" 
-                            className="w-full bg-white border border-slate-300 rounded px-2 py-2 text-xs font-bold text-center focus:ring-2 focus:ring-indigo-500 outline-none"
-                            value={newItem.quantity}
-                            onChange={e => setNewItem({...newItem, quantity: parseInt(e.target.value) || 0})}
-                            onKeyDown={e => e.key === 'Enter' && handleAddItem()}
-                          />
-                        </td>
-                        <td className="px-6 py-4">
-                          <input 
-                            placeholder="Notes..." 
-                            className="w-full bg-white border border-slate-300 rounded px-2 py-2 text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
-                            value={newItem.notes}
-                            onChange={e => setNewItem({...newItem, notes: e.target.value})}
-                            onKeyDown={e => e.key === 'Enter' && handleAddItem()}
-                          />
-                        </td>
-                        <td className="px-6 py-4 text-center text-[10px] text-slate-400 font-bold italic">Pending</td>
-                        <td className="px-6 py-4 text-right">
-                          <button onClick={handleAddItem} className="bg-indigo-600 text-white px-3 py-1.5 rounded text-[10px] font-black uppercase hover:bg-indigo-700 shadow-sm">Add</button>
-                        </td>
-                      </tr>
+                      {/* ADD ROW - Only show if editable */}
+                      {isEditable && (
+                        <tr className="bg-indigo-50/30">
+                          <td className="px-6 py-4 text-center text-indigo-400 font-black">+</td>
+                          <td className="px-6 py-4">
+                            <input 
+                              placeholder="Add Item Name..." 
+                              className="w-full bg-white border border-slate-300 rounded px-2 py-2 text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
+                              value={newItem.task_name}
+                              onChange={e => setNewItem({...newItem, task_name: e.target.value})}
+                              onKeyDown={e => e.key === 'Enter' && handleAddItem()}
+                            />
+                          </td>
+                          <td className="px-6 py-4">
+                            <input 
+                              placeholder="Size" 
+                              className="w-full bg-white border border-slate-300 rounded px-2 py-2 text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
+                              value={newItem.size}
+                              onChange={e => setNewItem({...newItem, size: e.target.value})}
+                              onKeyDown={e => e.key === 'Enter' && handleAddItem()}
+                            />
+                          </td>
+                          <td className="px-6 py-4">
+                            <input 
+                              type="number"
+                              placeholder="1" 
+                              className="w-full bg-white border border-slate-300 rounded px-2 py-2 text-xs font-bold text-center focus:ring-2 focus:ring-indigo-500 outline-none"
+                              value={newItem.quantity}
+                              onChange={e => setNewItem({...newItem, quantity: parseInt(e.target.value) || 0})}
+                              onKeyDown={e => e.key === 'Enter' && handleAddItem()}
+                            />
+                          </td>
+                          <td className="px-6 py-4">
+                            <input 
+                              placeholder="Notes..." 
+                              className="w-full bg-white border border-slate-300 rounded px-2 py-2 text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
+                              value={newItem.notes}
+                              onChange={e => setNewItem({...newItem, notes: e.target.value})}
+                              onKeyDown={e => e.key === 'Enter' && handleAddItem()}
+                            />
+                          </td>
+                          <td className="px-6 py-4 text-center text-[10px] text-slate-400 font-bold italic">Pending</td>
+                          <td className="px-6 py-4 text-right">
+                            <button onClick={handleAddItem} className="bg-indigo-600 text-white px-3 py-1.5 rounded text-[10px] font-black uppercase hover:bg-indigo-700 shadow-sm">Add</button>
+                          </td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                   {checklists.length === 0 && <div className="p-8 text-center text-xs text-slate-400 font-bold italic">No items yet. Add manually or pick a template above.</div>}
                </div>
+            </div>
+          )}
+
+          {/* TAB 1 (Now second): EVALUATION */}
+          {activeTab === 'evaluation' && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
+               {surveyedProjectIds.has(selectedProject.id) ? (
+                 <div className="p-10 bg-white rounded-3xl border border-slate-200 text-center shadow-sm">
+                    <div className="text-4xl mb-4">✅</div>
+                    <h2 className="text-xl font-bold text-slate-900">Evaluation Completed</h2>
+                    <p className="text-slate-500 text-sm mt-2">Thank you for submitting your feedback for this project.</p>
+                 </div>
+               ) : (
+                 <form onSubmit={handleSubmitSurvey} className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div className="p-8 border-b border-slate-100 bg-amber-50">
+                      <h2 className="text-lg font-bold text-slate-900 uppercase tracking-wide flex items-center gap-2">
+                        <span className="text-amber-500 text-xl">★</span> Performance Survey
+                      </h2>
+                      <p className="text-xs text-slate-500 mt-1">Rate the design team's performance for this specific project.</p>
+                    </div>
+                    <div className="p-8 space-y-8">
+                      {SURVEY_QUESTIONS.map((q) => (
+                        <div key={q.id}>
+                          <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide mb-3">{q.label}</h3>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            {q.options.map((opt) => {
+                              const isSelected = ratings[q.id] === opt.val;
+                              return (
+                                <button
+                                  key={opt.val}
+                                  type="button"
+                                  onClick={() => handleRatingChange(q.id, opt.val)}
+                                  className={`p-4 rounded-xl border text-left transition-all duration-200 flex flex-col gap-1
+                                    ${isSelected 
+                                      ? 'border-amber-500 bg-amber-50 text-amber-900 shadow-inner ring-1 ring-amber-500' 
+                                      : 'border-slate-200 bg-white text-slate-500 hover:border-amber-300'
+                                    }
+                                  `}
+                                >
+                                  <span className="text-xs font-bold uppercase leading-tight">{opt.text}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                      <div>
+                        <label className="text-sm font-bold text-slate-900 uppercase tracking-wide mb-3 block">Additional Notes</label>
+                        <textarea 
+                          rows={3}
+                          maxLength={200}
+                          placeholder="Any specific feedback..."
+                          value={notes}
+                          onChange={e => setNotes(e.target.value)}
+                          className="w-full p-4 rounded-xl border border-slate-200 text-sm font-medium outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors"
+                        />
+                      </div>
+                      <button 
+                        type="submit" 
+                        disabled={submitting || !SURVEY_QUESTIONS.every(q => ratings[q.id] !== undefined)}
+                        className="w-full py-4 rounded-xl font-bold text-sm shadow-lg uppercase tracking-widest bg-amber-500 text-white hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                      >
+                        {submitting ? 'Submitting...' : 'Submit Evaluation'}
+                      </button>
+                    </div>
+                 </form>
+               )}
             </div>
           )}
 
