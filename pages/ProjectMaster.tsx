@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useRef } from 'react';
-import { Project, Designer, ProjectSurvey, ProjectChecklist } from '../types';
+import { Project, Designer, ProjectSurvey, ProjectChecklist, ChecklistTemplate, ChecklistTemplateItem } from '../types';
 import { supabase } from '../lib/supabase';
 import { SURVEY_FORM_SECRET } from '../App';
 
@@ -23,15 +23,25 @@ interface Props {
   designers: Designer[];
   projectSurveys?: ProjectSurvey[];
   projectChecklists?: ProjectChecklist[];
+  checklistTemplates?: ChecklistTemplate[];
+  checklistTemplateItems?: ChecklistTemplateItem[];
   onUpdate: () => void;
 }
 
-const ProjectMaster: React.FC<Props> = ({ projects, designers, projectSurveys = [], projectChecklists = [], onUpdate }) => {
+const ProjectMaster: React.FC<Props> = ({ 
+  projects, 
+  designers, 
+  projectSurveys = [], 
+  projectChecklists = [], 
+  checklistTemplates = [],
+  checklistTemplateItems = [],
+  onUpdate 
+}) => {
   const [view, setView] = useState<'list' | 'calendar'>('list');
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   
-  // Navigation State: If selectedProject is set, we show the Detail View instead of List/Calendar
+  // Navigation State
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [activeTab, setActiveTab] = useState<'details' | 'checklist'>('details');
 
@@ -39,11 +49,17 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, projectSurveys = 
   const [newLocInput, setNewLocInput] = useState('');
   const [copySuccess, setCopySuccess] = useState(false);
   
-  // Checklist Edit State
+  // Checklist & Template State
   const [clEditingId, setClEditingId] = useState<string | null>(null);
   const [checklistForm, setChecklistForm] = useState<Partial<ProjectChecklist>>({
     task_name: '', size: '', quantity: 1, notes: '', status: 'NONE'
   });
+  const [isManageTemplatesOpen, setIsManageTemplatesOpen] = useState(false);
+  
+  // Template Management Local State
+  const [newTemplateName, setNewTemplateName] = useState('');
+  const [selectedTemplateForEdit, setSelectedTemplateForEdit] = useState<ChecklistTemplate | null>(null);
+  const [newTemplateItem, setNewTemplateItem] = useState({ task_name: '', size: '', notes: '' });
 
   // States for Filtering
   const [filterType, setFilterType] = useState('ALL');
@@ -65,7 +81,6 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, projectSurveys = 
 
   const getDesignerName = (id: string) => designers.find(d => d.id === id)?.name || 'N/A';
   
-  // Ambil semua lokasi unik dari data project yang ada untuk dropdown saran
   const uniqueLocations = useMemo(() => {
     const locsSet = new Set<string>();
     projects.forEach(p => {
@@ -83,11 +98,9 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, projectSurveys = 
     return projects.filter(p => {
       const matchType = filterType === 'ALL' || p.project_type === filterType;
       const matchPIC = filterPIC === 'ALL' || p.pic_designer_id === filterPIC;
-      
       const locs = (p as any).locations || (p as any).location || [];
       const normalizedLocs = Array.isArray(locs) ? locs : [locs];
       const matchLoc = filterLocation === 'ALL' || normalizedLocs.includes(filterLocation);
-      
       const matchStatus = filterStatus === 'ALL' || p.status === filterStatus;
       return matchType && matchPIC && matchLoc && matchStatus;
     });
@@ -229,7 +242,6 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, projectSurveys = 
     }
   };
 
-  // --- SURVEY HANDLERS ---
   const handleDeleteSurvey = async (id: string) => {
     if (!supabase || !confirm("Are you sure you want to delete this evaluation result? This cannot be undone.")) return;
     const { error } = await supabase.from('project_surveys').delete().eq('id', id);
@@ -237,11 +249,58 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, projectSurveys = 
     else onUpdate();
   };
 
-  // --- CHECKLIST HANDLERS ---
+  // --- CHECKLIST & TEMPLATE HANDLERS ---
   const filteredChecklists = useMemo(() => {
     if (!selectedProject) return [];
     return projectChecklists.filter(cl => cl.project_id === selectedProject.id);
   }, [selectedProject, projectChecklists]);
+
+  const activeTemplatesInProject = useMemo(() => {
+    if (!filteredChecklists) return new Set<string>();
+    const templateIds = new Set<string>();
+    filteredChecklists.forEach(cl => {
+      if (cl.source_template_id) templateIds.add(cl.source_template_id);
+    });
+    return templateIds;
+  }, [filteredChecklists]);
+
+  const handleToggleTemplate = async (templateId: string) => {
+    if (!selectedProject || !supabase) return;
+
+    if (activeTemplatesInProject.has(templateId)) {
+      // Remove Items (Un-click)
+      const { error } = await supabase.from('project_checklists')
+        .delete()
+        .eq('project_id', selectedProject.id)
+        .eq('source_template_id', templateId);
+      
+      if (error) alert("Error removing template items: " + error.message);
+      else onUpdate();
+
+    } else {
+      // Add Items (Click)
+      const itemsToAdd = checklistTemplateItems
+        .filter(ti => ti.template_id === templateId)
+        .map(ti => ({
+          project_id: selectedProject.id,
+          task_name: ti.task_name,
+          size: ti.size,
+          notes: ti.notes,
+          quantity: 1,
+          status: 'NONE',
+          source_template_id: templateId
+        }));
+      
+      if (itemsToAdd.length === 0) {
+        alert("This template has no items defined.");
+        return;
+      }
+
+      const { error } = await supabase.from('project_checklists').insert(itemsToAdd);
+      if (error) alert("Error applying template: " + error.message);
+      else onUpdate();
+    }
+  };
 
   const handleSaveChecklist = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -264,7 +323,6 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, projectSurveys = 
       if (error) alert(error.message);
     }
     
-    // Reset Checklist Form
     setChecklistForm({ task_name: '', size: '', quantity: 1, notes: '', status: 'NONE' });
     setClEditingId(null);
     onUpdate();
@@ -289,6 +347,47 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, projectSurveys = 
     else onUpdate();
   };
 
+  // --- TEMPLATE MANAGEMENT CRUD ---
+  const handleAddTemplate = async () => {
+    if (!newTemplateName.trim() || !supabase) return;
+    const { error } = await supabase.from('checklist_templates').insert([{ name: newTemplateName }]);
+    if (error) alert(error.message);
+    else { setNewTemplateName(''); onUpdate(); }
+  };
+
+  const handleDeleteTemplate = async (id: string) => {
+    if (!supabase || !confirm("Delete this template and all its items?")) return;
+    const { error } = await supabase.from('checklist_templates').delete().eq('id', id);
+    if (error) alert(error.message);
+    else {
+      if (selectedTemplateForEdit?.id === id) setSelectedTemplateForEdit(null);
+      onUpdate();
+    }
+  };
+
+  const handleAddTemplateItem = async () => {
+    if (!selectedTemplateForEdit || !newTemplateItem.task_name || !supabase) return;
+    const { error } = await supabase.from('checklist_template_items').insert([{
+      template_id: selectedTemplateForEdit.id,
+      task_name: newTemplateItem.task_name,
+      size: newTemplateItem.size,
+      notes: newTemplateItem.notes
+    }]);
+    if (error) alert(error.message);
+    else {
+      setNewTemplateItem({ task_name: '', size: '', notes: '' });
+      onUpdate();
+    }
+  };
+
+  const handleDeleteTemplateItem = async (id: string) => {
+    if (!supabase) return;
+    const { error } = await supabase.from('checklist_template_items').delete().eq('id', id);
+    if (error) alert(error.message);
+    else onUpdate();
+  };
+
+  // --- RENDERING HELPERS ---
   const renderCalendar = () => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
@@ -335,7 +434,74 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, projectSurveys = 
   // === RENDER DETAIL VIEW ===
   if (selectedProject) {
     return (
-      <div className="flex flex-col h-full animate-in slide-in-from-right duration-300">
+      <div className="flex flex-col h-full animate-in slide-in-from-right duration-300 relative">
+        {/* TEMPLATE MANAGER MODAL */}
+        {isManageTemplatesOpen && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsManageTemplatesOpen(false)}>
+            <div className="bg-white w-full max-w-4xl h-[80vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+              <div className="p-6 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+                <h3 className="text-lg font-black text-slate-900 uppercase">Manage Checklist Templates</h3>
+                <button onClick={() => setIsManageTemplatesOpen(false)} className="p-2 bg-white rounded-lg hover:bg-slate-200 text-slate-500"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+              </div>
+              
+              <div className="flex flex-1 overflow-hidden">
+                {/* Sidebar: List of Templates */}
+                <div className="w-1/3 border-r border-slate-200 bg-white p-4 flex flex-col">
+                   <div className="flex gap-2 mb-4">
+                      <input type="text" placeholder="New Template Name" value={newTemplateName} onChange={e => setNewTemplateName(e.target.value)} className="w-full text-xs font-bold p-2 border border-slate-300 rounded" />
+                      <button onClick={handleAddTemplate} className="px-3 bg-indigo-600 text-white rounded text-xs font-bold">Add</button>
+                   </div>
+                   <div className="flex-1 overflow-y-auto space-y-2">
+                     {checklistTemplates.map(t => (
+                       <div key={t.id} onClick={() => setSelectedTemplateForEdit(t)} className={`p-3 rounded-lg border cursor-pointer flex justify-between items-center group ${selectedTemplateForEdit?.id === t.id ? 'bg-indigo-50 border-indigo-300' : 'bg-slate-50 border-slate-200 hover:border-indigo-200'}`}>
+                          <span className="text-xs font-black text-slate-800 uppercase">{t.name}</span>
+                          <button onClick={(e) => { e.stopPropagation(); handleDeleteTemplate(t.id); }} className="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>
+                       </div>
+                     ))}
+                   </div>
+                </div>
+
+                {/* Main: Template Items */}
+                <div className="flex-1 p-6 bg-slate-50 overflow-y-auto">
+                   {selectedTemplateForEdit ? (
+                     <div className="space-y-6">
+                        <div className="flex justify-between items-center">
+                          <h4 className="text-sm font-black text-slate-700 uppercase">Items in: <span className="text-indigo-600">{selectedTemplateForEdit.name}</span></h4>
+                        </div>
+                        
+                        {/* Add Item Form */}
+                        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm grid grid-cols-4 gap-2">
+                           <input type="text" placeholder="Design Name" value={newTemplateItem.task_name} onChange={e => setNewTemplateItem({...newTemplateItem, task_name: e.target.value})} className="col-span-2 text-xs font-bold p-2 border border-slate-300 rounded" />
+                           <input type="text" placeholder="Size" value={newTemplateItem.size} onChange={e => setNewTemplateItem({...newTemplateItem, size: e.target.value})} className="col-span-1 text-xs font-bold p-2 border border-slate-300 rounded" />
+                           <button onClick={handleAddTemplateItem} className="col-span-1 bg-indigo-600 text-white rounded text-xs font-bold uppercase">Add Item</button>
+                           <input type="text" placeholder="Default Notes (Optional)" value={newTemplateItem.notes} onChange={e => setNewTemplateItem({...newTemplateItem, notes: e.target.value})} className="col-span-4 text-xs font-bold p-2 border border-slate-300 rounded" />
+                        </div>
+
+                        {/* List Items */}
+                        <div className="space-y-2">
+                           {checklistTemplateItems.filter(ti => ti.template_id === selectedTemplateForEdit.id).map(ti => (
+                             <div key={ti.id} className="bg-white p-3 rounded-lg border border-slate-200 flex justify-between items-start">
+                                <div>
+                                   <div className="text-xs font-black text-slate-900 uppercase">{ti.task_name}</div>
+                                   <div className="text-[10px] text-slate-500 mt-0.5">{ti.size} {ti.notes && `• ${ti.notes}`}</div>
+                                </div>
+                                <button onClick={() => handleDeleteTemplateItem(ti.id)} className="text-red-400 hover:text-red-600"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+                             </div>
+                           ))}
+                           {checklistTemplateItems.filter(ti => ti.template_id === selectedTemplateForEdit.id).length === 0 && (
+                             <div className="text-center text-xs text-slate-400 italic py-4">No items in this template yet.</div>
+                           )}
+                        </div>
+                     </div>
+                   ) : (
+                     <div className="h-full flex items-center justify-center text-slate-400 text-sm font-bold italic">Select a template to edit items</div>
+                   )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Header Navigation */}
         <div className="flex items-center gap-4 mb-6 pb-4 border-b border-slate-200">
           <button onClick={() => setSelectedProject(null)} className="p-2 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 text-slate-600 transition-colors">
@@ -469,10 +635,38 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, projectSurveys = 
 
           {activeTab === 'checklist' && (
              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in duration-300">
+                {/* TEMPLATE SECTION */}
+                <div className="lg:col-span-3 bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4 flex-wrap">
+                   <div className="flex items-center gap-2">
+                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Templates:</span>
+                     <button onClick={() => setIsManageTemplatesOpen(true)} className="text-[10px] font-bold text-indigo-600 underline hover:text-indigo-800">Manage</button>
+                   </div>
+                   <div className="h-6 w-px bg-slate-200 mx-2"></div>
+                   <div className="flex flex-wrap gap-2">
+                     {checklistTemplates.map(t => {
+                       const isActive = activeTemplatesInProject.has(t.id);
+                       return (
+                         <button 
+                            key={t.id}
+                            onClick={() => handleToggleTemplate(t.id)}
+                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase border transition-all ${
+                              isActive 
+                              ? 'bg-indigo-600 border-indigo-600 text-white shadow-md' 
+                              : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-indigo-300'
+                            }`}
+                         >
+                           {t.name} {isActive && '✓'}
+                         </button>
+                       );
+                     })}
+                     {checklistTemplates.length === 0 && <span className="text-[10px] text-slate-400 italic">No templates available. Create one in 'Manage'.</span>}
+                   </div>
+                </div>
+
                 {/* Add/Edit Form */}
                 <div className="lg:col-span-1">
                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm sticky top-0">
-                      <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest mb-4 border-b border-slate-100 pb-2">{clEditingId ? 'Edit Checklist Item' : 'Add New Item'}</h3>
+                      <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest mb-4 border-b border-slate-100 pb-2">{clEditingId ? 'Edit Checklist Item' : 'Add New Item (Manual)'}</h3>
                       <form onSubmit={handleSaveChecklist} className="space-y-4">
                         <div>
                           <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Design Name</label>
@@ -516,12 +710,15 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, projectSurveys = 
                       </thead>
                       <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
                         {filteredChecklists.length === 0 ? (
-                          <tr><td colSpan={5} className="px-6 py-12 text-center text-slate-400 italic text-xs">No checklist items added yet. Start adding from the form.</td></tr>
+                          <tr><td colSpan={5} className="px-6 py-12 text-center text-slate-400 italic text-xs">No checklist items added yet. Start adding manually or use a template.</td></tr>
                         ) : filteredChecklists.map((cl, idx) => (
                           <tr key={cl.id} className="hover:bg-slate-50 transition-colors group">
                             <td className="px-6 py-4 text-center text-slate-400">{idx + 1}</td>
                             <td className="px-6 py-4">
-                               <div className="text-slate-900 uppercase font-black">{cl.task_name}</div>
+                               <div className="flex items-center gap-2">
+                                  <div className="text-slate-900 uppercase font-black">{cl.task_name}</div>
+                                  {cl.source_template_id && <span className="bg-indigo-50 text-indigo-600 border border-indigo-100 text-[8px] px-1 rounded uppercase font-bold">Template</span>}
+                               </div>
                                <div className="text-[10px] text-slate-500 mt-1 flex flex-wrap gap-2">
                                   {cl.size && <span className="bg-slate-100 px-1.5 rounded border">Size: {cl.size}</span>}
                                   {cl.notes && <span className="italic text-slate-400 truncate max-w-[200px]">{cl.notes}</span>}
