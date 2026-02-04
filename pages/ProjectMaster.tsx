@@ -337,6 +337,13 @@ const ProjectMaster: React.FC<Props> = ({
     }
   };
 
+  const handleQuickStatusChange = async (id: string, newStatus: string) => {
+    if (!supabase) return;
+    const { error } = await supabase.from('project_checklists').update({ status: newStatus }).eq('id', id);
+    if (error) alert(error.message);
+    else onUpdate();
+  };
+
   // --- ADD NEW ITEM HANDLER (Bottom Row) ---
   const handleAddNewItem = async () => {
     if (!selectedProject || !newItem.task_name.trim() || !supabase) return;
@@ -772,13 +779,20 @@ const ProjectMaster: React.FC<Props> = ({
                                 <td className="px-4 py-3 text-center text-slate-900">{cl.quantity}</td>
                                 <td className="px-4 py-3 text-slate-500 italic truncate max-w-[200px] text-xs">{cl.notes || '-'}</td>
                                 <td className="px-4 py-3">
-                                  <span className={`text-[9px] font-black uppercase px-2 py-1 rounded border ${
-                                    cl.status === 'DONE' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
-                                    cl.status === 'ON PROGRESS' ? 'bg-amber-100 text-amber-700 border-amber-200' :
-                                    'bg-slate-100 text-slate-500 border-slate-200'
-                                  }`}>
-                                    {cl.status}
-                                  </span>
+                                  {/* Direct Status Edit Dropdown */}
+                                  <select 
+                                    value={cl.status} 
+                                    onChange={(e) => handleQuickStatusChange(cl.id, e.target.value)}
+                                    className={`w-full text-[9px] font-black uppercase rounded py-1 px-1 border outline-none cursor-pointer transition-colors ${
+                                      cl.status === 'DONE' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
+                                      cl.status === 'ON PROGRESS' ? 'bg-amber-100 text-amber-700 border-amber-200' :
+                                      'bg-slate-100 text-slate-500 border-slate-200'
+                                    }`}
+                                  >
+                                    <option value="NONE">Not Started</option>
+                                    <option value="ON PROGRESS">On Progress</option>
+                                    <option value="DONE">Done</option>
+                                  </select>
                                 </td>
                                 <td className="px-4 py-3 text-right">
                                   <div className="flex justify-end gap-3 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
@@ -854,6 +868,7 @@ const ProjectMaster: React.FC<Props> = ({
   // === RENDER LIST VIEW (Default) ===
   return (
     <div className="space-y-6 flex flex-col h-full relative">
+      {/* ... (Rest of the component remains unchanged) ... */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 flex-shrink-0">
         <div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Project Master</h1>
