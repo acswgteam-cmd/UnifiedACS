@@ -82,5 +82,7 @@ export const INITIAL_STATE: AppState = {
   internalDesigns,
   artworkLogs,
   projectSurveys: [],
-  projectChecklists: []
+  projectChecklists: [],
+  checklistTemplates: [],
+  checklistTemplateItems: []
 };
