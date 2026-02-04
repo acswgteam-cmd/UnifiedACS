@@ -68,7 +68,7 @@ const ArtworkTable: React.FC<Props> = ({ state, onUpdate, onDelete }) => {
 
   const handleEditChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
-    const val = type === 'checkbox' ? (e.target as HTMLInputElement).checked : value;
+    const val = (type === 'checkbox' && e.target instanceof HTMLInputElement) ? e.target.checked : value;
     setEditFormData(prev => ({ ...prev, [name]: val }));
   };
 
@@ -102,7 +102,7 @@ const ArtworkTable: React.FC<Props> = ({ state, onUpdate, onDelete }) => {
         <table className="w-full text-left text-sm border-collapse">
           <thead className="sticky top-0 z-10 bg-slate-100">
             <tr className="border-b border-slate-200 text-slate-800 font-black uppercase text-[10px] tracking-wider">
-              <th className="px-6 py-4">Artwork Name</th>
+              <th className="px-6 py-4">Artwork Name & Type</th>
               <th className="px-6 py-4">Production Context</th>
               <th className="px-6 py-4">PIC Designer</th>
               <th className="px-6 py-4">Timeline</th>
@@ -116,7 +116,25 @@ const ArtworkTable: React.FC<Props> = ({ state, onUpdate, onDelete }) => {
               if (isEditing) {
                 return (
                   <tr key={log.id} className="bg-indigo-50/20">
-                    <td className="px-6 py-4"><input name="artwork_name" value={editFormData.artwork_name} onChange={handleEditChange} className={editInputClass} /></td>
+                    <td className="px-6 py-4">
+                      <input 
+                        name="artwork_name" 
+                        value={editFormData.artwork_name} 
+                        onChange={handleEditChange} 
+                        className={`${editInputClass} mb-2`} 
+                        placeholder="Artwork Name"
+                      />
+                      <select 
+                        name="artwork_type" 
+                        value={editFormData.artwork_type} 
+                        onChange={handleEditChange} 
+                        className={editInputClass}
+                      >
+                        <option value="2D Design">2D Design</option>
+                        <option value="3D Design">3D Design</option>
+                        <option value="Video">Video</option>
+                      </select>
+                    </td>
                     <td className="px-6 py-4"><div className="text-[10px] font-black text-slate-400 uppercase">{log.work_context}</div></td>
                     <td className="px-6 py-4">
                       <select name="pic_designer_id" value={editFormData.pic_designer_id} onChange={handleEditChange} className={editInputClass}>
@@ -141,7 +159,12 @@ const ArtworkTable: React.FC<Props> = ({ state, onUpdate, onDelete }) => {
               }
               return (
                 <tr key={log.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-6 py-4 font-bold text-slate-900">{log.artwork_name}</td>
+                  <td className="px-6 py-4">
+                    <div className="font-bold text-slate-900">{log.artwork_name}</div>
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider border border-slate-200 px-1.5 py-0.5 rounded bg-slate-100 inline-block mt-1">
+                      {log.artwork_type}
+                    </span>
+                  </td>
                   <td className="px-6 py-4">
                     <span className={`inline-flex px-1.5 py-0.5 rounded text-[9px] font-black uppercase mb-1 ${getContextColor(log.work_context)}`}>{log.work_context}</span>
                     <div className="text-[11px] font-bold text-slate-600 uppercase truncate max-w-[180px]">{getContextLabel(log)}</div>
