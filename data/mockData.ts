@@ -81,5 +81,6 @@ export const INITIAL_STATE: AppState = {
   leads,
   internalDesigns,
   artworkLogs,
-  projectSurveys: []
+  projectSurveys: [],
+  projectChecklists: []
 };
