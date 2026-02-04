@@ -30,8 +30,11 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, projectSurveys = 
   const [view, setView] = useState<'list' | 'calendar'>('list');
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  
+  // Navigation State: If selectedProject is set, we show the Detail View instead of List/Calendar
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [activeTab, setActiveTab] = useState<'details' | 'checklist'>('details');
+
   const [currentDate, setCurrentDate] = useState(new Date());
   const [newLocInput, setNewLocInput] = useState('');
   const [copySuccess, setCopySuccess] = useState(false);
@@ -329,6 +332,237 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, projectSurveys = 
   const labelClass = "text-[11px] font-black text-slate-900 uppercase mb-1.5 block tracking-wide";
   const inputClass = "w-full rounded-lg border-slate-300 text-slate-900 text-sm p-3 border bg-white focus:ring-2 focus:ring-indigo-600 outline-none placeholder-slate-400 font-semibold shadow-sm transition-all";
 
+  // === RENDER DETAIL VIEW ===
+  if (selectedProject) {
+    return (
+      <div className="flex flex-col h-full animate-in slide-in-from-right duration-300">
+        {/* Header Navigation */}
+        <div className="flex items-center gap-4 mb-6 pb-4 border-b border-slate-200">
+          <button onClick={() => setSelectedProject(null)} className="p-2 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 text-slate-600 transition-colors">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+          </button>
+          <div>
+             <div className="flex items-center gap-3 mb-1">
+                <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tight">{selectedProject.project_name}</h1>
+                <span className={`px-2 py-0.5 rounded-full border text-[9px] font-black uppercase ${getStatusBadge(selectedProject.status)}`}>{selectedProject.status}</span>
+             </div>
+             <p className="text-xs font-bold text-slate-500 uppercase">Timeline: {selectedProject.start_date} → {selectedProject.end_date} &bull; Type: {selectedProject.project_type}</p>
+          </div>
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit mb-6">
+          <button 
+            onClick={() => setActiveTab('details')}
+            className={`px-6 py-2 rounded-lg text-xs font-black uppercase tracking-wide transition-all ${activeTab === 'details' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            Project Details
+          </button>
+          <button 
+            onClick={() => setActiveTab('checklist')}
+            className={`px-6 py-2 rounded-lg text-xs font-black uppercase tracking-wide transition-all ${activeTab === 'checklist' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            Design Checklist
+          </button>
+        </div>
+
+        {/* Tab Content */}
+        <div className="flex-1 overflow-y-auto">
+          {activeTab === 'details' && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in duration-300">
+               {/* Metadata Column */}
+               <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm h-fit">
+                  <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest mb-4 border-b border-slate-100 pb-2">Information</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">PIC Designer</span>
+                      <p className="font-bold text-slate-800 uppercase flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-indigo-600"></span>{getDesignerName(selectedProject.pic_designer_id)}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Support Team</span>
+                      <div className="flex flex-wrap gap-1">
+                        {selectedProject.support_designer_ids && selectedProject.support_designer_ids.length > 0 ? selectedProject.support_designer_ids.map(sid => (
+                          <span key={sid} className="px-2 py-0.5 bg-slate-50 text-slate-600 text-[9px] font-black rounded border border-slate-200 uppercase">{getDesignerName(sid)}</span>
+                        )) : <span className="text-xs text-slate-400 italic">No support</span>}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Locations</span>
+                      <div className="flex flex-wrap gap-2">
+                        {Array.isArray((selectedProject as any).locations) && (selectedProject as any).locations.length > 0 ? (selectedProject as any).locations.map((loc:string) => <span key={loc} className="px-2 py-1 bg-slate-50 text-[10px] font-black rounded border uppercase">{loc}</span>) : (typeof (selectedProject as any).locations === 'string' && (selectedProject as any).locations ? <span className="px-2 py-1 bg-slate-100 text-[10px] font-black rounded border uppercase">{(selectedProject as any).locations}</span> : <p className="font-bold text-slate-400 text-xs italic">HQ</p>)}
+                      </div>
+                    </div>
+                  </div>
+               </div>
+
+               {/* Notes Column */}
+               <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm h-fit lg:col-span-2">
+                  <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest mb-4 border-b border-slate-100 pb-2">Notes</h3>
+                  <div className="p-4 bg-slate-50 rounded-xl text-sm italic text-slate-700 whitespace-pre-wrap border border-slate-100 min-h-[100px]">{selectedProject.notes || 'No specific notes recorded for this project.'}</div>
+               </div>
+
+               {/* Survey Section */}
+               <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm lg:col-span-3">
+                  <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-2">
+                    <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest">Post-Project Evaluation</h3>
+                    {!projectSurveys.find(s => s.project_id === selectedProject.id) && (
+                      <button onClick={handleCopySurveyLink} className="text-[10px] font-black text-indigo-600 uppercase hover:underline">Copy Survey Link</button>
+                    )}
+                  </div>
+
+                  {(() => {
+                      const survey = projectSurveys.find(s => s.project_id === selectedProject.id);
+                      if (!survey) {
+                        return (
+                          <div className="p-8 bg-slate-50 rounded-xl border border-dashed border-slate-300 text-center">
+                            <p className="text-xs font-bold text-slate-400 italic mb-2">No evaluation submitted yet.</p>
+                            <p className="text-[10px] text-slate-400">Send the survey link to the project manager after completion.</p>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                           <div className="space-y-2">
+                              {Object.entries(SURVEY_LABELS).slice(0, 4).map(([key, label]) => {
+                                 const score = (survey as any)[key];
+                                 let color = 'bg-slate-100 text-slate-500';
+                                 if (score === 3) color = 'bg-emerald-100 text-emerald-700';
+                                 else if (score === 2) color = 'bg-blue-100 text-blue-700';
+                                 else if (score === 1) color = 'bg-amber-100 text-amber-700';
+                                 return (
+                                   <div key={key} className="flex justify-between items-center bg-slate-50 p-2 rounded-lg border border-slate-100">
+                                     <span className="text-[10px] font-bold text-slate-600 uppercase pr-2">{label}</span>
+                                     <span className={`text-[10px] font-black px-2 py-0.5 rounded ${color}`}>{score} / 3</span>
+                                   </div>
+                                 );
+                              })}
+                           </div>
+                           <div className="space-y-2">
+                              {Object.entries(SURVEY_LABELS).slice(4).map(([key, label]) => {
+                                 const score = (survey as any)[key];
+                                 let color = 'bg-slate-100 text-slate-500';
+                                 if (score === 3) color = 'bg-emerald-100 text-emerald-700';
+                                 else if (score === 2) color = 'bg-blue-100 text-blue-700';
+                                 else if (score === 1) color = 'bg-amber-100 text-amber-700';
+                                 return (
+                                   <div key={key} className="flex justify-between items-center bg-slate-50 p-2 rounded-lg border border-slate-100">
+                                     <span className="text-[10px] font-bold text-slate-600 uppercase pr-2">{label}</span>
+                                     <span className={`text-[10px] font-black px-2 py-0.5 rounded ${color}`}>{score} / 3</span>
+                                   </div>
+                                 );
+                              })}
+                              {survey.notes && (
+                                <div className="mt-2 text-[10px] text-slate-600 italic bg-amber-50 p-2 rounded border border-amber-100">
+                                  <strong>Notes:</strong> "{survey.notes}"
+                                </div>
+                              )}
+                              <div className="pt-2 flex justify-end">
+                                <button onClick={() => handleDeleteSurvey(survey.id)} className="text-red-500 text-[10px] font-black uppercase hover:underline">Delete Result</button>
+                              </div>
+                           </div>
+                        </div>
+                      );
+                  })()}
+               </div>
+            </div>
+          )}
+
+          {activeTab === 'checklist' && (
+             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in duration-300">
+                {/* Add/Edit Form */}
+                <div className="lg:col-span-1">
+                   <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm sticky top-0">
+                      <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest mb-4 border-b border-slate-100 pb-2">{clEditingId ? 'Edit Checklist Item' : 'Add New Item'}</h3>
+                      <form onSubmit={handleSaveChecklist} className="space-y-4">
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Design Name</label>
+                          <input required type="text" placeholder="e.g. Backdrop Main Stage" value={checklistForm.task_name} onChange={e => setChecklistForm({...checklistForm, task_name: e.target.value})} className="w-full text-xs font-bold p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-600 outline-none" />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                           <div>
+                              <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Size</label>
+                              <input type="text" placeholder="e.g. 5x3m" value={checklistForm.size} onChange={e => setChecklistForm({...checklistForm, size: e.target.value})} className="w-full text-xs font-bold p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-600 outline-none" />
+                           </div>
+                           <div>
+                              <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Qty</label>
+                              <input type="number" min="1" placeholder="1" value={checklistForm.quantity} onChange={e => setChecklistForm({...checklistForm, quantity: parseInt(e.target.value) || 0})} className="w-full text-xs font-bold p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-600 outline-none" />
+                           </div>
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Notes</label>
+                          <textarea rows={2} placeholder="Material specs, etc..." value={checklistForm.notes} onChange={e => setChecklistForm({...checklistForm, notes: e.target.value})} className="w-full text-xs font-bold p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-600 outline-none" />
+                        </div>
+                        
+                        <div className="flex gap-2 pt-2">
+                           {clEditingId && <button type="button" onClick={() => { setClEditingId(null); setChecklistForm({ task_name: '', size: '', quantity: 1, notes: '', status: 'NONE' }); }} className="flex-1 py-2 text-[10px] font-black text-slate-500 uppercase bg-slate-100 rounded-lg hover:bg-slate-200">Cancel</button>}
+                           <button type="submit" className="flex-1 py-2 bg-indigo-600 text-white text-[10px] font-black uppercase rounded-lg shadow-md hover:bg-indigo-700">{clEditingId ? 'Update Item' : 'Add Item'}</button>
+                        </div>
+                      </form>
+                   </div>
+                </div>
+
+                {/* Table List */}
+                <div className="lg:col-span-2">
+                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-slate-50 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-200">
+                        <tr>
+                          <th className="px-6 py-4 text-center w-12">#</th>
+                          <th className="px-6 py-4">Design Spec</th>
+                          <th className="px-6 py-4 text-center">Qty</th>
+                          <th className="px-6 py-4">Status</th>
+                          <th className="px-6 py-4 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
+                        {filteredChecklists.length === 0 ? (
+                          <tr><td colSpan={5} className="px-6 py-12 text-center text-slate-400 italic text-xs">No checklist items added yet. Start adding from the form.</td></tr>
+                        ) : filteredChecklists.map((cl, idx) => (
+                          <tr key={cl.id} className="hover:bg-slate-50 transition-colors group">
+                            <td className="px-6 py-4 text-center text-slate-400">{idx + 1}</td>
+                            <td className="px-6 py-4">
+                               <div className="text-slate-900 uppercase font-black">{cl.task_name}</div>
+                               <div className="text-[10px] text-slate-500 mt-1 flex flex-wrap gap-2">
+                                  {cl.size && <span className="bg-slate-100 px-1.5 rounded border">Size: {cl.size}</span>}
+                                  {cl.notes && <span className="italic text-slate-400 truncate max-w-[200px]">{cl.notes}</span>}
+                               </div>
+                            </td>
+                            <td className="px-6 py-4 text-center text-slate-900">{cl.quantity}</td>
+                            <td className="px-6 py-4">
+                              <select 
+                                value={cl.status} 
+                                onChange={(e) => handleStatusChangeChecklist(cl.id, e.target.value)}
+                                className={`text-[9px] font-black uppercase rounded py-1.5 px-3 border outline-none cursor-pointer transition-colors ${
+                                  cl.status === 'DONE' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
+                                  cl.status === 'ON PROGRESS' ? 'bg-amber-100 text-amber-700 border-amber-200' :
+                                  'bg-slate-100 text-slate-500 border-slate-200'
+                                }`}
+                              >
+                                <option value="NONE">Not Started</option>
+                                <option value="ON PROGRESS">On Progress</option>
+                                <option value="DONE">Done</option>
+                              </select>
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              <div className="flex justify-end gap-3 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
+                                <button onClick={() => handleEditChecklist(cl)} className="text-indigo-600 hover:text-indigo-800 text-[10px] font-black uppercase">Edit</button>
+                                <button onClick={() => handleDeleteChecklist(cl.id)} className="text-red-400 hover:text-red-600 text-[10px] font-black uppercase">Del</button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+             </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // === RENDER LIST VIEW (Default) ===
   return (
     <div className="space-y-6 flex flex-col h-full relative">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 flex-shrink-0">
@@ -369,7 +603,7 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, projectSurveys = 
         <form onSubmit={handleSave} className="bg-white p-8 rounded-2xl border border-slate-200 shadow-xl animate-in zoom-in duration-200 flex-shrink-0 mb-6">
           <h2 className="font-black text-slate-900 mb-8 uppercase tracking-tight flex items-center gap-2"><span className="w-2 h-2 bg-indigo-600 rounded-full"></span>{editingId ? 'Edit Project' : 'New Project'}</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-            <div className="md:col-span-2"><label className={labelClass}>Project Name</label><input type="text" required value={formData.project_name} onChange={e => setFormData({...formData,project_name: e.target.value})} className={inputClass} placeholder="Annual Event 2024" /></div>
+            <div className="md:col-span-2"><label className={labelClass}>Project Name</label><input type="text" required value={formData.project_name} onChange={e => setFormData({...formData, project_name: e.target.value})} className={inputClass} placeholder="Annual Event 2024" /></div>
             <div><label className={labelClass}>Status</label><select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as any})} className={inputClass}><option value="ON PROGRESS">ON PROGRESS</option><option value="ON HOLD">ON HOLD</option><option value="DONE">DONE</option></select></div>
             <div><label className={labelClass}>Project Type</label><select value={formData.project_type} onChange={e => setFormData({...formData, project_type: e.target.value})} className={inputClass}><option value="EVENT">EVENT</option><option value="TRAVEL">TRAVEL</option><option value="WELLNESS">WELLNESS</option><option value="CREATIVE">CREATIVE</option><option value="TRAINING">TRAINING</option></select></div>
             <div><label className={labelClass}>Start Date</label><input type="date" required value={formData.start_date} onChange={e => setFormData({...formData, start_date: e.target.value})} className={inputClass} /></div>
@@ -459,188 +693,6 @@ const ProjectMaster: React.FC<Props> = ({ projects, designers, projectSurveys = 
           </div>
         )}
       </div>
-
-      {/* SELECTED PROJECT MODAL (Overlay) */}
-      {selectedProject && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 backdrop-blur-sm bg-slate-900/40" onClick={() => setSelectedProject(null)}>
-          <div className="bg-white w-full max-w-3xl rounded-3xl shadow-2xl p-0 animate-in zoom-in duration-200 overflow-hidden flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
-            
-            {/* Header */}
-            <div className="p-6 border-b border-slate-200 bg-slate-50 flex justify-between items-start flex-shrink-0">
-              <div className="flex items-center gap-3">
-                <span className={`px-2 py-0.5 rounded-full border text-[9px] font-black uppercase ${getStatusBadge(selectedProject.status)}`}>{selectedProject.status}</span>
-                <div>
-                  <h2 className="text-xl font-bold text-slate-900 uppercase leading-none">{selectedProject.project_name}</h2>
-                  <p className="text-[10px] font-black text-slate-400 uppercase mt-1">Timeline: {selectedProject.start_date} → {selectedProject.end_date}</p>
-                </div>
-              </div>
-              <button onClick={() => setSelectedProject(null)} className="p-1.5 text-slate-400 hover:text-slate-900 bg-white rounded-lg border border-slate-200"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
-            </div>
-
-            {/* Tab Navigation */}
-            <div className="flex border-b border-slate-200 bg-white flex-shrink-0 px-6">
-              <button 
-                onClick={() => setActiveTab('details')}
-                className={`py-3 px-4 text-xs font-black uppercase tracking-wider border-b-2 transition-colors ${activeTab === 'details' ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
-              >
-                Project Details
-              </button>
-              <button 
-                onClick={() => setActiveTab('checklist')}
-                className={`py-3 px-4 text-xs font-black uppercase tracking-wider border-b-2 transition-colors ${activeTab === 'checklist' ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
-              >
-                Design Checklist
-              </button>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto p-6 bg-white">
-              {activeTab === 'details' && (
-                <div className="space-y-6 animate-in fade-in duration-300">
-                  <div className="grid grid-cols-2 gap-6">
-                    <div><span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">PIC Designer</span><p className="font-bold text-slate-800 uppercase flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-indigo-600"></span>{getDesignerName(selectedProject.pic_designer_id)}</p></div>
-                    <div><span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Support Team</span>
-                      <div className="flex flex-wrap gap-1">
-                        {selectedProject.support_designer_ids && selectedProject.support_designer_ids.length > 0 ? selectedProject.support_designer_ids.map(sid => (
-                          <span key={sid} className="px-2 py-0.5 bg-slate-100 text-slate-600 text-[9px] font-black rounded border border-slate-200 uppercase">{getDesignerName(sid)}</span>
-                        )) : <span className="text-xs text-slate-400 italic">No support</span>}
-                      </div>
-                    </div>
-                  </div>
-                  <div><span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Locations</span><div className="flex flex-wrap gap-2">{Array.isArray((selectedProject as any).locations) && (selectedProject as any).locations.length > 0 ? (selectedProject as any).locations.map((loc:string) => <span key={loc} className="px-2 py-1 bg-slate-100 text-[10px] font-black rounded border uppercase">{loc}</span>) : (typeof (selectedProject as any).locations === 'string' && (selectedProject as any).locations ? <span className="px-2 py-1 bg-slate-100 text-[10px] font-black rounded border uppercase">{(selectedProject as any).locations}</span> : <p className="font-bold text-slate-400 text-xs italic">HQ</p>)}</div></div>
-                  <div><span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Notes / Keterangan</span><div className="p-4 bg-slate-50 rounded-xl text-sm italic text-slate-700 whitespace-pre-wrap border border-slate-100">{selectedProject.notes || 'No notes.'}</div></div>
-                  
-                  {/* SURVEY EVALUATION */}
-                  <div className="pt-6 border-t border-slate-100">
-                    <div className="flex justify-between items-center mb-4">
-                      <h3 className="text-xs font-black text-slate-900 uppercase tracking-wide flex items-center gap-2">
-                         Post-Project Evaluation
-                      </h3>
-                    </div>
-
-                    {(() => {
-                      const survey = projectSurveys.find(s => s.project_id === selectedProject.id);
-                      if (!survey) {
-                        return (
-                          <div className="p-4 bg-slate-50 rounded-xl border border-dashed border-slate-300 text-center">
-                            <p className="text-[10px] font-bold text-slate-400 italic">No evaluation submitted yet.</p>
-                            <button onClick={handleCopySurveyLink} className="mt-2 text-[9px] font-black text-indigo-600 uppercase hover:underline">Copy Survey Link</button>
-                          </div>
-                        );
-                      }
-                      return (
-                        <div className="bg-slate-50 rounded-xl border border-slate-200 p-4 relative">
-                          <div className="flex justify-between items-center border-b border-slate-200 pb-2 mb-3">
-                            <div className="text-[9px] font-bold text-slate-400 uppercase">Submitted: {new Date(survey!.created_at).toLocaleDateString()}</div>
-                            <button onClick={() => handleDeleteSurvey(survey!.id)} className="text-red-500 text-[9px] font-black uppercase hover:underline">Delete Result</button>
-                          </div>
-                          <div className="grid grid-cols-1 gap-y-2">
-                            {Object.entries(SURVEY_LABELS).map(([key, label]) => {
-                               const score = (survey as any)[key];
-                               let color = 'bg-slate-200 text-slate-500';
-                               if (score === 3) color = 'bg-emerald-100 text-emerald-700';
-                               else if (score === 2) color = 'bg-blue-100 text-blue-700';
-                               else if (score === 1) color = 'bg-amber-100 text-amber-700';
-                               return (
-                                 <div key={key} className="flex justify-between items-center">
-                                   <span className="text-[9px] font-bold text-slate-600 uppercase w-3/4 pr-2">{label}</span>
-                                   <span className={`text-[9px] font-black px-2 py-0.5 rounded ${color}`}>{score} / 3</span>
-                                 </div>
-                               );
-                            })}
-                          </div>
-                          {survey?.notes && <div className="mt-3 text-[10px] text-slate-600 italic bg-white p-2 rounded border border-slate-100">"{survey.notes}"</div>}
-                        </div>
-                      );
-                    })()}
-                  </div>
-                </div>
-              )}
-
-              {activeTab === 'checklist' && (
-                <div className="space-y-6 animate-in fade-in duration-300">
-                  {/* ADD CHECKLIST FORM */}
-                  <form onSubmit={handleSaveChecklist} className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                    <h3 className="text-[10px] font-black text-slate-400 uppercase mb-3 tracking-widest">{clEditingId ? 'Edit Checklist Item' : 'Add Design Checklist'}</h3>
-                    <div className="grid grid-cols-6 gap-2 mb-3">
-                      <div className="col-span-2">
-                         <input required type="text" placeholder="Design Name" value={checklistForm.task_name} onChange={e => setChecklistForm({...checklistForm, task_name: e.target.value})} className="w-full text-xs font-bold p-2 border border-slate-300 rounded focus:border-indigo-500 outline-none" />
-                      </div>
-                      <div className="col-span-1">
-                         <input type="text" placeholder="Size (e.g. A4)" value={checklistForm.size} onChange={e => setChecklistForm({...checklistForm, size: e.target.value})} className="w-full text-xs font-bold p-2 border border-slate-300 rounded focus:border-indigo-500 outline-none" />
-                      </div>
-                      <div className="col-span-1">
-                         <input type="number" min="1" placeholder="Qty" value={checklistForm.quantity} onChange={e => setChecklistForm({...checklistForm, quantity: parseInt(e.target.value) || 0})} className="w-full text-xs font-bold p-2 border border-slate-300 rounded focus:border-indigo-500 outline-none" />
-                      </div>
-                      <div className="col-span-2">
-                         <input type="text" placeholder="Notes..." value={checklistForm.notes} onChange={e => setChecklistForm({...checklistForm, notes: e.target.value})} className="w-full text-xs font-bold p-2 border border-slate-300 rounded focus:border-indigo-500 outline-none" />
-                      </div>
-                    </div>
-                    <div className="flex justify-end gap-2">
-                       {clEditingId && <button type="button" onClick={() => { setClEditingId(null); setChecklistForm({ task_name: '', size: '', quantity: 1, notes: '', status: 'NONE' }); }} className="px-3 py-1.5 text-[10px] font-black text-slate-500 uppercase">Cancel</button>}
-                       <button type="submit" className="px-4 py-1.5 bg-indigo-600 text-white text-[10px] font-black uppercase rounded shadow-sm hover:bg-indigo-700">{clEditingId ? 'Update Item' : 'Add Item'}</button>
-                    </div>
-                  </form>
-
-                  {/* CHECKLIST TABLE */}
-                  <div className="border border-slate-200 rounded-xl overflow-hidden">
-                    <table className="w-full text-left text-xs">
-                      <thead className="bg-slate-100 text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-200">
-                        <tr>
-                          <th className="px-4 py-3 text-center w-10">No</th>
-                          <th className="px-4 py-3">Design Name</th>
-                          <th className="px-4 py-3">Size</th>
-                          <th className="px-4 py-3 text-center">Qty</th>
-                          <th className="px-4 py-3">Notes</th>
-                          <th className="px-4 py-3">Status</th>
-                          <th className="px-4 py-3 text-right">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
-                        {filteredChecklists.length === 0 ? (
-                          <tr><td colSpan={7} className="px-4 py-8 text-center text-slate-400 italic text-xs">No checklist items added yet.</td></tr>
-                        ) : filteredChecklists.map((cl, idx) => (
-                          <tr key={cl.id} className="hover:bg-slate-50 transition-colors">
-                            <td className="px-4 py-3 text-center text-slate-400">{idx + 1}</td>
-                            <td className="px-4 py-3 text-slate-900 uppercase">{cl.task_name}</td>
-                            <td className="px-4 py-3">{cl.size || '-'}</td>
-                            <td className="px-4 py-3 text-center">{cl.quantity}</td>
-                            <td className="px-4 py-3 text-slate-500 italic truncate max-w-[150px]">{cl.notes || '-'}</td>
-                            <td className="px-4 py-3">
-                              <select 
-                                value={cl.status} 
-                                onChange={(e) => handleStatusChangeChecklist(cl.id, e.target.value)}
-                                className={`text-[9px] font-black uppercase rounded py-1 px-2 border outline-none cursor-pointer ${
-                                  cl.status === 'DONE' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
-                                  cl.status === 'ON PROGRESS' ? 'bg-amber-100 text-amber-700 border-amber-200' :
-                                  'bg-slate-100 text-slate-500 border-slate-200'
-                                }`}
-                              >
-                                <option value="NONE">None</option>
-                                <option value="ON PROGRESS">On Progress</option>
-                                <option value="DONE">Done</option>
-                              </select>
-                            </td>
-                            <td className="px-4 py-3 text-right">
-                              <div className="flex justify-end gap-2">
-                                <button onClick={() => handleEditChecklist(cl)} className="text-indigo-600 hover:text-indigo-800"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-5M16.5 3.5a2.121 2.121 0 113 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
-                                <button onClick={() => handleDeleteChecklist(cl.id)} className="text-red-400 hover:text-red-600"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-            </div>
-            
-            <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end">
-              <button onClick={() => setSelectedProject(null)} className="px-6 py-2 bg-slate-900 text-white rounded-lg text-xs font-black uppercase">Close</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
