@@ -50,10 +50,15 @@ const ProjectMaster: React.FC<Props> = ({
   const [copySuccess, setCopySuccess] = useState(false);
   
   // Checklist & Template State
-  const [clEditingId, setClEditingId] = useState<string | null>(null);
-  const [checklistForm, setChecklistForm] = useState<Partial<ProjectChecklist>>({
+  // State for adding NEW item (at bottom of table)
+  const [newItem, setNewItem] = useState({
     task_name: '', size: '', quantity: 1, notes: '', status: 'NONE'
   });
+  
+  // State for EDITING existing row
+  const [inlineEditId, setInlineEditId] = useState<string | null>(null);
+  const [inlineEditData, setInlineEditData] = useState<Partial<ProjectChecklist>>({});
+
   const [isManageTemplatesOpen, setIsManageTemplatesOpen] = useState(false);
   
   // Template Management Local State
@@ -302,47 +307,61 @@ const ProjectMaster: React.FC<Props> = ({
     }
   };
 
-  const handleSaveChecklist = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedProject || !supabase) return;
+  // --- INLINE EDIT HANDLERS ---
+  const handleStartInlineEdit = (cl: ProjectChecklist) => {
+    setInlineEditId(cl.id);
+    setInlineEditData({ ...cl });
+  };
+
+  const handleCancelInlineEdit = () => {
+    setInlineEditId(null);
+    setInlineEditData({});
+  };
+
+  const handleSaveInlineEdit = async () => {
+    if (!inlineEditId || !supabase) return;
+    
+    const { error } = await supabase.from('project_checklists').update({
+        task_name: inlineEditData.task_name,
+        size: inlineEditData.size,
+        quantity: inlineEditData.quantity,
+        notes: inlineEditData.notes,
+        status: inlineEditData.status
+    }).eq('id', inlineEditId);
+
+    if (error) alert(error.message);
+    else {
+        setInlineEditId(null);
+        setInlineEditData({});
+        onUpdate();
+    }
+  };
+
+  // --- ADD NEW ITEM HANDLER (Bottom Row) ---
+  const handleAddNewItem = async () => {
+    if (!selectedProject || !newItem.task_name.trim() || !supabase) return;
 
     const payload = {
       project_id: selectedProject.id,
-      task_name: checklistForm.task_name,
-      size: checklistForm.size,
-      quantity: checklistForm.quantity,
-      notes: checklistForm.notes,
-      status: checklistForm.status || 'NONE'
+      task_name: newItem.task_name,
+      size: newItem.size,
+      quantity: newItem.quantity,
+      notes: newItem.notes,
+      status: 'NONE'
     };
 
-    if (clEditingId) {
-      const { error } = await supabase.from('project_checklists').update(payload).eq('id', clEditingId);
-      if (error) alert(error.message);
-    } else {
-      const { error } = await supabase.from('project_checklists').insert([payload]);
-      if (error) alert(error.message);
-    }
+    const { error } = await supabase.from('project_checklists').insert([payload]);
     
-    setChecklistForm({ task_name: '', size: '', quantity: 1, notes: '', status: 'NONE' });
-    setClEditingId(null);
-    onUpdate();
-  };
-
-  const handleEditChecklist = (cl: ProjectChecklist) => {
-    setChecklistForm(cl);
-    setClEditingId(cl.id);
+    if (error) alert(error.message);
+    else {
+      setNewItem({ task_name: '', size: '', quantity: 1, notes: '', status: 'NONE' });
+      onUpdate();
+    }
   };
 
   const handleDeleteChecklist = async (id: string) => {
     if (!supabase || !confirm("Delete this item?")) return;
     const { error } = await supabase.from('project_checklists').delete().eq('id', id);
-    if (error) alert(error.message);
-    else onUpdate();
-  };
-
-  const handleStatusChangeChecklist = async (id: string, status: string) => {
-    if (!supabase) return;
-    const { error } = await supabase.from('project_checklists').update({ status }).eq('id', id);
     if (error) alert(error.message);
     else onUpdate();
   };
@@ -430,6 +449,10 @@ const ProjectMaster: React.FC<Props> = ({
 
   const labelClass = "text-[11px] font-black text-slate-900 uppercase mb-1.5 block tracking-wide";
   const inputClass = "w-full rounded-lg border-slate-300 text-slate-900 text-sm p-3 border bg-white focus:ring-2 focus:ring-indigo-600 outline-none placeholder-slate-400 font-semibold shadow-sm transition-all";
+  
+  // Style for Excel-like input
+  const cellInputClass = "w-full bg-transparent border-b border-transparent focus:border-indigo-600 outline-none text-xs font-bold text-slate-900 py-1 px-1 transition-colors";
+  const newRowInputClass = "w-full bg-white border border-slate-300 rounded focus:border-indigo-600 outline-none text-xs font-bold text-slate-900 py-2 px-2 shadow-sm";
 
   // === RENDER DETAIL VIEW ===
   if (selectedProject) {
@@ -634,9 +657,9 @@ const ProjectMaster: React.FC<Props> = ({
           )}
 
           {activeTab === 'checklist' && (
-             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in duration-300">
+             <div className="grid grid-cols-1 gap-6 animate-in fade-in duration-300">
                 {/* TEMPLATE SECTION */}
-                <div className="lg:col-span-3 bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4 flex-wrap">
+                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4 flex-wrap">
                    <div className="flex items-center gap-2">
                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Templates:</span>
                      <button onClick={() => setIsManageTemplatesOpen(true)} className="text-[10px] font-bold text-indigo-600 underline hover:text-indigo-800">Manage</button>
@@ -663,94 +686,163 @@ const ProjectMaster: React.FC<Props> = ({
                    </div>
                 </div>
 
-                {/* Add/Edit Form */}
-                <div className="lg:col-span-1">
-                   <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm sticky top-0">
-                      <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest mb-4 border-b border-slate-100 pb-2">{clEditingId ? 'Edit Checklist Item' : 'Add New Item (Manual)'}</h3>
-                      <form onSubmit={handleSaveChecklist} className="space-y-4">
-                        <div>
-                          <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Design Name</label>
-                          <input required type="text" placeholder="e.g. Backdrop Main Stage" value={checklistForm.task_name} onChange={e => setChecklistForm({...checklistForm, task_name: e.target.value})} className="w-full text-xs font-bold p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-600 outline-none" />
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                           <div>
-                              <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Size</label>
-                              <input type="text" placeholder="e.g. 5x3m" value={checklistForm.size} onChange={e => setChecklistForm({...checklistForm, size: e.target.value})} className="w-full text-xs font-bold p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-600 outline-none" />
-                           </div>
-                           <div>
-                              <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Qty</label>
-                              <input type="number" min="1" placeholder="1" value={checklistForm.quantity} onChange={e => setChecklistForm({...checklistForm, quantity: parseInt(e.target.value) || 0})} className="w-full text-xs font-bold p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-600 outline-none" />
-                           </div>
-                        </div>
-                        <div>
-                          <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Notes</label>
-                          <textarea rows={2} placeholder="Material specs, etc..." value={checklistForm.notes} onChange={e => setChecklistForm({...checklistForm, notes: e.target.value})} className="w-full text-xs font-bold p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-600 outline-none" />
-                        </div>
-                        
-                        <div className="flex gap-2 pt-2">
-                           {clEditingId && <button type="button" onClick={() => { setClEditingId(null); setChecklistForm({ task_name: '', size: '', quantity: 1, notes: '', status: 'NONE' }); }} className="flex-1 py-2 text-[10px] font-black text-slate-500 uppercase bg-slate-100 rounded-lg hover:bg-slate-200">Cancel</button>}
-                           <button type="submit" className="flex-1 py-2 bg-indigo-600 text-white text-[10px] font-black uppercase rounded-lg shadow-md hover:bg-indigo-700">{clEditingId ? 'Update Item' : 'Add Item'}</button>
-                        </div>
-                      </form>
-                   </div>
-                </div>
-
-                {/* Table List */}
-                <div className="lg:col-span-2">
-                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                    <table className="w-full text-left text-xs">
-                      <thead className="bg-slate-50 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-200">
-                        <tr>
-                          <th className="px-6 py-4 text-center w-12">#</th>
-                          <th className="px-6 py-4">Design Spec</th>
-                          <th className="px-6 py-4 text-center">Qty</th>
-                          <th className="px-6 py-4">Status</th>
-                          <th className="px-6 py-4 text-right">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
-                        {filteredChecklists.length === 0 ? (
-                          <tr><td colSpan={5} className="px-6 py-12 text-center text-slate-400 italic text-xs">No checklist items added yet. Start adding manually or use a template.</td></tr>
-                        ) : filteredChecklists.map((cl, idx) => (
+                {/* EXCEL-LIKE TABLE */}
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-100 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-200">
+                      <tr>
+                        <th className="px-4 py-3 text-center w-12">#</th>
+                        <th className="px-4 py-3">Design Spec</th>
+                        <th className="px-4 py-3 w-32">Size</th>
+                        <th className="px-4 py-3 text-center w-20">Qty</th>
+                        <th className="px-4 py-3">Notes</th>
+                        <th className="px-4 py-3 w-32">Status</th>
+                        <th className="px-4 py-3 text-right w-24">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
+                      {/* EXISTING ROWS */}
+                      {filteredChecklists.map((cl, idx) => {
+                        const isEditing = inlineEditId === cl.id;
+                        return (
                           <tr key={cl.id} className="hover:bg-slate-50 transition-colors group">
-                            <td className="px-6 py-4 text-center text-slate-400">{idx + 1}</td>
-                            <td className="px-6 py-4">
-                               <div className="flex items-center gap-2">
-                                  <div className="text-slate-900 uppercase font-black">{cl.task_name}</div>
-                                  {cl.source_template_id && <span className="bg-indigo-50 text-indigo-600 border border-indigo-100 text-[8px] px-1 rounded uppercase font-bold">Template</span>}
-                               </div>
-                               <div className="text-[10px] text-slate-500 mt-1 flex flex-wrap gap-2">
-                                  {cl.size && <span className="bg-slate-100 px-1.5 rounded border">Size: {cl.size}</span>}
-                                  {cl.notes && <span className="italic text-slate-400 truncate max-w-[200px]">{cl.notes}</span>}
-                               </div>
-                            </td>
-                            <td className="px-6 py-4 text-center text-slate-900">{cl.quantity}</td>
-                            <td className="px-6 py-4">
-                              <select 
-                                value={cl.status} 
-                                onChange={(e) => handleStatusChangeChecklist(cl.id, e.target.value)}
-                                className={`text-[9px] font-black uppercase rounded py-1.5 px-3 border outline-none cursor-pointer transition-colors ${
-                                  cl.status === 'DONE' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
-                                  cl.status === 'ON PROGRESS' ? 'bg-amber-100 text-amber-700 border-amber-200' :
-                                  'bg-slate-100 text-slate-500 border-slate-200'
-                                }`}
-                              >
-                                <option value="NONE">Not Started</option>
-                                <option value="ON PROGRESS">On Progress</option>
-                                <option value="DONE">Done</option>
-                              </select>
-                            </td>
-                            <td className="px-6 py-4 text-right">
-                              <div className="flex justify-end gap-3 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
-                                <button onClick={() => handleEditChecklist(cl)} className="text-indigo-600 hover:text-indigo-800 text-[10px] font-black uppercase">Edit</button>
-                                <button onClick={() => handleDeleteChecklist(cl.id)} className="text-red-400 hover:text-red-600 text-[10px] font-black uppercase">Del</button>
-                              </div>
-                            </td>
+                            <td className="px-4 py-3 text-center text-slate-400">{idx + 1}</td>
+                            
+                            {isEditing ? (
+                              // EDIT MODE
+                              <>
+                                <td className="px-4 py-3">
+                                  <input 
+                                    autoFocus
+                                    className={cellInputClass} 
+                                    value={inlineEditData.task_name || ''} 
+                                    onChange={e => setInlineEditData({...inlineEditData, task_name: e.target.value})}
+                                  />
+                                </td>
+                                <td className="px-4 py-3">
+                                  <input 
+                                    className={cellInputClass} 
+                                    value={inlineEditData.size || ''} 
+                                    onChange={e => setInlineEditData({...inlineEditData, size: e.target.value})}
+                                  />
+                                </td>
+                                <td className="px-4 py-3 text-center">
+                                  <input 
+                                    type="number"
+                                    className={`${cellInputClass} text-center`}
+                                    value={inlineEditData.quantity || 0} 
+                                    onChange={e => setInlineEditData({...inlineEditData, quantity: parseInt(e.target.value) || 0})}
+                                  />
+                                </td>
+                                <td className="px-4 py-3">
+                                  <input 
+                                    className={cellInputClass} 
+                                    value={inlineEditData.notes || ''} 
+                                    onChange={e => setInlineEditData({...inlineEditData, notes: e.target.value})}
+                                  />
+                                </td>
+                                <td className="px-4 py-3">
+                                  <select 
+                                    className={cellInputClass}
+                                    value={inlineEditData.status} 
+                                    onChange={e => setInlineEditData({...inlineEditData, status: e.target.value as any})}
+                                  >
+                                    <option value="NONE">Not Started</option>
+                                    <option value="ON PROGRESS">On Progress</option>
+                                    <option value="DONE">Done</option>
+                                  </select>
+                                </td>
+                                <td className="px-4 py-3 text-right">
+                                  <div className="flex justify-end gap-2">
+                                    <button onClick={handleSaveInlineEdit} className="text-emerald-600 hover:text-emerald-800 text-[10px] font-black uppercase">Save</button>
+                                    <button onClick={handleCancelInlineEdit} className="text-slate-400 hover:text-slate-600 text-[10px] font-black uppercase">Cancel</button>
+                                  </div>
+                                </td>
+                              </>
+                            ) : (
+                              // VIEW MODE
+                              <>
+                                <td className="px-4 py-3">
+                                   <div className="flex items-center gap-2">
+                                      <div className="text-slate-900 uppercase font-black">{cl.task_name}</div>
+                                      {cl.source_template_id && <span className="bg-indigo-50 text-indigo-600 border border-indigo-100 text-[8px] px-1 rounded uppercase font-bold">Tpl</span>}
+                                   </div>
+                                </td>
+                                <td className="px-4 py-3">{cl.size || '-'}</td>
+                                <td className="px-4 py-3 text-center text-slate-900">{cl.quantity}</td>
+                                <td className="px-4 py-3 text-slate-500 italic truncate max-w-[200px] text-xs">{cl.notes || '-'}</td>
+                                <td className="px-4 py-3">
+                                  <span className={`text-[9px] font-black uppercase px-2 py-1 rounded border ${
+                                    cl.status === 'DONE' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
+                                    cl.status === 'ON PROGRESS' ? 'bg-amber-100 text-amber-700 border-amber-200' :
+                                    'bg-slate-100 text-slate-500 border-slate-200'
+                                  }`}>
+                                    {cl.status}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-right">
+                                  <div className="flex justify-end gap-3 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
+                                    <button onClick={() => handleStartInlineEdit(cl)} className="text-indigo-600 hover:text-indigo-800 text-[10px] font-black uppercase">Edit</button>
+                                    <button onClick={() => handleDeleteChecklist(cl.id)} className="text-red-400 hover:text-red-600 text-[10px] font-black uppercase">Del</button>
+                                  </div>
+                                </td>
+                              </>
+                            )}
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        );
+                      })}
+
+                      {/* ADD NEW ROW (ALWAYS VISIBLE AT BOTTOM) */}
+                      <tr className="bg-indigo-50/30">
+                        <td className="px-4 py-3 text-center text-indigo-300 font-black">+</td>
+                        <td className="px-4 py-3">
+                          <input 
+                            placeholder="Add New Design Name..." 
+                            className={newRowInputClass}
+                            value={newItem.task_name}
+                            onChange={e => setNewItem({...newItem, task_name: e.target.value})}
+                            onKeyDown={e => e.key === 'Enter' && handleAddNewItem()}
+                          />
+                        </td>
+                        <td className="px-4 py-3">
+                          <input 
+                            placeholder="Size" 
+                            className={newRowInputClass}
+                            value={newItem.size}
+                            onChange={e => setNewItem({...newItem, size: e.target.value})}
+                            onKeyDown={e => e.key === 'Enter' && handleAddNewItem()}
+                          />
+                        </td>
+                        <td className="px-4 py-3">
+                          <input 
+                            type="number"
+                            placeholder="1" 
+                            className={`${newRowInputClass} text-center`}
+                            value={newItem.quantity}
+                            onChange={e => setNewItem({...newItem, quantity: parseInt(e.target.value) || 0})}
+                            onKeyDown={e => e.key === 'Enter' && handleAddNewItem()}
+                          />
+                        </td>
+                        <td className="px-4 py-3">
+                          <input 
+                            placeholder="Notes..." 
+                            className={newRowInputClass}
+                            value={newItem.notes}
+                            onChange={e => setNewItem({...newItem, notes: e.target.value})}
+                            onKeyDown={e => e.key === 'Enter' && handleAddNewItem()}
+                          />
+                        </td>
+                        <td className="px-4 py-3">
+                           <span className="text-[10px] font-bold text-slate-400 italic pl-2">Auto: None</span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <button onClick={handleAddNewItem} className="bg-indigo-600 text-white px-3 py-1.5 rounded text-[10px] font-black uppercase hover:bg-indigo-700 shadow-sm">
+                            Add
+                          </button>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
              </div>
           )}
