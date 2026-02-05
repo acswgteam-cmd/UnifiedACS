@@ -457,9 +457,9 @@ const ProjectMaster: React.FC<Props> = ({
   const labelClass = "text-[11px] font-black text-slate-900 uppercase mb-1.5 block tracking-wide";
   const inputClass = "w-full rounded-lg border-slate-300 text-slate-900 text-sm p-3 border bg-white focus:ring-2 focus:ring-indigo-600 outline-none placeholder-slate-400 font-semibold shadow-sm transition-all";
   
-  // Style for Excel-like input
-  const cellInputClass = "w-full bg-transparent border-b border-transparent focus:border-indigo-600 outline-none text-xs font-bold text-slate-900 py-1 px-1 transition-colors";
-  const newRowInputClass = "w-full bg-white border border-slate-300 rounded focus:border-indigo-600 outline-none text-xs font-bold text-slate-900 py-2 px-2 shadow-sm";
+  // Style for Compact Table
+  const cellInputClass = "w-full bg-transparent border-b border-transparent focus:border-indigo-600 outline-none text-xs text-slate-700 py-1 px-1 transition-colors";
+  const newRowInputClass = "w-full bg-white border border-slate-200 rounded-sm focus:border-indigo-600 outline-none text-xs text-slate-700 py-1.5 px-2";
 
   // === RENDER DETAIL VIEW ===
   if (selectedProject) {
@@ -693,32 +693,32 @@ const ProjectMaster: React.FC<Props> = ({
                    </div>
                 </div>
 
-                {/* EXCEL-LIKE TABLE */}
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-100 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-200">
+                {/* COMPACT TABLE (Refined Look) */}
+                <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead className="bg-slate-50 border-b border-slate-200">
                       <tr>
-                        <th className="px-4 py-3 text-center w-12">#</th>
-                        <th className="px-4 py-3">Design Spec</th>
-                        <th className="px-4 py-3 w-32">Size</th>
-                        <th className="px-4 py-3 text-center w-20">Qty</th>
-                        <th className="px-4 py-3">Notes</th>
-                        <th className="px-4 py-3 w-32">Status</th>
-                        <th className="px-4 py-3 text-right w-24">Actions</th>
+                        <th className="px-3 py-2.5 text-center w-10 text-[10px] font-bold text-slate-500 uppercase tracking-wider">#</th>
+                        <th className="px-3 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Design Spec</th>
+                        <th className="px-3 py-2.5 w-32 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Size</th>
+                        <th className="px-3 py-2.5 text-center w-16 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Qty</th>
+                        <th className="px-3 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Notes</th>
+                        <th className="px-3 py-2.5 w-32 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Status</th>
+                        <th className="px-3 py-2.5 text-right w-24 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
+                    <tbody className="text-slate-700">
                       {/* EXISTING ROWS */}
                       {filteredChecklists.map((cl, idx) => {
                         const isEditing = inlineEditId === cl.id;
                         return (
-                          <tr key={cl.id} className="hover:bg-slate-50 transition-colors group">
-                            <td className="px-4 py-3 text-center text-slate-400">{idx + 1}</td>
+                          <tr key={cl.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors group">
+                            <td className="px-3 py-2 text-center text-slate-400 font-medium">{idx + 1}</td>
                             
                             {isEditing ? (
                               // EDIT MODE
                               <>
-                                <td className="px-4 py-3">
+                                <td className="px-3 py-2">
                                   <input 
                                     autoFocus
                                     className={cellInputClass} 
@@ -726,14 +726,14 @@ const ProjectMaster: React.FC<Props> = ({
                                     onChange={e => setInlineEditData({...inlineEditData, task_name: e.target.value})}
                                   />
                                 </td>
-                                <td className="px-4 py-3">
+                                <td className="px-3 py-2">
                                   <input 
                                     className={cellInputClass} 
                                     value={inlineEditData.size || ''} 
                                     onChange={e => setInlineEditData({...inlineEditData, size: e.target.value})}
                                   />
                                 </td>
-                                <td className="px-4 py-3 text-center">
+                                <td className="px-3 py-2 text-center">
                                   <input 
                                     type="number"
                                     className={`${cellInputClass} text-center`}
@@ -741,14 +741,14 @@ const ProjectMaster: React.FC<Props> = ({
                                     onChange={e => setInlineEditData({...inlineEditData, quantity: parseInt(e.target.value) || 0})}
                                   />
                                 </td>
-                                <td className="px-4 py-3">
+                                <td className="px-3 py-2">
                                   <input 
                                     className={cellInputClass} 
                                     value={inlineEditData.notes || ''} 
                                     onChange={e => setInlineEditData({...inlineEditData, notes: e.target.value})}
                                   />
                                 </td>
-                                <td className="px-4 py-3">
+                                <td className="px-3 py-2">
                                   <select 
                                     className={cellInputClass}
                                     value={inlineEditData.status} 
@@ -759,7 +759,7 @@ const ProjectMaster: React.FC<Props> = ({
                                     <option value="DONE">Done</option>
                                   </select>
                                 </td>
-                                <td className="px-4 py-3 text-right">
+                                <td className="px-3 py-2 text-right">
                                   <div className="flex justify-end gap-2">
                                     <button onClick={handleSaveInlineEdit} className="text-emerald-600 hover:text-emerald-800 text-[10px] font-black uppercase">Save</button>
                                     <button onClick={handleCancelInlineEdit} className="text-slate-400 hover:text-slate-600 text-[10px] font-black uppercase">Cancel</button>
@@ -769,24 +769,24 @@ const ProjectMaster: React.FC<Props> = ({
                             ) : (
                               // VIEW MODE
                               <>
-                                <td className="px-4 py-3">
+                                <td className="px-3 py-2">
                                    <div className="flex items-center gap-2">
-                                      <div className="text-slate-900 uppercase font-black">{cl.task_name}</div>
-                                      {cl.source_template_id && <span className="bg-indigo-50 text-indigo-600 border border-indigo-100 text-[8px] px-1 rounded uppercase font-bold">Tpl</span>}
+                                      <span className="text-sm font-semibold text-slate-800">{cl.task_name}</span>
+                                      {cl.source_template_id && <span className="bg-slate-100 text-slate-500 border border-slate-200 text-[9px] px-1 rounded uppercase font-bold">Tpl</span>}
                                    </div>
                                 </td>
-                                <td className="px-4 py-3">{cl.size || '-'}</td>
-                                <td className="px-4 py-3 text-center text-slate-900">{cl.quantity}</td>
-                                <td className="px-4 py-3 text-slate-500 italic truncate max-w-[200px] text-xs">{cl.notes || '-'}</td>
-                                <td className="px-4 py-3">
-                                  {/* Direct Status Edit Dropdown */}
+                                <td className="px-3 py-2 text-xs font-medium">{cl.size || '-'}</td>
+                                <td className="px-3 py-2 text-center text-slate-900 font-bold">{cl.quantity}</td>
+                                <td className="px-3 py-2 text-slate-500 italic truncate max-w-[200px] text-xs">{cl.notes || '-'}</td>
+                                <td className="px-3 py-2">
+                                  {/* Direct Status Edit Dropdown - Clean Look */}
                                   <select 
                                     value={cl.status} 
                                     onChange={(e) => handleQuickStatusChange(cl.id, e.target.value)}
-                                    className={`w-full text-[9px] font-black uppercase rounded py-1 px-1 border outline-none cursor-pointer transition-colors ${
-                                      cl.status === 'DONE' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
-                                      cl.status === 'ON PROGRESS' ? 'bg-amber-100 text-amber-700 border-amber-200' :
-                                      'bg-slate-100 text-slate-500 border-slate-200'
+                                    className={`w-full text-[10px] font-bold uppercase rounded py-1 px-1 outline-none cursor-pointer transition-colors bg-transparent hover:bg-slate-100 ${
+                                      cl.status === 'DONE' ? 'text-emerald-600' :
+                                      cl.status === 'ON PROGRESS' ? 'text-amber-600' :
+                                      'text-slate-400'
                                     }`}
                                   >
                                     <option value="NONE">Not Started</option>
@@ -794,10 +794,14 @@ const ProjectMaster: React.FC<Props> = ({
                                     <option value="DONE">Done</option>
                                   </select>
                                 </td>
-                                <td className="px-4 py-3 text-right">
-                                  <div className="flex justify-end gap-3 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
-                                    <button onClick={() => handleStartInlineEdit(cl)} className="text-indigo-600 hover:text-indigo-800 text-[10px] font-black uppercase">Edit</button>
-                                    <button onClick={() => handleDeleteChecklist(cl.id)} className="text-red-400 hover:text-red-600 text-[10px] font-black uppercase">Del</button>
+                                <td className="px-3 py-2 text-right">
+                                  <div className="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button onClick={() => handleStartInlineEdit(cl)} className="text-slate-400 hover:text-indigo-600 text-[10px] font-black uppercase" title="Edit">
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                    </button>
+                                    <button onClick={() => handleDeleteChecklist(cl.id)} className="text-slate-400 hover:text-red-600 text-[10px] font-black uppercase" title="Delete">
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                    </button>
                                   </div>
                                 </td>
                               </>
@@ -807,9 +811,9 @@ const ProjectMaster: React.FC<Props> = ({
                       })}
 
                       {/* ADD NEW ROW (ALWAYS VISIBLE AT BOTTOM) */}
-                      <tr className="bg-indigo-50/30">
-                        <td className="px-4 py-3 text-center text-indigo-300 font-black">+</td>
-                        <td className="px-4 py-3">
+                      <tr className="bg-slate-50/50 hover:bg-slate-50 transition-colors">
+                        <td className="px-3 py-2 text-center text-indigo-300 font-black">+</td>
+                        <td className="px-3 py-2">
                           <input 
                             placeholder="Add New Design Name..." 
                             className={newRowInputClass}
@@ -818,7 +822,7 @@ const ProjectMaster: React.FC<Props> = ({
                             onKeyDown={e => e.key === 'Enter' && handleAddNewItem()}
                           />
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-3 py-2">
                           <input 
                             placeholder="Size" 
                             className={newRowInputClass}
@@ -827,7 +831,7 @@ const ProjectMaster: React.FC<Props> = ({
                             onKeyDown={e => e.key === 'Enter' && handleAddNewItem()}
                           />
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-3 py-2">
                           <input 
                             type="number"
                             placeholder="1" 
@@ -837,7 +841,7 @@ const ProjectMaster: React.FC<Props> = ({
                             onKeyDown={e => e.key === 'Enter' && handleAddNewItem()}
                           />
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-3 py-2">
                           <input 
                             placeholder="Notes..." 
                             className={newRowInputClass}
@@ -846,11 +850,11 @@ const ProjectMaster: React.FC<Props> = ({
                             onKeyDown={e => e.key === 'Enter' && handleAddNewItem()}
                           />
                         </td>
-                        <td className="px-4 py-3">
-                           <span className="text-[10px] font-bold text-slate-400 italic pl-2">Auto: None</span>
+                        <td className="px-3 py-2">
+                           <span className="text-[10px] font-bold text-slate-400 italic pl-2">Pending</span>
                         </td>
-                        <td className="px-4 py-3 text-right">
-                          <button onClick={handleAddNewItem} className="bg-indigo-600 text-white px-3 py-1.5 rounded text-[10px] font-black uppercase hover:bg-indigo-700 shadow-sm">
+                        <td className="px-3 py-2 text-right">
+                          <button onClick={handleAddNewItem} className="text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded text-[10px] font-black uppercase hover:bg-indigo-100 transition-colors">
                             Add
                           </button>
                         </td>
