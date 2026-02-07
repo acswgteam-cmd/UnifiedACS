@@ -94,7 +94,9 @@ const PublicProjectSurvey: React.FC = () => {
   const [checklists, setChecklists] = useState<ProjectChecklist[]>([]);
   const [templates, setTemplates] = useState<ChecklistTemplate[]>([]);
   const [templateItems, setTemplateItems] = useState<ChecklistTemplateItem[]>([]);
-  const [newItem, setNewItem] = useState({ task_name: '', size: '', quantity: 1, notes: '' });
+  
+  // New Item State per group: key = templateId (or 'manual') -> value = item data
+  const [newItemsMap, setNewItemsMap] = useState<Record<string, { task_name: string, size: string, quantity: number, notes: string }>>({});
 
   const isEditable = useMemo(() => {
     return selectedProject?.status === 'ON PROGRESS';
@@ -141,6 +143,26 @@ const PublicProjectSurvey: React.FC = () => {
     const { data } = await supabase.from('project_checklists').select('*').eq('project_id', selectedProject.id).order('created_at');
     setChecklists(data || []);
   };
+
+  // Group checklists by Template ID
+  const groupedChecklists = useMemo(() => {
+    const groups: Record<string, ProjectChecklist[]> = {};
+    const manualItems: ProjectChecklist[] = [];
+
+    // Sort first to ensure order within groups
+    const sortedChecklists = [...checklists].sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
+
+    sortedChecklists.forEach(item => {
+      if (item.source_template_id) {
+        if (!groups[item.source_template_id]) groups[item.source_template_id] = [];
+        groups[item.source_template_id].push(item);
+      } else {
+        manualItems.push(item);
+      }
+    });
+
+    return { groups, manualItems };
+  }, [checklists]);
 
   const activeTemplatesInProject = useMemo(() => {
     const templateIds = new Set<string>();
@@ -193,34 +215,55 @@ const PublicProjectSurvey: React.FC = () => {
   };
 
   // --- CHECKLIST HANDLERS ---
-  const handleAddItem = async () => {
-    if (!selectedProject || !newItem.task_name.trim() || !supabase) return;
-    if (!isEditable) return; // Guard clause
+  const updateNewItemState = (templateId: string | null, field: string, value: any) => {
+    const mapKey = templateId || 'manual';
+    setNewItemsMap(prev => ({
+      ...prev,
+      [mapKey]: {
+        ...(prev[mapKey] || { task_name: '', size: '', quantity: 1, notes: '' }),
+        [field]: value
+      }
+    }));
+  };
+
+  const handleAddItem = async (templateId: string | null) => {
+    if (!selectedProject || !supabase) return;
+    if (!isEditable) return;
+
+    const mapKey = templateId || 'manual';
+    const currentNewItem = newItemsMap[mapKey] || { task_name: '', size: '', quantity: 1, notes: '' };
+
+    if (!currentNewItem.task_name.trim()) return;
 
     const payload = {
       project_id: selectedProject.id,
-      task_name: newItem.task_name,
-      size: newItem.size,
-      quantity: newItem.quantity,
-      notes: newItem.notes,
-      status: 'NONE'
+      task_name: currentNewItem.task_name,
+      size: currentNewItem.size,
+      quantity: currentNewItem.quantity,
+      notes: currentNewItem.notes,
+      status: 'NONE',
+      source_template_id: templateId
     };
+
     const { error } = await supabase.from('project_checklists').insert([payload]);
     if (error) alert(error.message);
     else {
-      setNewItem({ task_name: '', size: '', quantity: 1, notes: '' });
+      // Reset specific input
+      setNewItemsMap(prev => ({
+        ...prev,
+        [mapKey]: { task_name: '', size: '', quantity: 1, notes: '' }
+      }));
       fetchChecklists();
     }
   };
 
   const handleDeleteItem = async (id: string) => {
-    if (!supabase) return; // No confirm needed
+    if (!supabase) return;
     if (!isEditable) return;
 
     // Optimistic update
     setChecklists(prev => prev.filter(c => c.id !== id));
     await supabase.from('project_checklists').delete().eq('id', id);
-    // fetchChecklists(); // No need to refetch if optimistic works, but can do so to be safe
   };
 
   // INLINE EDIT: Update state immediately for UI response
@@ -266,6 +309,7 @@ const PublicProjectSurvey: React.FC = () => {
 
   // Styles for inline inputs
   const cellInputClass = "w-full bg-transparent border-b border-transparent focus:border-indigo-600 outline-none text-xs font-bold text-slate-700 py-1 px-1 transition-colors placeholder-slate-300";
+  const newRowInputClass = "w-full bg-white border border-slate-300 rounded px-2 py-2 text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none";
 
   // --- RENDERING ---
 
@@ -433,121 +477,80 @@ const PublicProjectSurvey: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
-                      {checklists
-                        .sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''))
-                        .map((cl, idx) => (
-                        <tr key={cl.id} className="hover:bg-slate-50 transition-colors group">
-                          <td className="px-6 py-2 text-center text-slate-400">{idx + 1}</td>
-                          
-                          <td className="px-6 py-2">
-                             <div className="flex items-center gap-2">
-                                <input 
-                                  className={cellInputClass}
-                                  value={cl.task_name}
-                                  onChange={e => handleLocalChange(cl.id, 'task_name', e.target.value)}
-                                  onBlur={e => handleSaveItem(cl.id, 'task_name', e.target.value)}
-                                  readOnly={!isEditable}
-                                  placeholder="Task Name"
-                                />
-                                {cl.source_template_id && <span className="bg-indigo-50 text-indigo-600 text-[8px] px-1.5 rounded uppercase font-bold flex-shrink-0">Tpl</span>}
-                             </div>
-                          </td>
-                          <td className="px-6 py-2">
-                            <input 
-                                className={cellInputClass}
-                                value={cl.size || ''}
-                                onChange={e => handleLocalChange(cl.id, 'size', e.target.value)}
-                                onBlur={e => handleSaveItem(cl.id, 'size', e.target.value)}
-                                readOnly={!isEditable}
-                                placeholder="Size"
-                            />
-                          </td>
-                          <td className="px-6 py-2 text-center">
-                            <input 
-                                type="number"
-                                className={`${cellInputClass} text-center`}
-                                value={cl.quantity}
-                                onChange={e => handleLocalChange(cl.id, 'quantity', parseInt(e.target.value) || 0)}
-                                onBlur={e => handleSaveItem(cl.id, 'quantity', parseInt(e.target.value) || 0)}
-                                readOnly={!isEditable}
-                            />
-                          </td>
-                          <td className="px-6 py-2">
-                            <input 
-                                className={cellInputClass}
-                                value={cl.notes || ''}
-                                onChange={e => handleLocalChange(cl.id, 'notes', e.target.value)}
-                                onBlur={e => handleSaveItem(cl.id, 'notes', e.target.value)}
-                                readOnly={!isEditable}
-                                placeholder="Notes"
-                            />
-                          </td>
-                          <td className="px-6 py-2">
-                             <span className={`text-[9px] font-black uppercase px-2 py-1 rounded border ${
-                               cl.status === 'DONE' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
-                               cl.status === 'ON PROGRESS' ? 'bg-amber-100 text-amber-700 border-amber-200' :
-                               'bg-slate-100 text-slate-500 border-slate-200'
-                             }`}>
-                               {cl.status}
-                             </span>
-                          </td>
-                          <td className="px-6 py-2 text-right">
-                             {isEditable && (
-                               <button onClick={() => handleDeleteItem(cl.id)} className="text-slate-300 hover:text-red-500 p-1 transition-colors opacity-0 group-hover:opacity-100">
-                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                               </button>
-                             )}
+                      {/* RENDER TEMPLATE GROUPS */}
+                      {Array.from(activeTemplatesInProject).map(templateId => {
+                        const items = groupedChecklists.groups[templateId] || [];
+                        const templateName = templates.find(t => t.id === templateId)?.name || 'Unknown Template';
+                        const newItemState = newItemsMap[templateId] || { task_name: '', size: '', quantity: 1, notes: '' };
+
+                        return (
+                          <React.Fragment key={templateId}>
+                            {/* DIVIDER ROW */}
+                            <tr className="bg-indigo-50 border-y border-indigo-100">
+                              <td colSpan={7} className="px-6 py-2">
+                                <span className="text-[10px] font-black text-indigo-800 uppercase tracking-widest flex items-center gap-2">
+                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                                  {templateName}
+                                </span>
+                              </td>
+                            </tr>
+                            {items.map((cl, idx) => (
+                              <TableRow 
+                                key={cl.id} 
+                                cl={cl} 
+                                idx={idx} 
+                                isEditable={isEditable}
+                                cellInputClass={cellInputClass} 
+                                handleLocalChange={handleLocalChange}
+                                handleSaveItem={handleSaveItem}
+                                handleDeleteItem={handleDeleteItem}
+                              />
+                            ))}
+                            {/* Add Item Row for this Template */}
+                            {isEditable && (
+                              <AddRow 
+                                newItem={newItemState}
+                                updateNewItem={(field, val) => updateNewItemState(templateId, field, val)}
+                                onAdd={() => handleAddItem(templateId)}
+                                newRowInputClass={newRowInputClass}
+                              />
+                            )}
+                          </React.Fragment>
+                        );
+                      })}
+
+                      {/* RENDER MANUAL / ADDITIONAL ITEMS */}
+                      <React.Fragment key="manual">
+                        <tr className="bg-slate-100 border-y border-slate-200">
+                          <td colSpan={7} className="px-6 py-2">
+                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                              Additional / Manual Items
+                            </span>
                           </td>
                         </tr>
-                      ))}
-                      
-                      {/* ADD ROW - Only show if editable */}
-                      {isEditable && (
-                        <tr className="bg-indigo-50/30">
-                          <td className="px-6 py-4 text-center text-indigo-400 font-black">+</td>
-                          <td className="px-6 py-4">
-                            <input 
-                              placeholder="Add Item Name..." 
-                              className="w-full bg-white border border-slate-300 rounded px-2 py-2 text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
-                              value={newItem.task_name}
-                              onChange={e => setNewItem({...newItem, task_name: e.target.value})}
-                              onKeyDown={e => e.key === 'Enter' && handleAddItem()}
-                            />
-                          </td>
-                          <td className="px-6 py-4">
-                            <input 
-                              placeholder="Size" 
-                              className="w-full bg-white border border-slate-300 rounded px-2 py-2 text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
-                              value={newItem.size}
-                              onChange={e => setNewItem({...newItem, size: e.target.value})}
-                              onKeyDown={e => e.key === 'Enter' && handleAddItem()}
-                            />
-                          </td>
-                          <td className="px-6 py-4">
-                            <input 
-                              type="number"
-                              placeholder="1" 
-                              className="w-full bg-white border border-slate-300 rounded px-2 py-2 text-xs font-bold text-center focus:ring-2 focus:ring-indigo-500 outline-none"
-                              value={newItem.quantity}
-                              onChange={e => setNewItem({...newItem, quantity: parseInt(e.target.value) || 0})}
-                              onKeyDown={e => e.key === 'Enter' && handleAddItem()}
-                            />
-                          </td>
-                          <td className="px-6 py-4">
-                            <input 
-                              placeholder="Notes..." 
-                              className="w-full bg-white border border-slate-300 rounded px-2 py-2 text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
-                              value={newItem.notes}
-                              onChange={e => setNewItem({...newItem, notes: e.target.value})}
-                              onKeyDown={e => e.key === 'Enter' && handleAddItem()}
-                            />
-                          </td>
-                          <td className="px-6 py-4 text-center text-[10px] text-slate-400 font-bold italic">Pending</td>
-                          <td className="px-6 py-4 text-right">
-                            <button onClick={handleAddItem} className="bg-indigo-600 text-white px-3 py-1.5 rounded text-[10px] font-black uppercase hover:bg-indigo-700 shadow-sm">Add</button>
-                          </td>
-                        </tr>
-                      )}
+                        {groupedChecklists.manualItems.map((cl, idx) => (
+                          <TableRow 
+                            key={cl.id} 
+                            cl={cl} 
+                            idx={idx} 
+                            isEditable={isEditable}
+                            cellInputClass={cellInputClass} 
+                            handleLocalChange={handleLocalChange}
+                            handleSaveItem={handleSaveItem}
+                            handleDeleteItem={handleDeleteItem}
+                          />
+                        ))}
+                        {/* Add Item Row for Manual */}
+                        {isEditable && (
+                          <AddRow 
+                            newItem={newItemsMap['manual'] || { task_name: '', size: '', quantity: 1, notes: '' }}
+                            updateNewItem={(field, val) => updateNewItemState(null, field, val)}
+                            onAdd={() => handleAddItem(null)}
+                            newRowInputClass={newRowInputClass}
+                          />
+                        )}
+                      </React.Fragment>
                     </tbody>
                   </table>
                   {checklists.length === 0 && <div className="p-8 text-center text-xs text-slate-400 font-bold italic">No items yet. Add manually or pick a template above.</div>}
@@ -627,5 +630,137 @@ const PublicProjectSurvey: React.FC = () => {
     </div>
   );
 };
+
+// --- Sub-components ---
+const TableRow = ({ cl, idx, isEditable, cellInputClass, handleLocalChange, handleSaveItem, handleDeleteItem }: any) => (
+  <tr key={cl.id} className="hover:bg-slate-50 transition-colors group border-b border-slate-50 last:border-0">
+    <td className="px-6 py-2 text-center text-slate-400">{idx + 1}</td>
+    <td className="px-6 py-2">
+       <div className="flex items-center gap-2">
+          <input 
+            className={cellInputClass}
+            value={cl.task_name}
+            onChange={e => handleLocalChange(cl.id, 'task_name', e.target.value)}
+            onBlur={e => handleSaveItem(cl.id, 'task_name', e.target.value)}
+            readOnly={!isEditable}
+            placeholder="Task Name"
+          />
+       </div>
+    </td>
+    <td className="px-6 py-2">
+      <input 
+          className={cellInputClass}
+          value={cl.size || ''}
+          onChange={e => handleLocalChange(cl.id, 'size', e.target.value)}
+          onBlur={e => handleSaveItem(cl.id, 'size', e.target.value)}
+          readOnly={!isEditable}
+          placeholder="Size"
+      />
+    </td>
+    <td className="px-6 py-2 text-center">
+      <input 
+          type="number"
+          className={`${cellInputClass} text-center`}
+          value={cl.quantity}
+          onChange={e => handleLocalChange(cl.id, 'quantity', parseInt(e.target.value) || 0)}
+          onBlur={e => handleSaveItem(cl.id, 'quantity', parseInt(e.target.value) || 0)}
+          readOnly={!isEditable}
+      />
+    </td>
+    <td className="px-6 py-2">
+      <input 
+          className={cellInputClass}
+          value={cl.notes || ''}
+          onChange={e => handleLocalChange(cl.id, 'notes', e.target.value)}
+          onBlur={e => handleSaveItem(cl.id, 'notes', e.target.value)}
+          readOnly={!isEditable}
+          placeholder="Notes"
+      />
+    </td>
+    <td className="px-6 py-2">
+       {isEditable ? (
+          <select 
+            value={cl.status} 
+            onChange={(e) => {
+              const val = e.target.value;
+              handleLocalChange(cl.id, 'status', val);
+              handleSaveItem(cl.id, 'status', val);
+            }}
+            className={`w-full text-[10px] font-black uppercase rounded py-1 px-1 outline-none cursor-pointer transition-colors bg-transparent hover:bg-slate-100 ${
+              cl.status === 'DONE' ? 'text-emerald-600' :
+              cl.status === 'ON PROGRESS' ? 'text-amber-600' :
+              'text-slate-400'
+            }`}
+          >
+            <option value="NONE">Not Started</option>
+            <option value="ON PROGRESS">On Progress</option>
+            <option value="DONE">Done</option>
+          </select>
+       ) : (
+          <span className={`text-[9px] font-black uppercase px-2 py-1 rounded border ${
+            cl.status === 'DONE' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
+            cl.status === 'ON PROGRESS' ? 'bg-amber-100 text-amber-700 border-amber-200' :
+            'bg-slate-100 text-slate-500 border-slate-200'
+          }`}>
+            {cl.status}
+          </span>
+       )}
+    </td>
+    <td className="px-6 py-2 text-right">
+       {isEditable && (
+         <button onClick={() => handleDeleteItem(cl.id)} className="text-slate-300 hover:text-red-500 p-1 transition-colors opacity-0 group-hover:opacity-100">
+           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+         </button>
+       )}
+    </td>
+  </tr>
+);
+
+const AddRow = ({ newItem, updateNewItem, onAdd, newRowInputClass }: any) => (
+  <tr className="bg-slate-50/50 hover:bg-slate-50 transition-colors">
+    <td className="px-6 py-4 text-center text-indigo-400 font-black">+</td>
+    <td className="px-6 py-4">
+      <input 
+        placeholder="Add Item Name..." 
+        className={newRowInputClass}
+        value={newItem.task_name}
+        onChange={e => updateNewItem('task_name', e.target.value)}
+        onKeyDown={e => e.key === 'Enter' && onAdd()}
+      />
+    </td>
+    <td className="px-6 py-4">
+      <input 
+        placeholder="Size" 
+        className={newRowInputClass}
+        value={newItem.size}
+        onChange={e => updateNewItem('size', e.target.value)}
+        onKeyDown={e => e.key === 'Enter' && onAdd()}
+      />
+    </td>
+    <td className="px-6 py-4">
+      <input 
+        type="number"
+        placeholder="1" 
+        className={`${newRowInputClass} text-center`}
+        value={newItem.quantity}
+        onChange={e => updateNewItem('quantity', parseInt(e.target.value) || 0)}
+        onKeyDown={e => e.key === 'Enter' && onAdd()}
+      />
+    </td>
+    <td className="px-6 py-4">
+      <input 
+        placeholder="Notes..." 
+        className={newRowInputClass}
+        value={newItem.notes}
+        onChange={e => updateNewItem('notes', e.target.value)}
+        onKeyDown={e => e.key === 'Enter' && onAdd()}
+      />
+    </td>
+    <td className="px-6 py-4 text-center text-[10px] text-slate-400 font-bold italic">Pending</td>
+    <td className="px-6 py-4 text-right">
+      <button onClick={onAdd} className="bg-indigo-600 text-white px-3 py-1.5 rounded text-[10px] font-black uppercase hover:bg-indigo-700 shadow-sm">Add</button>
+    </td>
+  </tr>
+);
 
 export default PublicProjectSurvey;
