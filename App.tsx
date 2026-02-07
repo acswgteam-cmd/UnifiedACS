@@ -21,6 +21,7 @@ export const SURVEY_FORM_SECRET = 'acs-project-eval-v1-11223344';
 
 const App: React.FC = () => {
   const [useDemoMode, setUseDemoMode] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const [state, setState] = useState<AppState>({
     designers: [],
     departments: [],
@@ -160,22 +161,35 @@ const App: React.FC = () => {
         
         <Route path="/admin/*" element={
           <div className="flex h-screen overflow-hidden bg-slate-50 text-slate-900">
-            <aside className="w-64 bg-slate-900 text-white flex-shrink-0 flex flex-col shadow-xl z-20">
-              <div className="p-6"><h1 className="text-lg font-bold tracking-tight">ACS UNIFIED<br/><span className="text-indigo-400">LOG ARTWORK</span></h1></div>
-              <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto scrollbar-hide">
-                <NavLink to="/admin/dashboard">Dashboard</NavLink>
-                <NavLink to="/admin/artwork-logs">Artwork Logs</NavLink>
-                <div className="mt-8 mb-2 px-3 text-[10px] font-bold text-slate-500 uppercase">Master Data</div>
-                <NavLink to="/admin/masters/departments">Departments</NavLink>
-                <NavLink to="/admin/masters/designers">Designers</NavLink>
-                <NavLink to="/admin/masters/projects">Projects</NavLink>
-                <NavLink to="/admin/masters/leads">Leads</NavLink>
-                <NavLink to="/admin/masters/internal">Internal Tasks</NavLink>
+            <aside className={`${collapsed ? 'w-20' : 'w-64'} bg-slate-900 text-white flex-shrink-0 flex flex-col shadow-xl z-20 transition-all duration-300`}>
+              <div className={`p-4 flex items-center ${collapsed ? 'justify-center' : 'justify-between'}`}>
+                {!collapsed && <h1 className="text-lg font-bold tracking-tight leading-tight">ACS UNIFIED<br/><span className="text-indigo-400">LOG ARTWORK</span></h1>}
+                <button onClick={() => setCollapsed(!collapsed)} className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors">
+                  {collapsed ? (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>
+                  ) : (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg>
+                  )}
+                </button>
+              </div>
+              <nav className="flex-1 px-3 py-4 space-y-2 overflow-y-auto scrollbar-hide">
+                <NavLink to="/admin/dashboard" icon="📊" label="Dashboard" collapsed={collapsed} />
+                <NavLink to="/admin/artwork-logs" icon="🎨" label="Artwork Logs" collapsed={collapsed} />
+                
+                <div className={`mt-8 mb-2 px-3 text-[10px] font-bold text-slate-500 uppercase ${collapsed ? 'text-center' : ''}`}>
+                  {collapsed ? '•••' : 'Master Data'}
+                </div>
+                
+                <NavLink to="/admin/masters/departments" icon="🏢" label="Departments" collapsed={collapsed} />
+                <NavLink to="/admin/masters/designers" icon="👥" label="Designers" collapsed={collapsed} />
+                <NavLink to="/admin/masters/projects" icon="📁" label="Projects" collapsed={collapsed} />
+                <NavLink to="/admin/masters/leads" icon="🎯" label="Leads" collapsed={collapsed} />
+                <NavLink to="/admin/masters/internal" icon="🔧" label="Internal Tasks" collapsed={collapsed} />
               </nav>
             </aside>
             <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
               {loading && <div className="absolute top-0 left-0 w-full h-1 bg-indigo-600 animate-pulse z-50"></div>}
-              <div className="flex-1 overflow-y-auto p-8">
+              <div className="flex-1 overflow-y-auto p-4 md:p-8">
                 <Routes>
                   <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
                   <Route path="/dashboard" element={<Dashboard state={state} />} />
@@ -214,12 +228,23 @@ const App: React.FC = () => {
   );
 };
 
-const NavLink: React.FC<{ to: string; children: React.ReactNode }> = ({ to, children }) => {
+const NavLink: React.FC<{ to: string; icon: string; label: string; collapsed: boolean }> = ({ to, icon, label, collapsed }) => {
   const location = useLocation();
   const isActive = location.pathname === to;
   return (
-    <Link to={to} className={`flex items-center px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${isActive ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
-      {children}
+    <Link 
+      to={to} 
+      className={`group relative flex items-center ${collapsed ? 'justify-center px-2' : 'px-4'} py-3 rounded-xl text-sm font-semibold transition-all ${isActive ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+    >
+      <span className="text-xl leading-none">{icon}</span>
+      {!collapsed && <span className="ml-3 truncate">{label}</span>}
+      
+      {/* Tooltip on Hover when Collapsed */}
+      {collapsed && (
+        <div className="absolute left-full ml-2 px-2 py-1 bg-slate-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50 shadow-lg border border-slate-700 font-bold tracking-wide">
+          {label}
+        </div>
+      )}
     </Link>
   );
 };
