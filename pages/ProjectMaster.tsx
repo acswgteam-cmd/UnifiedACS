@@ -19,10 +19,10 @@ const SURVEY_LABELS: Record<string, string> = {
 };
 
 // --- Rich Text Editor Component ---
-const SimpleRichTextEditor = ({ initialValue, onSave, placeholder }: { initialValue: string, onSave: (val: string) => void, placeholder?: string }) => {
+const SimpleRichTextEditor = ({ initialValue, onSave, placeholder, height = "min-h-[150px]" }: { initialValue: string, onSave: (val: string) => void, placeholder?: string, height?: string }) => {
   const contentRef = useRef<HTMLDivElement>(null);
   
-  // Update internal ref if initialValue changes externally (though we mostly rely on internal state for editing)
+  // Update internal ref if initialValue changes externally
   useEffect(() => {
     if (contentRef.current && contentRef.current.innerHTML !== initialValue) {
       contentRef.current.innerHTML = initialValue || '';
@@ -46,19 +46,29 @@ const SimpleRichTextEditor = ({ initialValue, onSave, placeholder }: { initialVa
   const btnClass = "p-1.5 rounded hover:bg-slate-200 text-slate-600 transition-colors text-xs font-bold min-w-[24px]";
 
   return (
-    <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm flex flex-col h-full">
-      <div className="flex gap-1 p-2 bg-slate-50 border-b border-slate-100 items-center">
-        <button className={btnClass} onMouseDown={(e) => { e.preventDefault(); exec('bold'); }} title="Bold">B</button>
-        <button className={btnClass} onMouseDown={(e) => { e.preventDefault(); exec('italic'); }} title="Italic">I</button>
-        <button className={btnClass} onMouseDown={(e) => { e.preventDefault(); exec('underline'); }} title="Underline">U</button>
+    <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm flex flex-col w-full">
+      {/* Inject styles specifically for the editor content to override Tailwind resets */}
+      <style>{`
+        .rte-content ul { list-style-type: disc; margin-left: 1.5em; margin-bottom: 0.5em; }
+        .rte-content ol { list-style-type: decimal; margin-left: 1.5em; margin-bottom: 0.5em; }
+        .rte-content li { margin-bottom: 0.25em; }
+        .rte-content b, .rte-content strong { font-weight: 700; }
+        .rte-content i, .rte-content em { font-style: italic; }
+        .rte-content u { text-decoration: underline; }
+      `}</style>
+      
+      <div className="flex gap-1 p-2 bg-slate-50 border-b border-slate-100 items-center shrink-0">
+        <button type="button" className={btnClass} onMouseDown={(e) => { e.preventDefault(); exec('bold'); }} title="Bold">B</button>
+        <button type="button" className={btnClass} onMouseDown={(e) => { e.preventDefault(); exec('italic'); }} title="Italic">I</button>
+        <button type="button" className={btnClass} onMouseDown={(e) => { e.preventDefault(); exec('underline'); }} title="Underline">U</button>
         <div className="w-px h-4 bg-slate-300 mx-1"></div>
-        <button className={btnClass} onMouseDown={(e) => { e.preventDefault(); exec('insertUnorderedList'); }} title="Bullet List">• List</button>
-        <button className={btnClass} onMouseDown={(e) => { e.preventDefault(); exec('insertOrderedList'); }} title="Number List">1. List</button>
+        <button type="button" className={btnClass} onMouseDown={(e) => { e.preventDefault(); exec('insertUnorderedList'); }} title="Bullet List">• List</button>
+        <button type="button" className={btnClass} onMouseDown={(e) => { e.preventDefault(); exec('insertOrderedList'); }} title="Number List">1. List</button>
       </div>
       <div 
         ref={contentRef}
         contentEditable
-        className="p-4 flex-1 outline-none text-sm text-slate-700 overflow-y-auto min-h-[150px] prose prose-sm max-w-none"
+        className={`rte-content p-4 flex-1 outline-none text-sm text-slate-700 overflow-y-auto ${height}`}
         onBlur={handleBlur}
         dangerouslySetInnerHTML={{ __html: initialValue || '' }}
         data-placeholder={placeholder}
@@ -718,29 +728,33 @@ const ProjectMaster: React.FC<Props> = ({
           </div>
         )}
 
-        {/* Header Navigation */}
-        <div className="flex items-center gap-4 mb-6 pb-4 border-b border-slate-200">
-          <button onClick={() => setSelectedProject(null)} className="p-2 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 text-slate-600 transition-colors">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
-          </button>
-          <div>
-             <div className="flex items-center gap-3 mb-1">
-                <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tight">{selectedProject.project_name}</h1>
-                <select 
-                  value={selectedProject.status} 
-                  onChange={(e) => handleStatusUpdate(e.target.value)}
-                  className={`px-2 py-0.5 rounded-lg border text-[10px] font-black uppercase outline-none cursor-pointer hover:opacity-80 transition-opacity ${
-                    selectedProject.status === 'DONE' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 
-                    selectedProject.status === 'ON HOLD' ? 'bg-amber-100 text-amber-700 border-amber-200' : 
-                    'bg-blue-100 text-blue-700 border-blue-200'
-                  }`}
-                >
-                  <option value="ON PROGRESS">ON PROGRESS</option>
-                  <option value="ON HOLD">ON HOLD</option>
-                  <option value="DONE">DONE</option>
-                </select>
-             </div>
-             <p className="text-xs font-bold text-slate-500 uppercase">Timeline: {selectedProject.start_date} → {selectedProject.end_date} &bull; Type: {selectedProject.project_type}</p>
+        {/* Header Navigation & Status - Redesigned */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 pb-4 border-b border-slate-200">
+          <div className="flex items-center gap-4 w-full md:w-auto">
+            <button onClick={() => setSelectedProject(null)} className="p-2 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 text-slate-600 transition-colors">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+            </button>
+            <div>
+               <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tight">{selectedProject.project_name}</h1>
+               <p className="text-xs font-bold text-slate-500 uppercase">Timeline: {selectedProject.start_date} → {selectedProject.end_date} &bull; Type: {selectedProject.project_type}</p>
+            </div>
+          </div>
+          
+          {/* Bigger Status Dropdown positioned to the right */}
+          <div className="w-full md:w-auto">
+             <select 
+                value={selectedProject.status} 
+                onChange={(e) => handleStatusUpdate(e.target.value)}
+                className={`w-full md:w-48 px-4 py-2.5 rounded-xl border-2 text-sm font-black uppercase outline-none cursor-pointer hover:opacity-90 transition-all shadow-sm appearance-none text-center ${
+                  selectedProject.status === 'DONE' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 
+                  selectedProject.status === 'ON HOLD' ? 'bg-amber-100 text-amber-800 border-amber-300' : 
+                  'bg-blue-100 text-blue-800 border-blue-300'
+                }`}
+              >
+                <option value="ON PROGRESS">ON PROGRESS</option>
+                <option value="ON HOLD">ON HOLD</option>
+                <option value="DONE">DONE</option>
+              </select>
           </div>
         </div>
 
@@ -867,6 +881,7 @@ const ProjectMaster: React.FC<Props> = ({
             </div>
           )}
 
+          {/* ... Checklist Tab Content (Unchanged) ... */}
           {activeTab === 'checklist' && (
              <div className="grid grid-cols-1 gap-6 animate-in fade-in duration-300">
                 {/* TEMPLATE SECTION */}
@@ -1070,7 +1085,14 @@ const ProjectMaster: React.FC<Props> = ({
               </div>
             </div>
 
-            <div className="md:col-span-3"><label className={labelClass}>Notes / Keterangan</label><textarea rows={3} value={formData.notes || ''} onChange={e => setFormData({...formData, notes: e.target.value})} className={inputClass} placeholder="Catatan project..." /></div>
+            <div className="md:col-span-3">
+              <label className={labelClass}>Notes / Keterangan</label>
+              <SimpleRichTextEditor 
+                initialValue={formData.notes || ''} 
+                onSave={(val) => setFormData({...formData, notes: val})} 
+                placeholder="Catatan project (bisa format list, bold, dll)..."
+              />
+            </div>
           </div>
           <div className="flex justify-end gap-4 pt-6 border-t border-slate-100">
             <button type="button" onClick={resetForm} className="px-6 py-2.5 text-sm font-black text-slate-700 uppercase">Cancel</button>
