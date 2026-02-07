@@ -77,17 +77,17 @@ const Dashboard: React.FC<Props> = ({ state }) => {
     const artworksLead = countByContext(WorkContext.LEAD);
     const artworksInternal = countByContext(WorkContext.INTERNAL);
 
-    // Modern Gradient Definitions for Charts
+    // Modern Gradient Definitions for Charts (Added hexGradient for SVG)
     const globalTypeSplit = [
-      { type: "2D Design", count: filteredLogs.filter(l => l.artwork_type === "2D Design").length, gradient: "from-blue-400 to-cyan-500", solid: "#3b82f6" },
-      { type: "3D Design", count: filteredLogs.filter(l => l.artwork_type === "3D Design").length, gradient: "from-emerald-400 to-teal-500", solid: "#10b981" },
-      { type: "Video", count: filteredLogs.filter(l => l.artwork_type === "Video").length, gradient: "from-orange-400 to-rose-500", solid: "#f97316" }
+      { type: "2D Design", count: filteredLogs.filter(l => l.artwork_type === "2D Design").length, gradient: "from-blue-400 to-cyan-500", hexGradient: ["#60a5fa", "#06b6d4"], solid: "#3b82f6" },
+      { type: "3D Design", count: filteredLogs.filter(l => l.artwork_type === "3D Design").length, gradient: "from-emerald-400 to-teal-500", hexGradient: ["#34d399", "#14b8a6"], solid: "#10b981" },
+      { type: "Video", count: filteredLogs.filter(l => l.artwork_type === "Video").length, gradient: "from-orange-400 to-rose-500", hexGradient: ["#fb923c", "#f43f5e"], solid: "#f97316" }
     ];
 
     const globalContextSplit = [
-      { type: "Project", count: artworksProject, gradient: "from-blue-500 to-indigo-600", solid: "#2563eb" },
-      { type: "Lead", count: artworksLead, gradient: "from-emerald-500 to-green-600", solid: "#059669" },
-      { type: "Internal", count: artworksInternal, gradient: "from-purple-500 to-fuchsia-600", solid: "#7c3aed" }
+      { type: "Project", count: artworksProject, gradient: "from-blue-500 to-indigo-600", hexGradient: ["#3b82f6", "#4f46e5"], solid: "#2563eb" },
+      { type: "Lead", count: artworksLead, gradient: "from-emerald-500 to-green-600", hexGradient: ["#10b981", "#16a34a"], solid: "#059669" },
+      { type: "Internal", count: artworksInternal, gradient: "from-purple-500 to-fuchsia-600", hexGradient: ["#a855f7", "#c026d3"], solid: "#7c3aed" }
     ];
 
     const calcAvgDuration = (ctx: WorkContext) => {
@@ -685,41 +685,78 @@ const VolumeCard = ({ title, count, duration, typeSplit, gradient }: any) => {
   );
 };
 
-const PieRow = ({ title, data, total }: any) => (
-  <div className="flex flex-col sm:flex-row items-center gap-6">
-    <div className="relative w-28 h-28 flex-shrink-0">
-      <div 
-        className="w-full h-full rounded-full" 
-        style={{ 
-          background: `conic-gradient(${data.map((d:any, i:number) => {
-            const percentage = total ? (d.count / total) * 100 : 0;
-            const start = data.slice(0, i).reduce((acc:any, curr:any) => acc + (total ? (curr.count / total) * 100 : 0), 0);
-            return `${d.solid} ${start}% ${start + percentage}%`;
-          }).join(', ')})` 
-        }}
-      ></div>
-      <div className="absolute inset-0 m-auto w-16 h-16 bg-white rounded-full flex flex-col items-center justify-center shadow-sm">
-         <span className="text-lg font-black text-slate-900 leading-none">{total}</span>
-         <span className="text-[8px] font-bold text-slate-400 uppercase mt-0.5">Total</span>
+const PieRow = ({ title, data, total }: any) => {
+  // Use SVG for better gradients
+  const size = 112; // w-28 = 7rem = 112px
+  const radius = 50;
+  const center = size / 2;
+  
+  let currentAngle = 0;
+  
+  return (
+    <div className="flex flex-col sm:flex-row items-center gap-6">
+      <div className="relative flex-shrink-0" style={{ width: size, height: size }}>
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="transform -rotate-90">
+          <defs>
+            {data.map((d: any, i: number) => (
+              <linearGradient key={`pie-grad-${i}`} id={`pie-grad-${i}`} x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor={d.hexGradient?.[0] || d.solid} />
+                <stop offset="100%" stopColor={d.hexGradient?.[1] || d.solid} />
+              </linearGradient>
+            ))}
+          </defs>
+          {data.map((d: any, i: number) => {
+            const percentage = total ? d.count / total : 0;
+            if (percentage === 0) return null;
+            
+            const strokeWidth = 20; // Thickness of the donut
+            const circumference = 2 * Math.PI * (size / 2 - strokeWidth / 2); // r = size/2 - strokeWidth/2
+            const dashArray = `${percentage * circumference} ${circumference}`;
+            const dashOffset = -currentAngle * circumference;
+            
+            currentAngle += percentage;
+            
+            // Simple approach using circle stroke for donut segments
+            // This is easier than calculating paths for simple donut charts
+            return (
+              <circle
+                key={i}
+                cx={size / 2}
+                cy={size / 2}
+                r={size / 2 - strokeWidth / 2}
+                fill="none"
+                stroke={`url(#pie-grad-${i})`}
+                strokeWidth={strokeWidth}
+                strokeDasharray={dashArray}
+                strokeDashoffset={dashOffset}
+                className="transition-all duration-500 hover:opacity-90"
+              />
+            );
+          })}
+        </svg>
+        <div className="absolute inset-0 m-auto w-16 h-16 bg-white rounded-full flex flex-col items-center justify-center shadow-sm z-10 pointer-events-none">
+           <span className="text-lg font-black text-slate-900 leading-none">{total}</span>
+           <span className="text-[8px] font-bold text-slate-400 uppercase mt-0.5">Total</span>
+        </div>
+      </div>
+      
+      <div className="flex-1 w-full space-y-2">
+        <p className="text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-wider border-b border-slate-100 pb-1 text-center sm:text-left">{title}</p>
+        {data.map((d:any) => (
+          <div key={d.type || d.context} className="flex justify-between items-center text-[10px] font-bold text-slate-700">
+            <div className="flex items-center gap-2">
+              <div className={`w-2.5 h-2.5 rounded-full bg-gradient-to-br ${d.gradient}`}></div>
+              <span className="uppercase truncate max-w-[85px]">{d.type || d.context}</span>
+            </div>
+            <span className="text-slate-900 font-bold bg-slate-50 px-2 py-0.5 rounded border border-slate-100 min-w-[3rem] text-center">
+              {d.count} <span className="text-slate-400 text-[8px] font-medium opacity-70">({total ? Math.round((d.count / total) * 100) : 0}%)</span>
+            </span>
+          </div>
+        ))}
       </div>
     </div>
-    
-    <div className="flex-1 w-full space-y-2">
-      <p className="text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-wider border-b border-slate-100 pb-1 text-center sm:text-left">{title}</p>
-      {data.map((d:any) => (
-        <div key={d.type || d.context} className="flex justify-between items-center text-[10px] font-bold text-slate-700">
-          <div className="flex items-center gap-2">
-            <div className={`w-2.5 h-2.5 rounded-full bg-gradient-to-br ${d.gradient}`}></div>
-            <span className="uppercase truncate max-w-[85px]">{d.type || d.context}</span>
-          </div>
-          <span className="text-slate-900 font-bold bg-slate-50 px-2 py-0.5 rounded border border-slate-100 min-w-[3rem] text-center">
-            {d.count} <span className="text-slate-400 text-[8px] font-medium opacity-70">({total ? Math.round((d.count / total) * 100) : 0}%)</span>
-          </span>
-        </div>
-      ))}
-    </div>
-  </div>
-);
+  );
+};
 
 const TrendLineChart = ({ data, keys, labels, colors }: any) => {
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
@@ -770,29 +807,59 @@ const TrendLineChart = ({ data, keys, labels, colors }: any) => {
           ))}
         </defs>
         {[0, 0.5, 1].map(p => <line key={p} x1={padding} y1={getY(maxValue * p)} x2={width - padding} y2={getY(maxValue * p)} stroke="#f1f5f9" strokeWidth="1" strokeDasharray="4 4" />)}
+        
         {keys.map((key:string, kIdx:number) => (
           <g key={key}>
+            {/* Gradient Area Fill */}
             <path d={getAreaPath(key)} fill={`url(#grad-${kIdx})`} className="transition-all duration-300" />
-            <path d={getSmoothPath(key)} fill="none" stroke={colors[kIdx]} strokeWidth={hoverIndex !== null ? "2.5" : "3.5"} strokeLinecap="round" strokeLinejoin="round" className="transition-all duration-300 shadow-sm" />
+            
+            {/* Thinner Line */}
+            <path 
+              d={getSmoothPath(key)} 
+              fill="none" 
+              stroke={colors[kIdx]} 
+              strokeWidth="2" 
+              strokeLinecap="round" 
+              strokeLinejoin="round" 
+              className="transition-all duration-300 shadow-sm" 
+            />
+
+            {/* Permanent Nodes per Month */}
+            {data.map((d: any, i: number) => (
+              <circle
+                key={`node-${key}-${i}`}
+                cx={getX(i)}
+                cy={getY(d[key])}
+                r="3"
+                fill="white"
+                stroke={colors[kIdx]}
+                strokeWidth="2"
+                className="transition-all duration-300 hover:r-4"
+              />
+            ))}
           </g>
         ))}
+
+        {/* Labels */}
         {data.map((d:any, i:number) => (
           <text key={i} x={getX(i)} y={height - 10} textAnchor="middle" fontSize="9" fontWeight="bold" className="fill-slate-400 uppercase tracking-tighter">
             {d.label}
           </text>
         ))}
+
+        {/* Hover Interaction Overlay */}
         {hoverIndex !== null && (
           <g>
             <line x1={getX(hoverIndex)} y1={padding} x2={getX(hoverIndex)} y2={height - padding} stroke="#cbd5e1" strokeWidth="1" strokeDasharray="4 2" />
-            {keys.map((key: string, kIdx: number) => (
-              <circle key={`dot-${kIdx}`} cx={getX(hoverIndex)} cy={getY(data[hoverIndex][key])} r="4" fill="white" stroke={colors[kIdx]} strokeWidth="2.5" className="transition-all duration-150" />
-            ))}
           </g>
         )}
+        
+        {/* Invisible Hit Targets */}
         {data.map((d: any, i: number) => (
           <rect key={`hit-${i}`} x={getX(i) - ((width - padding * 2) / (data.length - 1)) / 2} y={0} width={(width - padding * 2) / (data.length - 1)} height={height} fill="transparent" onMouseEnter={() => setHoverIndex(i)} />
         ))}
       </svg>
+      
       {hoverIndex !== null && (
         <div className="absolute z-10 bg-slate-900/95 backdrop-blur-sm text-white p-3 rounded-xl shadow-xl pointer-events-none transform -translate-x-1/2 -translate-y-full border border-slate-700/50" style={{ left: `${(getX(hoverIndex) / width) * 100}%`, top: '20px' }}>
           <p className="text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest text-center border-b border-slate-700 pb-1">{data[hoverIndex].fullDate}</p>
