@@ -253,7 +253,9 @@ const ProjectMaster: React.FC<Props> = ({
   // --- CHECKLIST & TEMPLATE HANDLERS ---
   const filteredChecklists = useMemo(() => {
     if (!selectedProject) return [];
-    return projectChecklists.filter(cl => cl.project_id === selectedProject.id);
+    return projectChecklists
+      .filter(cl => cl.project_id === selectedProject.id)
+      .sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
   }, [selectedProject, projectChecklists]);
 
   const activeTemplatesInProject = useMemo(() => {
