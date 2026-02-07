@@ -255,7 +255,14 @@ const ProjectMaster: React.FC<Props> = ({
     if (!selectedProject) return [];
     return projectChecklists
       .filter(cl => cl.project_id === selectedProject.id)
-      .sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
+      // Sort by created_at AND ID for absolute stability
+      .sort((a, b) => {
+        const dateA = a.created_at || '';
+        const dateB = b.created_at || '';
+        const dateCompare = dateA.localeCompare(dateB);
+        if (dateCompare !== 0) return dateCompare;
+        return a.id.localeCompare(b.id);
+      });
   }, [selectedProject, projectChecklists]);
 
   // Group checklists by Template ID
@@ -275,16 +282,23 @@ const ProjectMaster: React.FC<Props> = ({
     return { groups, manualItems };
   }, [filteredChecklists]);
 
-  const activeTemplatesInProject = useMemo(() => {
-    // Get distinct template IDs from the actual checklist items
-    const templateIds = new Set(Object.keys(groupedChecklists.groups));
-    return templateIds;
-  }, [groupedChecklists]);
+  // Stable Template List (Sorted by Name)
+  const sortedActiveTemplateIds = useMemo(() => {
+    const ids = Object.keys(groupedChecklists.groups);
+    return ids.sort((a, b) => {
+      const nameA = checklistTemplates.find(t => t.id === a)?.name || '';
+      const nameB = checklistTemplates.find(t => t.id === b)?.name || '';
+      return nameA.localeCompare(nameB);
+    });
+  }, [groupedChecklists, checklistTemplates]);
+
+  // Use a Set for fast lookup of active templates (for the toggle buttons)
+  const activeTemplatesSet = useMemo(() => new Set(Object.keys(groupedChecklists.groups)), [groupedChecklists]);
 
   const handleToggleTemplate = async (templateId: string) => {
     if (!selectedProject || !supabase) return;
 
-    if (activeTemplatesInProject.has(templateId)) {
+    if (activeTemplatesSet.has(templateId)) {
       // Logic removed: Don't auto-remove items. User must manually delete if they want to remove a template's items.
       // Or if we want strict toggle behavior:
       const { error } = await supabase.from('project_checklists')
@@ -765,7 +779,7 @@ const ProjectMaster: React.FC<Props> = ({
                    <div className="h-6 w-px bg-slate-200 mx-2"></div>
                    <div className="flex flex-wrap gap-2">
                      {checklistTemplates.map(t => {
-                       const isActive = activeTemplatesInProject.has(t.id);
+                       const isActive = activeTemplatesSet.has(t.id);
                        return (
                          <button 
                             key={t.id}
@@ -800,7 +814,7 @@ const ProjectMaster: React.FC<Props> = ({
                     </thead>
                     <tbody className="text-slate-700">
                       {/* RENDER TEMPLATE GROUPS */}
-                      {Array.from(activeTemplatesInProject).map(templateId => {
+                      {sortedActiveTemplateIds.map(templateId => {
                         const items = groupedChecklists.groups[templateId] || [];
                         const templateName = checklistTemplates.find(t => t.id === templateId)?.name || 'Unknown Template';
                         const newItemState = newItemsMap[templateId] || { task_name: '', size: '', quantity: 1, notes: '' };
