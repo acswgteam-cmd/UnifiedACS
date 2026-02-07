@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { Project, ProjectChecklist, ChecklistTemplate, ChecklistTemplateItem } from '../types';
@@ -510,7 +509,7 @@ const PublicProjectSurvey: React.FC = () => {
                             {isEditable && (
                               <AddRow 
                                 newItem={newItemState}
-                                updateNewItem={(field, val) => updateNewItemState(templateId, field, val)}
+                                updateNewItem={(field: string, val: any) => updateNewItemState(templateId, field, val)}
                                 onAdd={() => handleAddItem(templateId)}
                                 newRowInputClass={newRowInputClass}
                               />
@@ -545,7 +544,7 @@ const PublicProjectSurvey: React.FC = () => {
                         {isEditable && (
                           <AddRow 
                             newItem={newItemsMap['manual'] || { task_name: '', size: '', quantity: 1, notes: '' }}
-                            updateNewItem={(field, val) => updateNewItemState(null, field, val)}
+                            updateNewItem={(field: string, val: any) => updateNewItemState(null, field, val)}
                             onAdd={() => handleAddItem(null)}
                             newRowInputClass={newRowInputClass}
                           />
