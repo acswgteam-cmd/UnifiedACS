@@ -50,10 +50,8 @@ const ProjectMaster: React.FC<Props> = ({
   const [copySuccess, setCopySuccess] = useState(false);
   
   // Checklist & Template State
-  // State for adding NEW item (at bottom of table)
-  const [newItem, setNewItem] = useState({
-    task_name: '', size: '', quantity: 1, notes: '', status: 'NONE'
-  });
+  // New Item State is now a map: key = templateId (or 'manual') -> value = item data
+  const [newItemsMap, setNewItemsMap] = useState<Record<string, { task_name: string, size: string, quantity: number, notes: string }>>({});
   
   const [isManageTemplatesOpen, setIsManageTemplatesOpen] = useState(false);
   
@@ -61,6 +59,8 @@ const ProjectMaster: React.FC<Props> = ({
   const [newTemplateName, setNewTemplateName] = useState('');
   const [selectedTemplateForEdit, setSelectedTemplateForEdit] = useState<ChecklistTemplate | null>(null);
   const [newTemplateItem, setNewTemplateItem] = useState({ task_name: '', size: '', notes: '' });
+  const [editingTemplateNameId, setEditingTemplateNameId] = useState<string | null>(null);
+  const [tempTemplateName, setTempTemplateName] = useState('');
 
   // States for Filtering
   const [filterType, setFilterType] = useState('ALL');
@@ -258,20 +258,35 @@ const ProjectMaster: React.FC<Props> = ({
       .sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
   }, [selectedProject, projectChecklists]);
 
-  const activeTemplatesInProject = useMemo(() => {
-    if (!filteredChecklists) return new Set<string>();
-    const templateIds = new Set<string>();
-    filteredChecklists.forEach(cl => {
-      if (cl.source_template_id) templateIds.add(cl.source_template_id);
+  // Group checklists by Template ID
+  const groupedChecklists = useMemo(() => {
+    const groups: Record<string, ProjectChecklist[]> = {};
+    const manualItems: ProjectChecklist[] = [];
+
+    filteredChecklists.forEach(item => {
+      if (item.source_template_id) {
+        if (!groups[item.source_template_id]) groups[item.source_template_id] = [];
+        groups[item.source_template_id].push(item);
+      } else {
+        manualItems.push(item);
+      }
     });
-    return templateIds;
+
+    return { groups, manualItems };
   }, [filteredChecklists]);
+
+  const activeTemplatesInProject = useMemo(() => {
+    // Get distinct template IDs from the actual checklist items
+    const templateIds = new Set(Object.keys(groupedChecklists.groups));
+    return templateIds;
+  }, [groupedChecklists]);
 
   const handleToggleTemplate = async (templateId: string) => {
     if (!selectedProject || !supabase) return;
 
     if (activeTemplatesInProject.has(templateId)) {
-      // Remove Items (Un-click)
+      // Logic removed: Don't auto-remove items. User must manually delete if they want to remove a template's items.
+      // Or if we want strict toggle behavior:
       const { error } = await supabase.from('project_checklists')
         .delete()
         .eq('project_id', selectedProject.id)
@@ -320,26 +335,48 @@ const ProjectMaster: React.FC<Props> = ({
     else onUpdate();
   };
 
-  // --- ADD NEW ITEM HANDLER (Bottom Row) ---
-  const handleAddNewItem = async () => {
-    if (!selectedProject || !newItem.task_name.trim() || !supabase) return;
+  // --- ADD NEW ITEM HANDLER (Context Aware) ---
+  const handleAddNewItem = async (templateId: string | null) => {
+    if (!selectedProject || !supabase) return;
+    
+    // Key for local state map (use 'manual' for null)
+    const mapKey = templateId || 'manual';
+    const currentNewItem = newItemsMap[mapKey] || { task_name: '', size: '', quantity: 1, notes: '' };
+
+    if (!currentNewItem.task_name.trim()) return;
 
     const payload = {
       project_id: selectedProject.id,
-      task_name: newItem.task_name,
-      size: newItem.size,
-      quantity: newItem.quantity,
-      notes: newItem.notes,
-      status: 'NONE'
+      task_name: currentNewItem.task_name,
+      size: currentNewItem.size,
+      quantity: currentNewItem.quantity,
+      notes: currentNewItem.notes,
+      status: 'NONE',
+      source_template_id: templateId // Tag with template ID if adding to a group
     };
 
     const { error } = await supabase.from('project_checklists').insert([payload]);
     
     if (error) alert(error.message);
     else {
-      setNewItem({ task_name: '', size: '', quantity: 1, notes: '', status: 'NONE' });
+      // Reset specific input
+      setNewItemsMap(prev => ({
+        ...prev,
+        [mapKey]: { task_name: '', size: '', quantity: 1, notes: '' }
+      }));
       onUpdate();
     }
+  };
+
+  const updateNewItemState = (templateId: string | null, field: string, value: any) => {
+    const mapKey = templateId || 'manual';
+    setNewItemsMap(prev => ({
+      ...prev,
+      [mapKey]: {
+        ...(prev[mapKey] || { task_name: '', size: '', quantity: 1, notes: '' }),
+        [field]: value
+      }
+    }));
   };
 
   // --- TEMPLATE MANAGEMENT CRUD ---
@@ -348,6 +385,21 @@ const ProjectMaster: React.FC<Props> = ({
     const { error } = await supabase.from('checklist_templates').insert([{ name: newTemplateName }]);
     if (error) alert(error.message);
     else { setNewTemplateName(''); onUpdate(); }
+  };
+
+  const handleEditTemplateNameStart = (template: ChecklistTemplate) => {
+    setEditingTemplateNameId(template.id);
+    setTempTemplateName(template.name);
+  };
+
+  const handleEditTemplateNameSave = async () => {
+    if (!supabase || !editingTemplateNameId) return;
+    const { error } = await supabase.from('checklist_templates').update({ name: tempTemplateName }).eq('id', editingTemplateNameId);
+    if (error) alert(error.message);
+    else {
+      setEditingTemplateNameId(null);
+      onUpdate();
+    }
   };
 
   const handleDeleteTemplate = async (id: string) => {
@@ -360,6 +412,7 @@ const ProjectMaster: React.FC<Props> = ({
     }
   };
 
+  // Template ITEMS Management
   const handleAddTemplateItem = async () => {
     if (!selectedTemplateForEdit || !newTemplateItem.task_name || !supabase) return;
     const { error } = await supabase.from('checklist_template_items').insert([{
@@ -373,6 +426,13 @@ const ProjectMaster: React.FC<Props> = ({
       setNewTemplateItem({ task_name: '', size: '', notes: '' });
       onUpdate();
     }
+  };
+
+  const handleUpdateTemplateItem = async (itemId: string, field: keyof ChecklistTemplateItem, value: any) => {
+    if (!supabase) return;
+    const { error } = await supabase.from('checklist_template_items').update({ [field]: value }).eq('id', itemId);
+    if (error) console.error("Update failed", error);
+    else onUpdate();
   };
 
   const handleDeleteTemplateItem = async (id: string) => {
@@ -453,7 +513,26 @@ const ProjectMaster: React.FC<Props> = ({
                    <div className="flex-1 overflow-y-auto space-y-2">
                      {checklistTemplates.map(t => (
                        <div key={t.id} onClick={() => setSelectedTemplateForEdit(t)} className={`p-3 rounded-lg border cursor-pointer flex justify-between items-center group ${selectedTemplateForEdit?.id === t.id ? 'bg-indigo-50 border-indigo-300' : 'bg-slate-50 border-slate-200 hover:border-indigo-200'}`}>
-                          <span className="text-xs font-black text-slate-800 uppercase">{t.name}</span>
+                          {editingTemplateNameId === t.id ? (
+                            <div className="flex items-center gap-1 w-full">
+                              <input 
+                                className="w-full text-xs font-bold p-1 border border-indigo-300 rounded"
+                                value={tempTemplateName}
+                                onChange={(e) => setTempTemplateName(e.target.value)}
+                                onBlur={handleEditTemplateNameSave}
+                                onKeyDown={(e) => e.key === 'Enter' && handleEditTemplateNameSave()}
+                                autoFocus
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 overflow-hidden">
+                              <span className="text-xs font-black text-slate-800 uppercase truncate">{t.name}</span>
+                              <button onClick={(e) => { e.stopPropagation(); handleEditTemplateNameStart(t); }} className="text-slate-400 hover:text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                              </button>
+                            </div>
+                          )}
                           <button onClick={(e) => { e.stopPropagation(); handleDeleteTemplate(t.id); }} className="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>
                        </div>
                      ))}
@@ -479,10 +558,32 @@ const ProjectMaster: React.FC<Props> = ({
                         {/* List Items */}
                         <div className="space-y-2">
                            {checklistTemplateItems.filter(ti => ti.template_id === selectedTemplateForEdit.id).map(ti => (
-                             <div key={ti.id} className="bg-white p-3 rounded-lg border border-slate-200 flex justify-between items-start">
-                                <div>
-                                   <div className="text-xs font-black text-slate-900 uppercase">{ti.task_name}</div>
-                                   <div className="text-[10px] text-slate-500 mt-0.5">{ti.size} {ti.notes && `• ${ti.notes}`}</div>
+                             <div key={ti.id} className="bg-white p-3 rounded-lg border border-slate-200 flex justify-between items-start gap-4">
+                                <div className="flex-1 grid grid-cols-12 gap-2">
+                                   <div className="col-span-5">
+                                      <input 
+                                        className="w-full text-xs font-black text-slate-900 uppercase bg-transparent border-b border-transparent focus:border-indigo-500 outline-none"
+                                        defaultValue={ti.task_name}
+                                        onBlur={(e) => handleUpdateTemplateItem(ti.id, 'task_name', e.target.value)}
+                                        placeholder="Item Name"
+                                      />
+                                   </div>
+                                   <div className="col-span-3">
+                                      <input 
+                                        className="w-full text-[10px] text-slate-500 bg-transparent border-b border-transparent focus:border-indigo-500 outline-none"
+                                        defaultValue={ti.size}
+                                        onBlur={(e) => handleUpdateTemplateItem(ti.id, 'size', e.target.value)}
+                                        placeholder="Size"
+                                      />
+                                   </div>
+                                   <div className="col-span-4">
+                                      <input 
+                                        className="w-full text-[10px] text-slate-500 bg-transparent border-b border-transparent focus:border-indigo-500 outline-none"
+                                        defaultValue={ti.notes}
+                                        onBlur={(e) => handleUpdateTemplateItem(ti.id, 'notes', e.target.value)}
+                                        placeholder="Notes"
+                                      />
+                                   </div>
                                 </div>
                                 <button onClick={() => handleDeleteTemplateItem(ti.id)} className="text-red-400 hover:text-red-600"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
                              </div>
@@ -677,120 +778,72 @@ const ProjectMaster: React.FC<Props> = ({
                       </tr>
                     </thead>
                     <tbody className="text-slate-700">
-                      {/* EXISTING ROWS - ALWAYS EDITABLE */}
-                      {filteredChecklists.map((cl, idx) => {
+                      {/* RENDER TEMPLATE GROUPS */}
+                      {Array.from(activeTemplatesInProject).map(templateId => {
+                        const items = groupedChecklists.groups[templateId] || [];
+                        const templateName = checklistTemplates.find(t => t.id === templateId)?.name || 'Unknown Template';
+                        const newItemState = newItemsMap[templateId] || { task_name: '', size: '', quantity: 1, notes: '' };
+
                         return (
-                          <tr key={cl.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors group">
-                            <td className="px-3 py-2 text-center text-slate-400 font-medium">{idx + 1}</td>
-                            
-                            <td className="px-3 py-2 relative">
-                               <div className="flex items-center gap-2">
-                                  <input 
-                                    className={cellInputClass}
-                                    defaultValue={cl.task_name}
-                                    onBlur={(e) => handleUpdateChecklistField(cl.id, 'task_name', e.target.value)}
-                                    placeholder="Task Name"
-                                  />
-                                  {cl.source_template_id && <span className="bg-slate-100 text-slate-500 border border-slate-200 text-[9px] px-1 rounded uppercase font-bold flex-shrink-0">Tpl</span>}
-                               </div>
-                            </td>
-                            <td className="px-3 py-2">
-                              <input 
-                                className={cellInputClass}
-                                defaultValue={cl.size || ''}
-                                onBlur={(e) => handleUpdateChecklistField(cl.id, 'size', e.target.value)}
-                                placeholder="Size"
+                          <React.Fragment key={templateId}>
+                            {/* DIVIDER ROW */}
+                            <tr className="bg-indigo-50 border-y border-indigo-100">
+                              <td colSpan={7} className="px-3 py-1.5">
+                                <span className="text-[10px] font-black text-indigo-800 uppercase tracking-widest flex items-center gap-2">
+                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                                  {templateName}
+                                </span>
+                              </td>
+                            </tr>
+                            {items.map((cl, idx) => (
+                              <TableRow 
+                                key={cl.id} 
+                                cl={cl} 
+                                idx={idx} 
+                                cellInputClass={cellInputClass} 
+                                onUpdate={handleUpdateChecklistField} 
+                                onDelete={handleDeleteChecklist} 
                               />
-                            </td>
-                            <td className="px-3 py-2 text-center">
-                              <input 
-                                type="number"
-                                className={`${cellInputClass} text-center`}
-                                defaultValue={cl.quantity}
-                                onBlur={(e) => handleUpdateChecklistField(cl.id, 'quantity', parseInt(e.target.value) || 0)}
-                              />
-                            </td>
-                            <td className="px-3 py-2">
-                              <input 
-                                className={cellInputClass}
-                                defaultValue={cl.notes || ''}
-                                onBlur={(e) => handleUpdateChecklistField(cl.id, 'notes', e.target.value)}
-                                placeholder="Notes"
-                              />
-                            </td>
-                            <td className="px-3 py-2">
-                              <select 
-                                value={cl.status} 
-                                onChange={(e) => handleUpdateChecklistField(cl.id, 'status', e.target.value)}
-                                className={`w-full text-[10px] font-bold uppercase rounded py-1 px-1 outline-none cursor-pointer transition-colors bg-transparent hover:bg-slate-100 ${
-                                  cl.status === 'DONE' ? 'text-emerald-600' :
-                                  cl.status === 'ON PROGRESS' ? 'text-amber-600' :
-                                  'text-slate-400'
-                                }`}
-                              >
-                                <option value="NONE">Not Started</option>
-                                <option value="ON PROGRESS">On Progress</option>
-                                <option value="DONE">Done</option>
-                              </select>
-                            </td>
-                            <td className="px-3 py-2 text-right">
-                              <button onClick={() => handleDeleteChecklist(cl.id)} className="text-slate-300 hover:text-red-500 text-[10px] font-black uppercase transition-colors p-1 opacity-0 group-hover:opacity-100" title="Delete">
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                              </button>
-                            </td>
-                          </tr>
+                            ))}
+                            {/* Add Item Row for this Template */}
+                            <AddRow 
+                              newItem={newItemState}
+                              updateNewItem={(field, val) => updateNewItemState(templateId, field, val)}
+                              onAdd={() => handleAddNewItem(templateId)}
+                              newRowInputClass={newRowInputClass}
+                            />
+                          </React.Fragment>
                         );
                       })}
 
-                      {/* ADD NEW ROW (ALWAYS VISIBLE AT BOTTOM) */}
-                      <tr className="bg-slate-50/50 hover:bg-slate-50 transition-colors">
-                        <td className="px-3 py-2 text-center text-indigo-300 font-black">+</td>
-                        <td className="px-3 py-2">
-                          <input 
-                            placeholder="Add New Design Name..." 
-                            className={newRowInputClass}
-                            value={newItem.task_name}
-                            onChange={e => setNewItem({...newItem, task_name: e.target.value})}
-                            onKeyDown={e => e.key === 'Enter' && handleAddNewItem()}
+                      {/* RENDER MANUAL / ADDITIONAL ITEMS */}
+                      <React.Fragment key="manual">
+                        <tr className="bg-slate-100 border-y border-slate-200">
+                          <td colSpan={7} className="px-3 py-1.5">
+                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                              Additional / Manual Items
+                            </span>
+                          </td>
+                        </tr>
+                        {groupedChecklists.manualItems.map((cl, idx) => (
+                          <TableRow 
+                            key={cl.id} 
+                            cl={cl} 
+                            idx={idx} 
+                            cellInputClass={cellInputClass} 
+                            onUpdate={handleUpdateChecklistField} 
+                            onDelete={handleDeleteChecklist} 
                           />
-                        </td>
-                        <td className="px-3 py-2">
-                          <input 
-                            placeholder="Size" 
-                            className={newRowInputClass}
-                            value={newItem.size}
-                            onChange={e => setNewItem({...newItem, size: e.target.value})}
-                            onKeyDown={e => e.key === 'Enter' && handleAddNewItem()}
-                          />
-                        </td>
-                        <td className="px-3 py-2">
-                          <input 
-                            type="number"
-                            placeholder="1" 
-                            className={`${newRowInputClass} text-center`}
-                            value={newItem.quantity}
-                            onChange={e => setNewItem({...newItem, quantity: parseInt(e.target.value) || 0})}
-                            onKeyDown={e => e.key === 'Enter' && handleAddNewItem()}
-                          />
-                        </td>
-                        <td className="px-3 py-2">
-                          <input 
-                            placeholder="Notes..." 
-                            className={newRowInputClass}
-                            value={newItem.notes}
-                            onChange={e => setNewItem({...newItem, notes: e.target.value})}
-                            onKeyDown={e => e.key === 'Enter' && handleAddNewItem()}
-                          />
-                        </td>
-                        <td className="px-3 py-2">
-                           <span className="text-[10px] font-bold text-slate-400 italic pl-2">Pending</span>
-                        </td>
-                        <td className="px-3 py-2 text-right">
-                          <button onClick={handleAddNewItem} className="text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded text-[10px] font-black uppercase hover:bg-indigo-100 transition-colors">
-                            Add
-                          </button>
-                        </td>
-                      </tr>
+                        ))}
+                        {/* Add Item Row for Manual */}
+                        <AddRow 
+                          newItem={newItemsMap['manual'] || { task_name: '', size: '', quantity: 1, notes: '' }}
+                          updateNewItem={(field, val) => updateNewItemState(null, field, val)}
+                          onAdd={() => handleAddNewItem(null)}
+                          newRowInputClass={newRowInputClass}
+                        />
+                      </React.Fragment>
                     </tbody>
                   </table>
                 </div>
@@ -936,5 +989,117 @@ const ProjectMaster: React.FC<Props> = ({
     </div>
   );
 };
+
+// --- Sub-components for Table ---
+const TableRow = ({ cl, idx, cellInputClass, onUpdate, onDelete }: any) => (
+  <tr className="border-b border-slate-100 hover:bg-slate-50 transition-colors group">
+    <td className="px-3 py-2 text-center text-slate-400 font-medium">{idx + 1}</td>
+    <td className="px-3 py-2 relative">
+       <div className="flex items-center gap-2">
+          <input 
+            className={cellInputClass}
+            defaultValue={cl.task_name}
+            onBlur={(e) => onUpdate(cl.id, 'task_name', e.target.value)}
+            placeholder="Task Name"
+          />
+       </div>
+    </td>
+    <td className="px-3 py-2">
+      <input 
+        className={cellInputClass}
+        defaultValue={cl.size || ''}
+        onBlur={(e) => onUpdate(cl.id, 'size', e.target.value)}
+        placeholder="Size"
+      />
+    </td>
+    <td className="px-3 py-2 text-center">
+      <input 
+        type="number"
+        className={`${cellInputClass} text-center`}
+        defaultValue={cl.quantity}
+        onBlur={(e) => onUpdate(cl.id, 'quantity', parseInt(e.target.value) || 0)}
+      />
+    </td>
+    <td className="px-3 py-2">
+      <input 
+        className={cellInputClass}
+        defaultValue={cl.notes || ''}
+        onBlur={(e) => onUpdate(cl.id, 'notes', e.target.value)}
+        placeholder="Notes"
+      />
+    </td>
+    <td className="px-3 py-2">
+      <select 
+        value={cl.status} 
+        onChange={(e) => onUpdate(cl.id, 'status', e.target.value)}
+        className={`w-full text-[10px] font-bold uppercase rounded py-1 px-1 outline-none cursor-pointer transition-colors bg-transparent hover:bg-slate-100 ${
+          cl.status === 'DONE' ? 'text-emerald-600' :
+          cl.status === 'ON PROGRESS' ? 'text-amber-600' :
+          'text-slate-400'
+        }`}
+      >
+        <option value="NONE">Not Started</option>
+        <option value="ON PROGRESS">On Progress</option>
+        <option value="DONE">Done</option>
+      </select>
+    </td>
+    <td className="px-3 py-2 text-right">
+      <button onClick={() => onDelete(cl.id)} className="text-slate-300 hover:text-red-500 text-[10px] font-black uppercase transition-colors p-1 opacity-0 group-hover:opacity-100" title="Delete">
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+      </button>
+    </td>
+  </tr>
+);
+
+const AddRow = ({ newItem, updateNewItem, onAdd, newRowInputClass }: any) => (
+  <tr className="bg-slate-50/50 hover:bg-slate-50 transition-colors">
+    <td className="px-3 py-2 text-center text-indigo-300 font-black">+</td>
+    <td className="px-3 py-2">
+      <input 
+        placeholder="Add New Item..." 
+        className={newRowInputClass}
+        value={newItem.task_name}
+        onChange={e => updateNewItem('task_name', e.target.value)}
+        onKeyDown={e => e.key === 'Enter' && onAdd()}
+      />
+    </td>
+    <td className="px-3 py-2">
+      <input 
+        placeholder="Size" 
+        className={newRowInputClass}
+        value={newItem.size}
+        onChange={e => updateNewItem('size', e.target.value)}
+        onKeyDown={e => e.key === 'Enter' && onAdd()}
+      />
+    </td>
+    <td className="px-3 py-2">
+      <input 
+        type="number"
+        placeholder="1" 
+        className={`${newRowInputClass} text-center`}
+        value={newItem.quantity}
+        onChange={e => updateNewItem('quantity', parseInt(e.target.value) || 0)}
+        onKeyDown={e => e.key === 'Enter' && onAdd()}
+      />
+    </td>
+    <td className="px-3 py-2">
+      <input 
+        placeholder="Notes..." 
+        className={newRowInputClass}
+        value={newItem.notes}
+        onChange={e => updateNewItem('notes', e.target.value)}
+        onKeyDown={e => e.key === 'Enter' && onAdd()}
+      />
+    </td>
+    <td className="px-3 py-2">
+       <span className="text-[10px] font-bold text-slate-400 italic pl-2">Pending</span>
+    </td>
+    <td className="px-3 py-2 text-right">
+      <button onClick={onAdd} className="text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded text-[10px] font-black uppercase hover:bg-indigo-100 transition-colors">
+        Add
+      </button>
+    </td>
+  </tr>
+);
 
 export default ProjectMaster;
