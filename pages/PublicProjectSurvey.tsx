@@ -214,11 +214,25 @@ const PublicProjectSurvey: React.FC = () => {
   };
 
   const handleDeleteItem = async (id: string) => {
-    if (!supabase || !confirm("Delete item?")) return;
-    if (!isEditable) return; // Guard clause
+    if (!supabase) return; // No confirm needed
+    if (!isEditable) return;
 
+    // Optimistic update
+    setChecklists(prev => prev.filter(c => c.id !== id));
     await supabase.from('project_checklists').delete().eq('id', id);
-    fetchChecklists();
+    // fetchChecklists(); // No need to refetch if optimistic works, but can do so to be safe
+  };
+
+  // INLINE EDIT: Update state immediately for UI response
+  const handleLocalChange = (id: string, field: keyof ProjectChecklist, value: any) => {
+    if (!isEditable) return;
+    setChecklists(prev => prev.map(c => c.id === id ? { ...c, [field]: value } : c));
+  };
+
+  // INLINE EDIT: Save to DB on Blur
+  const handleSaveItem = async (id: string, field: keyof ProjectChecklist, value: any) => {
+    if (!supabase || !isEditable) return;
+    await supabase.from('project_checklists').update({ [field]: value }).eq('id', id);
   };
 
   const handleToggleTemplate = async (templateId: string) => {
@@ -249,6 +263,9 @@ const PublicProjectSurvey: React.FC = () => {
       fetchChecklists();
     }
   };
+
+  // Styles for inline inputs
+  const cellInputClass = "w-full bg-transparent border-b border-transparent focus:border-indigo-600 outline-none text-xs font-bold text-slate-700 py-1 px-1 transition-colors placeholder-slate-300";
 
   // --- RENDERING ---
 
@@ -412,32 +429,89 @@ const PublicProjectSurvey: React.FC = () => {
                         <th className="px-6 py-4 text-center w-20">Qty</th>
                         <th className="px-6 py-4">Notes</th>
                         <th className="px-6 py-4 w-32">Status</th>
-                        <th className="px-6 py-4 text-right w-16">Action</th>
+                        <th className="px-6 py-4 text-right w-16"></th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
                       {checklists.map((cl, idx) => (
-                        <tr key={cl.id} className="hover:bg-slate-50 transition-colors">
-                          <td className="px-6 py-4 text-center text-slate-400">{idx + 1}</td>
-                          <td className="px-6 py-4">
-                             <div className="text-slate-900 uppercase font-black">{cl.task_name}</div>
-                             {cl.source_template_id && <span className="bg-indigo-50 text-indigo-600 text-[8px] px-1.5 rounded uppercase font-bold mt-1 inline-block">Template</span>}
+                        <tr key={cl.id} className="hover:bg-slate-50 transition-colors group">
+                          <td className="px-6 py-2 text-center text-slate-400">{idx + 1}</td>
+                          
+                          <td className="px-6 py-2">
+                             <div className="flex items-center gap-2">
+                                <input 
+                                  className={cellInputClass}
+                                  value={cl.task_name}
+                                  onChange={e => handleLocalChange(cl.id, 'task_name', e.target.value)}
+                                  onBlur={e => handleSaveItem(cl.id, 'task_name', e.target.value)}
+                                  readOnly={!isEditable}
+                                  placeholder="Task Name"
+                                />
+                                {cl.source_template_id && <span className="bg-indigo-50 text-indigo-600 text-[8px] px-1.5 rounded uppercase font-bold flex-shrink-0">Tpl</span>}
+                             </div>
                           </td>
-                          <td className="px-6 py-4">{cl.size || '-'}</td>
-                          <td className="px-6 py-4 text-center">{cl.quantity}</td>
-                          <td className="px-6 py-4 text-slate-500 italic font-medium">{cl.notes || '-'}</td>
-                          <td className="px-6 py-4">
-                             <span className={`text-[9px] font-black uppercase px-2 py-1 rounded border ${
-                                cl.status === 'DONE' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
-                                cl.status === 'ON PROGRESS' ? 'bg-amber-100 text-amber-700 border-amber-200' :
-                                'bg-slate-100 text-slate-500 border-slate-200'
-                              }`}>
-                                {cl.status}
-                              </span>
+                          <td className="px-6 py-2">
+                            <input 
+                                className={cellInputClass}
+                                value={cl.size || ''}
+                                onChange={e => handleLocalChange(cl.id, 'size', e.target.value)}
+                                onBlur={e => handleSaveItem(cl.id, 'size', e.target.value)}
+                                readOnly={!isEditable}
+                                placeholder="Size"
+                            />
                           </td>
-                          <td className="px-6 py-4 text-right">
+                          <td className="px-6 py-2 text-center">
+                            <input 
+                                type="number"
+                                className={`${cellInputClass} text-center`}
+                                value={cl.quantity}
+                                onChange={e => handleLocalChange(cl.id, 'quantity', parseInt(e.target.value) || 0)}
+                                onBlur={e => handleSaveItem(cl.id, 'quantity', parseInt(e.target.value) || 0)}
+                                readOnly={!isEditable}
+                            />
+                          </td>
+                          <td className="px-6 py-2">
+                            <input 
+                                className={cellInputClass}
+                                value={cl.notes || ''}
+                                onChange={e => handleLocalChange(cl.id, 'notes', e.target.value)}
+                                onBlur={e => handleSaveItem(cl.id, 'notes', e.target.value)}
+                                readOnly={!isEditable}
+                                placeholder="Notes"
+                            />
+                          </td>
+                          <td className="px-6 py-2">
+                             {isEditable ? (
+                                <select 
+                                  value={cl.status} 
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    handleLocalChange(cl.id, 'status', val);
+                                    handleSaveItem(cl.id, 'status', val);
+                                  }}
+                                  className={`w-full text-[10px] font-black uppercase rounded py-1 px-1 outline-none cursor-pointer transition-colors bg-transparent hover:bg-slate-100 ${
+                                    cl.status === 'DONE' ? 'text-emerald-600' :
+                                    cl.status === 'ON PROGRESS' ? 'text-amber-600' :
+                                    'text-slate-400'
+                                  }`}
+                                >
+                                  <option value="NONE">Not Started</option>
+                                  <option value="ON PROGRESS">On Progress</option>
+                                  <option value="DONE">Done</option>
+                                </select>
+                             ) : (
+                                <span className={`text-[9px] font-black uppercase px-2 py-1 rounded border ${
+                                  cl.status === 'DONE' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
+                                  cl.status === 'ON PROGRESS' ? 'bg-amber-100 text-amber-700 border-amber-200' :
+                                  'bg-slate-100 text-slate-500 border-slate-200'
+                                }`}>
+                                  {cl.status}
+                                </span>
+                             )}
+                          </td>
+                          <td className="px-6 py-2 text-right">
                              {isEditable && (
-                               <button onClick={() => handleDeleteItem(cl.id)} className="text-red-400 hover:text-red-600 p-1">
+                               <button onClick={() => handleDeleteItem(cl.id)} className="text-slate-300 hover:text-red-500 p-1 transition-colors opacity-0 group-hover:opacity-100">
                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                </button>
                              )}
