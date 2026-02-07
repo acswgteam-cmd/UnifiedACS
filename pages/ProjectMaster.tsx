@@ -55,10 +55,6 @@ const ProjectMaster: React.FC<Props> = ({
     task_name: '', size: '', quantity: 1, notes: '', status: 'NONE'
   });
   
-  // State for EDITING existing row
-  const [inlineEditId, setInlineEditId] = useState<string | null>(null);
-  const [inlineEditData, setInlineEditData] = useState<Partial<ProjectChecklist>>({});
-
   const [isManageTemplatesOpen, setIsManageTemplatesOpen] = useState(false);
   
   // Template Management Local State
@@ -307,39 +303,17 @@ const ProjectMaster: React.FC<Props> = ({
     }
   };
 
-  // --- INLINE EDIT HANDLERS ---
-  const handleStartInlineEdit = (cl: ProjectChecklist) => {
-    setInlineEditId(cl.id);
-    setInlineEditData({ ...cl });
-  };
-
-  const handleCancelInlineEdit = () => {
-    setInlineEditId(null);
-    setInlineEditData({});
-  };
-
-  const handleSaveInlineEdit = async () => {
-    if (!inlineEditId || !supabase) return;
-    
-    const { error } = await supabase.from('project_checklists').update({
-        task_name: inlineEditData.task_name,
-        size: inlineEditData.size,
-        quantity: inlineEditData.quantity,
-        notes: inlineEditData.notes,
-        status: inlineEditData.status
-    }).eq('id', inlineEditId);
-
-    if (error) alert(error.message);
-    else {
-        setInlineEditId(null);
-        setInlineEditData({});
-        onUpdate();
-    }
-  };
-
-  const handleQuickStatusChange = async (id: string, newStatus: string) => {
+  // --- INLINE EDIT HANDLERS (ALWAYS OPEN) ---
+  const handleUpdateChecklistField = async (id: string, field: keyof ProjectChecklist, value: any) => {
     if (!supabase) return;
-    const { error } = await supabase.from('project_checklists').update({ status: newStatus }).eq('id', id);
+    const { error } = await supabase.from('project_checklists').update({ [field]: value }).eq('id', id);
+    if (error) console.error("Error updating checklist:", error.message);
+    else onUpdate(); // Refetch to sync state
+  };
+
+  const handleDeleteChecklist = async (id: string) => {
+    if (!supabase) return; // No confirm needed
+    const { error } = await supabase.from('project_checklists').delete().eq('id', id);
     if (error) alert(error.message);
     else onUpdate();
   };
@@ -364,13 +338,6 @@ const ProjectMaster: React.FC<Props> = ({
       setNewItem({ task_name: '', size: '', quantity: 1, notes: '', status: 'NONE' });
       onUpdate();
     }
-  };
-
-  const handleDeleteChecklist = async (id: string) => {
-    if (!supabase || !confirm("Delete this item?")) return;
-    const { error } = await supabase.from('project_checklists').delete().eq('id', id);
-    if (error) alert(error.message);
-    else onUpdate();
   };
 
   // --- TEMPLATE MANAGEMENT CRUD ---
@@ -457,8 +424,8 @@ const ProjectMaster: React.FC<Props> = ({
   const labelClass = "text-[11px] font-black text-slate-900 uppercase mb-1.5 block tracking-wide";
   const inputClass = "w-full rounded-lg border-slate-300 text-slate-900 text-sm p-3 border bg-white focus:ring-2 focus:ring-indigo-600 outline-none placeholder-slate-400 font-semibold shadow-sm transition-all";
   
-  // Style for Compact Table
-  const cellInputClass = "w-full bg-transparent border-b border-transparent focus:border-indigo-600 outline-none text-xs text-slate-700 py-1 px-1 transition-colors";
+  // Style for Compact Table Input (Always Editable)
+  const cellInputClass = "w-full bg-transparent border-b border-transparent focus:border-indigo-600 outline-none text-xs font-bold text-slate-700 py-1 px-1 transition-colors placeholder-slate-300";
   const newRowInputClass = "w-full bg-white border border-slate-200 rounded-sm focus:border-indigo-600 outline-none text-xs text-slate-700 py-1.5 px-2";
 
   // === RENDER DETAIL VIEW ===
@@ -693,7 +660,7 @@ const ProjectMaster: React.FC<Props> = ({
                    </div>
                 </div>
 
-                {/* COMPACT TABLE (Refined Look) */}
+                {/* COMPACT TABLE (Refined Look - ALWAYS OPEN TO EDIT) */}
                 <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
                   <table className="w-full text-left text-xs border-collapse">
                     <thead className="bg-slate-50 border-b border-slate-200">
@@ -704,108 +671,71 @@ const ProjectMaster: React.FC<Props> = ({
                         <th className="px-3 py-2.5 text-center w-16 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Qty</th>
                         <th className="px-3 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Notes</th>
                         <th className="px-3 py-2.5 w-32 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Status</th>
-                        <th className="px-3 py-2.5 text-right w-24 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Actions</th>
+                        <th className="px-3 py-2.5 text-right w-16 text-[10px] font-bold text-slate-500 uppercase tracking-wider"></th>
                       </tr>
                     </thead>
                     <tbody className="text-slate-700">
-                      {/* EXISTING ROWS */}
+                      {/* EXISTING ROWS - ALWAYS EDITABLE */}
                       {filteredChecklists.map((cl, idx) => {
-                        const isEditing = inlineEditId === cl.id;
                         return (
                           <tr key={cl.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors group">
                             <td className="px-3 py-2 text-center text-slate-400 font-medium">{idx + 1}</td>
                             
-                            {isEditing ? (
-                              // EDIT MODE
-                              <>
-                                <td className="px-3 py-2">
+                            <td className="px-3 py-2 relative">
+                               <div className="flex items-center gap-2">
                                   <input 
-                                    autoFocus
-                                    className={cellInputClass} 
-                                    value={inlineEditData.task_name || ''} 
-                                    onChange={e => setInlineEditData({...inlineEditData, task_name: e.target.value})}
-                                  />
-                                </td>
-                                <td className="px-3 py-2">
-                                  <input 
-                                    className={cellInputClass} 
-                                    value={inlineEditData.size || ''} 
-                                    onChange={e => setInlineEditData({...inlineEditData, size: e.target.value})}
-                                  />
-                                </td>
-                                <td className="px-3 py-2 text-center">
-                                  <input 
-                                    type="number"
-                                    className={`${cellInputClass} text-center`}
-                                    value={inlineEditData.quantity || 0} 
-                                    onChange={e => setInlineEditData({...inlineEditData, quantity: parseInt(e.target.value) || 0})}
-                                  />
-                                </td>
-                                <td className="px-3 py-2">
-                                  <input 
-                                    className={cellInputClass} 
-                                    value={inlineEditData.notes || ''} 
-                                    onChange={e => setInlineEditData({...inlineEditData, notes: e.target.value})}
-                                  />
-                                </td>
-                                <td className="px-3 py-2">
-                                  <select 
                                     className={cellInputClass}
-                                    value={inlineEditData.status} 
-                                    onChange={e => setInlineEditData({...inlineEditData, status: e.target.value as any})}
-                                  >
-                                    <option value="NONE">Not Started</option>
-                                    <option value="ON PROGRESS">On Progress</option>
-                                    <option value="DONE">Done</option>
-                                  </select>
-                                </td>
-                                <td className="px-3 py-2 text-right">
-                                  <div className="flex justify-end gap-2">
-                                    <button onClick={handleSaveInlineEdit} className="text-emerald-600 hover:text-emerald-800 text-[10px] font-black uppercase">Save</button>
-                                    <button onClick={handleCancelInlineEdit} className="text-slate-400 hover:text-slate-600 text-[10px] font-black uppercase">Cancel</button>
-                                  </div>
-                                </td>
-                              </>
-                            ) : (
-                              // VIEW MODE
-                              <>
-                                <td className="px-3 py-2">
-                                   <div className="flex items-center gap-2">
-                                      <span className="text-sm font-semibold text-slate-800">{cl.task_name}</span>
-                                      {cl.source_template_id && <span className="bg-slate-100 text-slate-500 border border-slate-200 text-[9px] px-1 rounded uppercase font-bold">Tpl</span>}
-                                   </div>
-                                </td>
-                                <td className="px-3 py-2 text-xs font-medium">{cl.size || '-'}</td>
-                                <td className="px-3 py-2 text-center text-slate-900 font-bold">{cl.quantity}</td>
-                                <td className="px-3 py-2 text-slate-500 italic truncate max-w-[200px] text-xs">{cl.notes || '-'}</td>
-                                <td className="px-3 py-2">
-                                  {/* Direct Status Edit Dropdown - Clean Look */}
-                                  <select 
-                                    value={cl.status} 
-                                    onChange={(e) => handleQuickStatusChange(cl.id, e.target.value)}
-                                    className={`w-full text-[10px] font-bold uppercase rounded py-1 px-1 outline-none cursor-pointer transition-colors bg-transparent hover:bg-slate-100 ${
-                                      cl.status === 'DONE' ? 'text-emerald-600' :
-                                      cl.status === 'ON PROGRESS' ? 'text-amber-600' :
-                                      'text-slate-400'
-                                    }`}
-                                  >
-                                    <option value="NONE">Not Started</option>
-                                    <option value="ON PROGRESS">On Progress</option>
-                                    <option value="DONE">Done</option>
-                                  </select>
-                                </td>
-                                <td className="px-3 py-2 text-right">
-                                  <div className="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button onClick={() => handleStartInlineEdit(cl)} className="text-slate-400 hover:text-indigo-600 text-[10px] font-black uppercase" title="Edit">
-                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                                    </button>
-                                    <button onClick={() => handleDeleteChecklist(cl.id)} className="text-slate-400 hover:text-red-600 text-[10px] font-black uppercase" title="Delete">
-                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                    </button>
-                                  </div>
-                                </td>
-                              </>
-                            )}
+                                    defaultValue={cl.task_name}
+                                    onBlur={(e) => handleUpdateChecklistField(cl.id, 'task_name', e.target.value)}
+                                    placeholder="Task Name"
+                                  />
+                                  {cl.source_template_id && <span className="bg-slate-100 text-slate-500 border border-slate-200 text-[9px] px-1 rounded uppercase font-bold flex-shrink-0">Tpl</span>}
+                               </div>
+                            </td>
+                            <td className="px-3 py-2">
+                              <input 
+                                className={cellInputClass}
+                                defaultValue={cl.size || ''}
+                                onBlur={(e) => handleUpdateChecklistField(cl.id, 'size', e.target.value)}
+                                placeholder="Size"
+                              />
+                            </td>
+                            <td className="px-3 py-2 text-center">
+                              <input 
+                                type="number"
+                                className={`${cellInputClass} text-center`}
+                                defaultValue={cl.quantity}
+                                onBlur={(e) => handleUpdateChecklistField(cl.id, 'quantity', parseInt(e.target.value) || 0)}
+                              />
+                            </td>
+                            <td className="px-3 py-2">
+                              <input 
+                                className={cellInputClass}
+                                defaultValue={cl.notes || ''}
+                                onBlur={(e) => handleUpdateChecklistField(cl.id, 'notes', e.target.value)}
+                                placeholder="Notes"
+                              />
+                            </td>
+                            <td className="px-3 py-2">
+                              <select 
+                                value={cl.status} 
+                                onChange={(e) => handleUpdateChecklistField(cl.id, 'status', e.target.value)}
+                                className={`w-full text-[10px] font-bold uppercase rounded py-1 px-1 outline-none cursor-pointer transition-colors bg-transparent hover:bg-slate-100 ${
+                                  cl.status === 'DONE' ? 'text-emerald-600' :
+                                  cl.status === 'ON PROGRESS' ? 'text-amber-600' :
+                                  'text-slate-400'
+                                }`}
+                              >
+                                <option value="NONE">Not Started</option>
+                                <option value="ON PROGRESS">On Progress</option>
+                                <option value="DONE">Done</option>
+                              </select>
+                            </td>
+                            <td className="px-3 py-2 text-right">
+                              <button onClick={() => handleDeleteChecklist(cl.id)} className="text-slate-300 hover:text-red-500 text-[10px] font-black uppercase transition-colors p-1 opacity-0 group-hover:opacity-100" title="Delete">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                              </button>
+                            </td>
                           </tr>
                         );
                       })}
