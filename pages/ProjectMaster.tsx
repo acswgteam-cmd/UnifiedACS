@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Project, Designer, ProjectSurvey, ProjectChecklist, ChecklistTemplate, ChecklistTemplateItem } from '../types';
 import { supabase } from '../lib/supabase';
 import { SURVEY_FORM_SECRET } from '../App';
@@ -16,6 +16,55 @@ const SURVEY_LABELS: Record<string, string> = {
   rating_coord_client: 'Koordinasi dengan Klien',
   rating_problem_solving: 'Problem Solving Capability',
   rating_agility: 'Agility terhadap Perubahan'
+};
+
+// --- Rich Text Editor Component ---
+const SimpleRichTextEditor = ({ initialValue, onSave, placeholder }: { initialValue: string, onSave: (val: string) => void, placeholder?: string }) => {
+  const contentRef = useRef<HTMLDivElement>(null);
+  
+  // Update internal ref if initialValue changes externally (though we mostly rely on internal state for editing)
+  useEffect(() => {
+    if (contentRef.current && contentRef.current.innerHTML !== initialValue) {
+      contentRef.current.innerHTML = initialValue || '';
+    }
+  }, [initialValue]);
+
+  const exec = (command: string, value: string | null = null) => {
+    document.execCommand(command, false, value);
+    if (contentRef.current) contentRef.current.focus();
+  };
+
+  const handleBlur = () => {
+    if (contentRef.current) {
+      const html = contentRef.current.innerHTML;
+      if (html !== initialValue) {
+        onSave(html);
+      }
+    }
+  };
+
+  const btnClass = "p-1.5 rounded hover:bg-slate-200 text-slate-600 transition-colors text-xs font-bold min-w-[24px]";
+
+  return (
+    <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm flex flex-col h-full">
+      <div className="flex gap-1 p-2 bg-slate-50 border-b border-slate-100 items-center">
+        <button className={btnClass} onMouseDown={(e) => { e.preventDefault(); exec('bold'); }} title="Bold">B</button>
+        <button className={btnClass} onMouseDown={(e) => { e.preventDefault(); exec('italic'); }} title="Italic">I</button>
+        <button className={btnClass} onMouseDown={(e) => { e.preventDefault(); exec('underline'); }} title="Underline">U</button>
+        <div className="w-px h-4 bg-slate-300 mx-1"></div>
+        <button className={btnClass} onMouseDown={(e) => { e.preventDefault(); exec('insertUnorderedList'); }} title="Bullet List">• List</button>
+        <button className={btnClass} onMouseDown={(e) => { e.preventDefault(); exec('insertOrderedList'); }} title="Number List">1. List</button>
+      </div>
+      <div 
+        ref={contentRef}
+        contentEditable
+        className="p-4 flex-1 outline-none text-sm text-slate-700 overflow-y-auto min-h-[150px] prose prose-sm max-w-none"
+        onBlur={handleBlur}
+        dangerouslySetInnerHTML={{ __html: initialValue || '' }}
+        data-placeholder={placeholder}
+      />
+    </div>
+  );
 };
 
 interface Props {
@@ -248,6 +297,38 @@ const ProjectMaster: React.FC<Props> = ({
     const { error } = await supabase.from('project_surveys').delete().eq('id', id);
     if (error) alert(error.message);
     else onUpdate();
+  };
+
+  // --- DETAIL VIEW UPDATERS ---
+  const handleStatusUpdate = async (newStatus: string) => {
+    if (!selectedProject || !supabase) return;
+    
+    // Optimistic Update
+    setSelectedProject({ ...selectedProject, status: newStatus as any });
+    
+    const { error } = await supabase.from('projects').update({ status: newStatus }).eq('id', selectedProject.id);
+    if (error) {
+      alert("Failed to update status: " + error.message);
+      onUpdate(); // Revert on fail
+    } else {
+      onUpdate(); // Sync global
+    }
+  };
+
+  const handleNotesUpdate = async (newNotes: string) => {
+    if (!selectedProject || !supabase) return;
+    
+    // No need to set state here as the editor maintains it, but we can sync selectedProject if needed
+    // The editor calls this on blur.
+    
+    const { error } = await supabase.from('projects').update({ notes: newNotes }).eq('id', selectedProject.id);
+    if (error) {
+      console.error("Failed to save notes:", error.message);
+    } else {
+      // Update local state to reflect saved
+      setSelectedProject(prev => prev ? { ...prev, notes: newNotes } : null);
+      onUpdate();
+    }
   };
 
   // --- CHECKLIST & TEMPLATE HANDLERS ---
@@ -645,7 +726,19 @@ const ProjectMaster: React.FC<Props> = ({
           <div>
              <div className="flex items-center gap-3 mb-1">
                 <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tight">{selectedProject.project_name}</h1>
-                <span className={`px-2 py-0.5 rounded-full border text-[9px] font-black uppercase ${getStatusBadge(selectedProject.status)}`}>{selectedProject.status}</span>
+                <select 
+                  value={selectedProject.status} 
+                  onChange={(e) => handleStatusUpdate(e.target.value)}
+                  className={`px-2 py-0.5 rounded-lg border text-[10px] font-black uppercase outline-none cursor-pointer hover:opacity-80 transition-opacity ${
+                    selectedProject.status === 'DONE' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 
+                    selectedProject.status === 'ON HOLD' ? 'bg-amber-100 text-amber-700 border-amber-200' : 
+                    'bg-blue-100 text-blue-700 border-blue-200'
+                  }`}
+                >
+                  <option value="ON PROGRESS">ON PROGRESS</option>
+                  <option value="ON HOLD">ON HOLD</option>
+                  <option value="DONE">DONE</option>
+                </select>
              </div>
              <p className="text-xs font-bold text-slate-500 uppercase">Timeline: {selectedProject.start_date} → {selectedProject.end_date} &bull; Type: {selectedProject.project_type}</p>
           </div>
@@ -697,9 +790,15 @@ const ProjectMaster: React.FC<Props> = ({
                </div>
 
                {/* Notes Column */}
-               <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm h-fit lg:col-span-2">
-                  <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest mb-4 border-b border-slate-100 pb-2">Notes</h3>
-                  <div className="p-4 bg-slate-50 rounded-xl text-sm italic text-slate-700 whitespace-pre-wrap border border-slate-100 min-h-[100px]">{selectedProject.notes || 'No specific notes recorded for this project.'}</div>
+               <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm h-fit lg:col-span-2 min-h-[350px] flex flex-col">
+                  <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest mb-4 border-b border-slate-100 pb-2">Notes & Updates</h3>
+                  <div className="flex-1 flex flex-col">
+                    <SimpleRichTextEditor 
+                      initialValue={selectedProject.notes || ''} 
+                      onSave={handleNotesUpdate}
+                      placeholder="Write project notes here (bold, lists supported)..."
+                    />
+                  </div>
                </div>
 
                {/* Survey Section */}
