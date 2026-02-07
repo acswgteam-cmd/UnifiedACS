@@ -55,6 +55,7 @@ export interface ProjectChecklist {
   notes: string;
   status: 'NONE' | 'ON PROGRESS' | 'DONE';
   source_template_id?: string | null; // To track if this item came from a template
+  created_at?: string;
 }
 
 export interface Lead {
