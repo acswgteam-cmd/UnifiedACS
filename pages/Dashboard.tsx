@@ -77,16 +77,17 @@ const Dashboard: React.FC<Props> = ({ state }) => {
     const artworksLead = countByContext(WorkContext.LEAD);
     const artworksInternal = countByContext(WorkContext.INTERNAL);
 
+    // Modern Gradient Definitions for Charts
     const globalTypeSplit = [
-      { type: "2D Design", count: filteredLogs.filter(l => l.artwork_type === "2D Design").length, color: "#3b82f6" },
-      { type: "3D Design", count: filteredLogs.filter(l => l.artwork_type === "3D Design").length, color: "#10b981" },
-      { type: "Video", count: filteredLogs.filter(l => l.artwork_type === "Video").length, color: "#f97316" }
+      { type: "2D Design", count: filteredLogs.filter(l => l.artwork_type === "2D Design").length, gradient: "from-blue-400 to-cyan-500", solid: "#3b82f6" },
+      { type: "3D Design", count: filteredLogs.filter(l => l.artwork_type === "3D Design").length, gradient: "from-emerald-400 to-teal-500", solid: "#10b981" },
+      { type: "Video", count: filteredLogs.filter(l => l.artwork_type === "Video").length, gradient: "from-orange-400 to-rose-500", solid: "#f97316" }
     ];
 
     const globalContextSplit = [
-      { type: "Project", count: artworksProject, color: "#2563eb" },
-      { type: "Lead", count: artworksLead, color: "#059669" },
-      { type: "Internal", count: artworksInternal, color: "#7c3aed" }
+      { type: "Project", count: artworksProject, gradient: "from-blue-500 to-indigo-600", solid: "#2563eb" },
+      { type: "Lead", count: artworksLead, gradient: "from-emerald-500 to-green-600", solid: "#059669" },
+      { type: "Internal", count: artworksInternal, gradient: "from-purple-500 to-fuchsia-600", solid: "#7c3aed" }
     ];
 
     const calcAvgDuration = (ctx: WorkContext) => {
@@ -139,21 +140,15 @@ const Dashboard: React.FC<Props> = ({ state }) => {
     .sort((a, b) => b.counts.total - a.counts.total);
 
     // --- TEAM EVALUATION LOGIC ---
-    // Calculate stats for each designer
     const teamStats = designers.map(d => {
       const logs = filteredLogs.filter(l => l.pic_designer_id === d.id);
       
-      // Metric 1: Total Projects (PIC + Support)
-      // Check Project Table directly, not logs, to find involvement
       const projectsInvolvedCount = projects.filter(p => 
         p.pic_designer_id === d.id || (p.support_designer_ids || []).includes(d.id)
       ).length;
 
-      // Metric 2: Total Leads Handled (based on logs work context LEAD)
-      // Using unique Lead IDs from logs to see how many distinct leads they worked on
       const uniqueLeads = new Set(logs.filter(l => l.work_context === WorkContext.LEAD && l.lead_id).map(l => l.lead_id)).size;
 
-      // Metric 3: Lead Duration (Avg Days for LEAD context logs)
       const leadLogs = logs.filter(l => l.work_context === WorkContext.LEAD && l.end_date);
       let avgLeadDuration = "0.0";
       if (leadLogs.length > 0) {
@@ -165,8 +160,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
         avgLeadDuration = (totalLeadDays / leadLogs.length).toFixed(1);
       }
 
-      // --- Survey Score Calculation ---
-      // Find projects where this designer is PIC or Support
+      // Survey Score Logic
       const involvedProjectIds = projects.filter(p => 
         p.pic_designer_id === d.id || (p.support_designer_ids || []).includes(d.id)
       ).map(p => p.id);
@@ -179,7 +173,6 @@ const Dashboard: React.FC<Props> = ({ state }) => {
       
       if (relevantSurveys.length > 0) {
         let totalScoreSum = 0;
-        // Accumulators for individual criteria
         let accSpeed = 0, accQual = 0, accAcc = 0, accCoordInt = 0, accCoordExt = 0, accProb = 0, accAgility = 0;
 
         relevantSurveys.forEach(survey => {
@@ -196,7 +189,6 @@ const Dashboard: React.FC<Props> = ({ state }) => {
           accProb += survey.rating_problem_solving;
           accAgility += survey.rating_agility;
 
-          // Collect notes
           if (survey.notes) {
             evalNotes.push({
               id: survey.id,
@@ -207,7 +199,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
           }
         });
         
-        avgRatingStr = (totalScoreSum / relevantSurveys.length).toFixed(1); // e.g. "2.8"
+        avgRatingStr = (totalScoreSum / relevantSurveys.length).toFixed(1);
         
         detailedScores = {
            speed: (accSpeed / relevantSurveys.length).toFixed(1),
@@ -259,7 +251,6 @@ const Dashboard: React.FC<Props> = ({ state }) => {
         type: t,
         percentage: artworksInternal ? Math.round((filteredLogs.filter(l => l.work_context === WorkContext.INTERNAL && l.artwork_type === t).length / artworksInternal) * 100) : 0
       })),
-      // Stats for Cards (Based on All items)
       statsData: {
         projects: { pics: projectPICs, locs: projectLocs },
         leads: { grades: leadGrades, reqs: leadRequesters },
@@ -313,20 +304,20 @@ const Dashboard: React.FC<Props> = ({ state }) => {
         />
       </header>
 
-      {/* KPI Row */}
+      {/* KPI Row - Vibrant Gradients */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
         <KPICard 
           label="Total Artworks" 
           value={analytics.totalArtworks} 
           sub="Filtered Output" 
-          color="border-indigo-600"
+          gradient="from-orange-400 to-red-500"
           keywords={analytics.topKeywords}
         />
         <KPICard 
           label="Total Projects" 
           value={analytics.totalProjectsCount} 
           sub="All Statuses" 
-          color="border-blue-600"
+          gradient="from-blue-400 to-indigo-600"
           statsList={[
             { title: "Top 3 PIC", items: analytics.statsData.projects.pics },
             { title: "Top 3 Locations", items: analytics.statsData.projects.locs }
@@ -336,7 +327,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
           label="Total Leads" 
           value={analytics.totalLeadsCount} 
           sub="All Statuses" 
-          color="border-emerald-600" 
+          gradient="from-emerald-400 to-teal-600"
           statsList={[
              { title: "By Grade", items: analytics.statsData.leads.grades },
              { title: "Top Requesters", items: analytics.statsData.leads.reqs }
@@ -346,7 +337,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
           label="Total Tasks" 
           value={analytics.totalInternalCount} 
           sub="All Statuses" 
-          color="border-purple-600" 
+          gradient="from-purple-400 to-fuchsia-600"
           statsList={[
              { title: "Top Depts", items: analytics.statsData.internal.depts },
              { title: "Top Requesters", items: analytics.statsData.internal.reqs }
@@ -356,12 +347,30 @@ const Dashboard: React.FC<Props> = ({ state }) => {
 
       {/* Volume Insights Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <VolumeCard title="Project" count={analytics.artworksProject} duration={analytics.avgDurProj} typeSplit={analytics.projectTypeSplit} color="blue" />
-        <VolumeCard title="Lead" count={analytics.artworksLead} duration={analytics.avgDurLead} typeSplit={analytics.leadTypeSplit} color="emerald" />
-        <VolumeCard title="Internal" count={analytics.artworksInternal} duration={analytics.avgDurInt} typeSplit={analytics.internalTypeSplit} color="purple" />
+        <VolumeCard 
+          title="Project" 
+          count={analytics.artworksProject} 
+          duration={analytics.avgDurProj} 
+          typeSplit={analytics.projectTypeSplit} 
+          gradient="from-blue-500 to-cyan-500" 
+        />
+        <VolumeCard 
+          title="Lead" 
+          count={analytics.artworksLead} 
+          duration={analytics.avgDurLead} 
+          typeSplit={analytics.leadTypeSplit} 
+          gradient="from-emerald-500 to-green-500" 
+        />
+        <VolumeCard 
+          title="Internal" 
+          count={analytics.artworksInternal} 
+          duration={analytics.avgDurInt} 
+          typeSplit={analytics.internalTypeSplit} 
+          gradient="from-purple-500 to-pink-500" 
+        />
       </div>
 
-      {/* GRAPHIC ROW: TYPE TREND, CONTEXT TREND, PIE CHARTS */}
+      {/* GRAPHIC ROW */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <section className={cardClass}>
           <div className="flex items-center justify-between mb-4">
@@ -454,11 +463,11 @@ const Dashboard: React.FC<Props> = ({ state }) => {
                   </div>
                   <div className="col-span-3 flex flex-col gap-2">
                     <div className="h-3.5 bg-slate-50 rounded-full flex border border-slate-100 overflow-hidden shadow-inner">
-                      <StackedSegment count={dept.counts["2D Design"]} total={deptTotal} globalMax={globalMax} color="bg-blue-500" />
-                      <StackedSegment count={dept.counts["3D Design"]} total={deptTotal} globalMax={globalMax} color="bg-emerald-500" />
-                      <StackedSegment count={dept.counts["Video"]} total={deptTotal} globalMax={globalMax} color="bg-orange-500" />
+                      <StackedSegment count={dept.counts["2D Design"]} total={deptTotal} globalMax={globalMax} gradient="from-blue-400 to-cyan-500" />
+                      <StackedSegment count={dept.counts["3D Design"]} total={deptTotal} globalMax={globalMax} gradient="from-emerald-400 to-teal-500" />
+                      <StackedSegment count={dept.counts["Video"]} total={deptTotal} globalMax={globalMax} gradient="from-orange-400 to-rose-500" />
                     </div>
-                    {/* Detailed Counts for each type */}
+                    {/* Detailed Counts */}
                     <div className="flex gap-3 text-[9px] font-bold uppercase tracking-tight">
                        <span className="text-blue-600">2D: {dept.counts["2D Design"]}</span>
                        <span className="text-emerald-600">3D: {dept.counts["3D Design"]}</span>
@@ -484,7 +493,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
           {analytics.teamStats.map(ds => (
             <div key={ds.id} className="flex-shrink-0 w-[300px] snap-start bg-white p-6 rounded-3xl border border-slate-200 shadow-sm group">
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-lg group-hover:bg-indigo-600 transition-colors">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 text-white flex items-center justify-center font-bold text-lg group-hover:from-indigo-500 group-hover:to-purple-600 transition-all shadow-md">
                   {ds.name.charAt(0)}
                 </div>
                 <div className="min-w-0">
@@ -494,21 +503,20 @@ const Dashboard: React.FC<Props> = ({ state }) => {
               </div>
               
               <div className="grid grid-cols-3 gap-2 mb-6">
-                <MetricBox label="Projects" value={ds.uniqueProjectsInvolved} color="text-blue-700" bg="bg-blue-50" />
-                <MetricBox label="Leads" value={ds.uniqueLeads} color="text-emerald-700" bg="bg-emerald-50" />
-                {/* Changed Label Here */}
-                <MetricBox label="Lead Days" value={ds.avgLeadDuration} unit="d" color="text-indigo-700" bg="bg-indigo-50" />
+                <MetricBox label="Projects" value={ds.uniqueProjectsInvolved} gradient="from-blue-50 to-indigo-50" textGradient="from-blue-600 to-indigo-600" />
+                <MetricBox label="Leads" value={ds.uniqueLeads} gradient="from-emerald-50 to-teal-50" textGradient="from-emerald-600 to-teal-600" />
+                <MetricBox label="Lead Days" value={ds.avgLeadDuration} unit="d" gradient="from-purple-50 to-fuchsia-50" textGradient="from-purple-600 to-fuchsia-600" />
               </div>
               
               <div className="space-y-3 pt-4 border-t border-slate-100">
-                <StatBar label="Project" value={ds.projectArtworks} max={ds.totalArtworks} color="bg-blue-600" />
-                <StatBar label="Lead" value={ds.leadArtworks} max={ds.totalArtworks} color="bg-emerald-600" />
-                <StatBar label="Internal" value={ds.internalArtworks} max={ds.totalArtworks} color="bg-purple-600" />
+                <StatBar label="Project" value={ds.projectArtworks} max={ds.totalArtworks} gradient="from-blue-500 to-indigo-500" />
+                <StatBar label="Lead" value={ds.leadArtworks} max={ds.totalArtworks} gradient="from-emerald-500 to-teal-500" />
+                <StatBar label="Internal" value={ds.internalArtworks} max={ds.totalArtworks} gradient="from-purple-500 to-fuchsia-500" />
               </div>
               
               <div className="mt-6 pt-4 border-t border-slate-100 flex justify-between items-center">
                 <span className="text-[10px] font-bold text-slate-900 uppercase">Total Logged</span>
-                <span className="text-xl font-bold text-indigo-600 tracking-tighter">{ds.totalArtworks}</span>
+                <span className="text-xl font-black bg-clip-text text-transparent bg-gradient-to-r from-slate-700 to-slate-900 tracking-tighter">{ds.totalArtworks}</span>
               </div>
 
               {/* EVALUATION SCORE SECTION (Bottom) */}
@@ -523,7 +531,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
                      {ds.evalNotes.length > 0 && <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span>}
                    </div>
                    {ds.avgRating ? (
-                     <span className="bg-orange-100 text-orange-700 px-2 py-0.5 rounded text-[10px] font-black border border-orange-200 hover:bg-orange-200 transition-colors">
+                     <span className="bg-gradient-to-r from-amber-100 to-orange-100 text-orange-700 px-2 py-0.5 rounded text-[10px] font-black border border-orange-200 hover:from-amber-200 hover:to-orange-200 transition-colors">
                        {ds.avgRating} / 3.0
                      </span>
                    ) : (
@@ -593,21 +601,30 @@ const LegendDot = ({ color, label }: { color: string, label: string }) => (
   </div>
 );
 
-const KPICard = ({ label, value, sub, color, keywords, statsList }: any) => (
-  <div className={`bg-white p-6 rounded-3xl border border-slate-200 shadow-sm border-l-8 flex flex-col h-full ${color}`}>
-    <div className="mb-4">
-      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-1">{label}</span>
-      <div className="text-3xl font-bold text-slate-900 tracking-tight">{value}</div>
+const KPICard = ({ label, value, sub, gradient, keywords, statsList }: any) => (
+  <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col h-full transition-all hover:shadow-lg relative overflow-hidden group">
+    {/* Decorative Gradient Background Opacity */}
+    <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${gradient} opacity-5 rounded-bl-full pointer-events-none transition-opacity group-hover:opacity-10`}></div>
+
+    <div className="mb-4 relative z-10">
+      <div className="flex items-center justify-between mb-2">
+         <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block">{label}</span>
+         <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${gradient} flex items-center justify-center text-white shadow-sm`}>
+            {/* Simple icon based on gradient type - just generic shapes for visual consistency */}
+            <div className="w-3 h-3 bg-white/30 rounded-full"></div>
+         </div>
+      </div>
+      <div className={`text-4xl font-black bg-clip-text text-transparent bg-gradient-to-br ${gradient} tracking-tight`}>{value}</div>
       <p className="text-[10px] font-medium text-slate-400 uppercase mt-1">{sub}</p>
     </div>
     
-    <div className="mt-auto">
+    <div className="mt-auto relative z-10">
       {keywords && keywords.length > 0 && (
         <div className="pt-3 border-t border-slate-100">
           <span className="text-[8px] font-black text-slate-400 uppercase tracking-wide block mb-1.5">Top Keywords</span>
           <div className="flex flex-wrap gap-1">
             {keywords.map((k: any) => (
-              <span key={k.word} className="px-1.5 py-0.5 bg-slate-100 text-slate-600 rounded text-[9px] font-bold uppercase border border-slate-200">
+              <span key={k.word} className="px-1.5 py-0.5 bg-slate-50 text-slate-600 rounded text-[9px] font-bold uppercase border border-slate-200">
                 {k.word} <span className="text-[7px] text-slate-400">({k.count})</span>
               </span>
             ))}
@@ -636,29 +653,31 @@ const KPICard = ({ label, value, sub, color, keywords, statsList }: any) => (
   </div>
 );
 
-const VolumeCard = ({ title, count, duration, typeSplit, color }: any) => {
-  const themes: any = {
-    blue: "text-blue-700 bg-blue-50 border-blue-100 accent-blue-600",
-    emerald: "text-emerald-700 bg-emerald-50 border-emerald-100 accent-emerald-600",
-    purple: "text-purple-700 bg-purple-50 border-purple-100 accent-purple-600",
-  };
-  const theme = themes[color];
-  const parts = theme.split(' ');
+const VolumeCard = ({ title, count, duration, typeSplit, gradient }: any) => {
   return (
-    <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex flex-col">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className={`text-xs font-bold uppercase tracking-wider ${parts[0]}`}>{title} Context</h3>
-        <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase ${parts[1]} ${parts[0]}`}>Volume</span>
+    <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex flex-col relative overflow-hidden group hover:shadow-md transition-all">
+      <div className={`absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b ${gradient}`}></div>
+      <div className="flex justify-between items-center mb-4 pl-3">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">{title} Context</h3>
+        <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase bg-slate-100 text-slate-500`}>Volume</span>
       </div>
-      <div className="grid grid-cols-2 gap-2 mb-5">
-        <div><div className="text-2xl font-bold text-slate-900">{count}</div><div className="text-[9px] font-bold text-slate-400 uppercase">Artworks</div></div>
-        <div className="border-l border-slate-100 pl-4"><div className="text-xl font-bold text-slate-900">~{duration}</div><div className="text-[9px] font-bold text-slate-400 uppercase">Avg Days</div></div>
+      <div className="grid grid-cols-2 gap-2 mb-5 pl-3">
+        <div>
+           <div className={`text-3xl font-black bg-clip-text text-transparent bg-gradient-to-r ${gradient}`}>{count}</div>
+           <div className="text-[9px] font-bold text-slate-400 uppercase">Artworks</div>
+        </div>
+        <div className="border-l border-slate-100 pl-4">
+           <div className="text-xl font-bold text-slate-900">~{duration}</div>
+           <div className="text-[9px] font-bold text-slate-400 uppercase">Avg Days</div>
+        </div>
       </div>
-      <div className="space-y-2 mt-auto">
+      <div className="space-y-2 mt-auto pl-3">
         {typeSplit.map((t:any) => (
           <div key={t.type}>
             <div className="flex justify-between text-[8px] font-bold text-slate-500 uppercase mb-0.5"><span>{t.type}</span><span>{t.percentage}%</span></div>
-            <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden"><div className={`h-full ${color === 'blue' ? 'bg-blue-600' : color === 'emerald' ? 'bg-emerald-600' : 'bg-purple-600'}`} style={{ width: `${t.percentage}%` }}></div></div>
+            <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                <div className={`h-full bg-gradient-to-r ${gradient} opacity-80`} style={{ width: `${t.percentage}%` }}></div>
+            </div>
           </div>
         ))}
       </div>
@@ -675,7 +694,7 @@ const PieRow = ({ title, data, total }: any) => (
           background: `conic-gradient(${data.map((d:any, i:number) => {
             const percentage = total ? (d.count / total) * 100 : 0;
             const start = data.slice(0, i).reduce((acc:any, curr:any) => acc + (total ? (curr.count / total) * 100 : 0), 0);
-            return `${d.color} ${start}% ${start + percentage}%`;
+            return `${d.solid} ${start}% ${start + percentage}%`;
           }).join(', ')})` 
         }}
       ></div>
@@ -690,7 +709,7 @@ const PieRow = ({ title, data, total }: any) => (
       {data.map((d:any) => (
         <div key={d.type || d.context} className="flex justify-between items-center text-[10px] font-bold text-slate-700">
           <div className="flex items-center gap-2">
-            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: d.color }}></div>
+            <div className={`w-2.5 h-2.5 rounded-full bg-gradient-to-br ${d.gradient}`}></div>
             <span className="uppercase truncate max-w-[85px]">{d.type || d.context}</span>
           </div>
           <span className="text-slate-900 font-bold bg-slate-50 px-2 py-0.5 rounded border border-slate-100 min-w-[3rem] text-center">
@@ -792,29 +811,29 @@ const TrendLineChart = ({ data, keys, labels, colors }: any) => {
   );
 };
 
-const StackedSegment = ({ count, total, globalMax, color }: any) => {
+const StackedSegment = ({ count, total, globalMax, gradient }: any) => {
   if (count === 0) return null;
-  return <div className={`h-full ${color} border-r border-white/20 transition-all duration-1000`} style={{ width: `${(count / globalMax) * 100}%` }}></div>;
+  return <div className={`h-full bg-gradient-to-r ${gradient} border-r border-white/20 transition-all duration-1000`} style={{ width: `${(count / globalMax) * 100}%` }}></div>;
 };
 
-const MetricBox = ({ label, value, unit, color, bg, icon }: any) => (
-  <div className={`flex flex-col items-center justify-center p-2.5 rounded-2xl ${bg} border border-white shadow-sm transition-transform hover:scale-[1.05]`}>
-    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter mb-0.5">{label}</span>
-    <div className={`text-xl font-bold leading-none tracking-tighter ${color} flex items-center`}>
+const MetricBox = ({ label, value, unit, gradient, textGradient, icon }: any) => (
+  <div className={`flex flex-col items-center justify-center p-2.5 rounded-2xl bg-gradient-to-br ${gradient} border border-white shadow-sm transition-transform hover:scale-[1.05]`}>
+    <span className="text-[8px] font-bold text-slate-500 uppercase tracking-tighter mb-0.5 opacity-80">{label}</span>
+    <div className={`text-xl font-black leading-none tracking-tighter bg-clip-text text-transparent bg-gradient-to-br ${textGradient} flex items-center`}>
       {value}
-      <span className="text-[10px] ml-0.5 opacity-60 font-black">{unit || icon}</span>
+      <span className="text-[10px] ml-0.5 opacity-60 font-black text-slate-400">{unit || icon}</span>
     </div>
   </div>
 );
 
-const StatBar = ({ label, value, max, color }: any) => (
+const StatBar = ({ label, value, max, gradient }: any) => (
   <div>
     <div className="flex justify-between text-[9px] font-bold text-slate-500 uppercase mb-1 tracking-tight">
       <span>{label} Production</span>
       <span className="text-slate-900">{value}</span>
     </div>
     <div className="h-1.5 bg-slate-50 rounded-full overflow-hidden border border-slate-100 shadow-inner">
-      <div className={`h-full ${color} transition-all duration-1000`} style={{ width: `${(value / (max || 1)) * 100}%` }}></div>
+      <div className={`h-full bg-gradient-to-r ${gradient} transition-all duration-1000`} style={{ width: `${(value / (max || 1)) * 100}%` }}></div>
     </div>
   </div>
 );
