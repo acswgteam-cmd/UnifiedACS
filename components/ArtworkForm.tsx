@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { WorkContext, ArtworkLog, AppState } from '../types';
+import DateRangePicker from './DateRangePicker';
 
 interface Props {
   state: AppState;
@@ -41,9 +42,12 @@ const ArtworkForm: React.FC<Props> = ({ state, onSubmit }) => {
     setFormData(prev => ({ 
       ...prev, 
       [name]: val === "" ? null : val,
-      // Reset linked entities when changing context to keep data clean
       ...(name === 'work_context' ? { project_id: null, lead_id: null, internal_design_id: null, department_id: null, approval_required: false } : {})
     }));
+  };
+
+  const handleDateChange = (start: string, end: string) => {
+    setFormData(prev => ({ ...prev, start_date: start, end_date: end }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -56,26 +60,29 @@ const ArtworkForm: React.FC<Props> = ({ state, onSubmit }) => {
       artwork_name: '',
       notes: '',
       revision_count: 0,
-      approval_required: false
+      approval_required: false,
+      start_date: new Date().toISOString().split('T')[0],
+      end_date: ''
     }));
   };
 
-  // Styles for the compact horizontal layout
+  // Taller Styles
   const headerClass = "text-[9px] font-black text-slate-400 uppercase tracking-widest px-1 pb-1";
-  const inputBase = "w-full text-xs font-semibold bg-slate-50 border-transparent focus:bg-white focus:border-indigo-500 focus:ring-0 rounded-lg transition-all placeholder-slate-400 outline-none";
-  const selectBase = `${inputBase} py-2 px-1 cursor-pointer`;
-  const textBase = `${inputBase} py-2 px-2`;
+  const inputBase = "w-full text-xs font-semibold bg-slate-50 border-transparent focus:bg-white focus:border-indigo-500 focus:ring-0 rounded-xl transition-all placeholder-slate-400 outline-none";
+  // Increased py-3 for height
+  const selectBase = `${inputBase} py-3 px-2 cursor-pointer h-[42px]`;
+  const textBase = `${inputBase} py-3 px-3 h-[42px]`;
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 mb-6">
-      <div className="flex items-center gap-2 mb-3">
-        <span className="w-1.5 h-1.5 rounded-full bg-indigo-600"></span>
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 mb-6">
+      <div className="flex items-center gap-2 mb-4">
+        <span className="w-2 h-2 rounded-full bg-indigo-600"></span>
         <h2 className="text-xs font-black text-slate-900 uppercase tracking-wide">Quick Log Entry</h2>
       </div>
       
-      <form onSubmit={handleSubmit} className="flex flex-col gap-2">
-        {/* Header Row - visible on larger screens */}
-        <div className="hidden lg:flex gap-2 px-1">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+        {/* Header Row */}
+        <div className="hidden lg:flex gap-3 px-1">
           <div className="w-24 shrink-0"><label className={headerClass}>Context</label></div>
           <div className="flex-1 min-w-[140px]"><label className={headerClass}>Reference / Link</label></div>
           <div className="flex-[2] min-w-[200px]"><label className={headerClass}>Artwork Name</label></div>
@@ -88,7 +95,7 @@ const ArtworkForm: React.FC<Props> = ({ state, onSubmit }) => {
         </div>
 
         {/* Input Row */}
-        <div className="flex flex-col lg:flex-row gap-2 items-start lg:items-center">
+        <div className="flex flex-col lg:flex-row gap-3 items-start lg:items-center">
           
           {/* Context */}
           <div className="w-full lg:w-24 shrink-0">
@@ -114,7 +121,7 @@ const ArtworkForm: React.FC<Props> = ({ state, onSubmit }) => {
               </select>
             )}
             {formData.work_context === WorkContext.INTERNAL && (
-              <div className="flex gap-1">
+              <div className="flex gap-2">
                  <select name="internal_design_id" value={formData.internal_design_id || ""} onChange={handleChange} className={`${selectBase} w-1/2`}>
                   <option value="">Link Task...</option>
                   {state.internalDesigns.map(id => <option key={id.id} value={id.id}>{id.task_name}</option>)}
@@ -148,10 +155,15 @@ const ArtworkForm: React.FC<Props> = ({ state, onSubmit }) => {
             </select>
           </div>
 
-          {/* Timeline */}
-          <div className="w-full lg:w-48 shrink-0 flex gap-1">
-            <input type="date" name="start_date" value={formData.start_date} onChange={handleChange} className={textBase} title="Start Date" />
-            <input type="date" name="end_date" value={formData.end_date} onChange={handleChange} className={textBase} title="End Date" />
+          {/* Timeline - Merged into single DateRangePicker */}
+          <div className="w-full lg:w-48 shrink-0">
+            <DateRangePicker 
+              startDate={formData.start_date}
+              endDate={formData.end_date}
+              onChange={handleDateChange}
+              className={`${inputBase} h-[42px] bg-slate-50 border-transparent`}
+              placeholder="Select Dates"
+            />
           </div>
 
           {/* Rev */}
@@ -166,8 +178,8 @@ const ArtworkForm: React.FC<Props> = ({ state, onSubmit }) => {
 
           {/* Action */}
           <div className="w-full lg:w-10 shrink-0 flex justify-end">
-            <button type="submit" className="w-full h-[34px] bg-slate-900 hover:bg-indigo-600 text-white rounded-lg shadow-md transition-colors flex items-center justify-center" title="Add Log">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4"/></svg>
+            <button type="submit" className="w-full h-[42px] bg-slate-900 hover:bg-indigo-600 text-white rounded-xl shadow-md transition-colors flex items-center justify-center" title="Add Log">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4"/></svg>
             </button>
           </div>
 
