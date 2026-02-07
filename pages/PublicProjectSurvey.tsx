@@ -433,7 +433,9 @@ const PublicProjectSurvey: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
-                      {checklists.map((cl, idx) => (
+                      {checklists
+                        .sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''))
+                        .map((cl, idx) => (
                         <tr key={cl.id} className="hover:bg-slate-50 transition-colors group">
                           <td className="px-6 py-2 text-center text-slate-400">{idx + 1}</td>
                           
@@ -481,33 +483,13 @@ const PublicProjectSurvey: React.FC = () => {
                             />
                           </td>
                           <td className="px-6 py-2">
-                             {isEditable ? (
-                                <select 
-                                  value={cl.status} 
-                                  onChange={(e) => {
-                                    const val = e.target.value;
-                                    handleLocalChange(cl.id, 'status', val);
-                                    handleSaveItem(cl.id, 'status', val);
-                                  }}
-                                  className={`w-full text-[10px] font-black uppercase rounded py-1 px-1 outline-none cursor-pointer transition-colors bg-transparent hover:bg-slate-100 ${
-                                    cl.status === 'DONE' ? 'text-emerald-600' :
-                                    cl.status === 'ON PROGRESS' ? 'text-amber-600' :
-                                    'text-slate-400'
-                                  }`}
-                                >
-                                  <option value="NONE">Not Started</option>
-                                  <option value="ON PROGRESS">On Progress</option>
-                                  <option value="DONE">Done</option>
-                                </select>
-                             ) : (
-                                <span className={`text-[9px] font-black uppercase px-2 py-1 rounded border ${
-                                  cl.status === 'DONE' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
-                                  cl.status === 'ON PROGRESS' ? 'bg-amber-100 text-amber-700 border-amber-200' :
-                                  'bg-slate-100 text-slate-500 border-slate-200'
-                                }`}>
-                                  {cl.status}
-                                </span>
-                             )}
+                             <span className={`text-[9px] font-black uppercase px-2 py-1 rounded border ${
+                               cl.status === 'DONE' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
+                               cl.status === 'ON PROGRESS' ? 'bg-amber-100 text-amber-700 border-amber-200' :
+                               'bg-slate-100 text-slate-500 border-slate-200'
+                             }`}>
+                               {cl.status}
+                             </span>
                           </td>
                           <td className="px-6 py-2 text-right">
                              {isEditable && (
