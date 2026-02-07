@@ -66,28 +66,26 @@ const ArtworkForm: React.FC<Props> = ({ state, onSubmit }) => {
     }));
   };
 
-  // Distinct Styles for the Form Section
-  const headerClass = "text-[9px] font-black text-indigo-100 uppercase tracking-widest px-1 pb-1"; // Light text for blue bg
-  const inputBase = "w-full text-xs font-semibold bg-white border-transparent focus:border-indigo-300 focus:ring-2 focus:ring-indigo-400/50 rounded-xl transition-all placeholder-slate-400 outline-none shadow-sm text-slate-800";
-  const selectBase = `${inputBase} py-3 px-2 cursor-pointer h-[42px]`;
-  const textBase = `${inputBase} py-3 px-3 h-[42px]`;
+  // Styles
+  const headerClass = "text-[9px] font-black text-indigo-400 uppercase tracking-widest px-1 pb-1";
+  const inputBase = "w-full text-xs font-bold bg-white border border-indigo-100 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 rounded-lg transition-all placeholder-slate-400 outline-none text-slate-700 shadow-sm";
+  const selectBase = `${inputBase} py-2.5 px-2 cursor-pointer h-[38px]`;
+  const textBase = `${inputBase} py-2.5 px-3 h-[38px]`;
 
   return (
-    <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-3xl shadow-xl shadow-indigo-100 p-6 mb-8 border border-blue-500 relative overflow-hidden">
-      {/* Decorative background element */}
-      <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full -mr-20 -mt-20 pointer-events-none"></div>
+    // Removed overflow-hidden and added z-30 to ensure datepicker pops out correctly
+    <div className="bg-indigo-50/50 rounded-2xl border border-indigo-100 p-5 mb-8 relative z-30">
       
-      <div className="flex items-center gap-2 mb-4 relative z-10">
-        <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white backdrop-blur-sm">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+      <div className="flex items-center gap-2 mb-4">
+        <div className="w-6 h-6 rounded-md bg-indigo-100 text-indigo-600 flex items-center justify-center">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4"/></svg>
         </div>
         <div>
-          <h2 className="text-sm font-black text-white uppercase tracking-wide">New Artwork Entry</h2>
-          <p className="text-[10px] text-blue-100 font-medium">Log production daily activity here.</p>
+          <h2 className="text-xs font-black text-slate-800 uppercase tracking-wide">New Entry</h2>
         </div>
       </div>
       
-      <form onSubmit={handleSubmit} className="flex flex-col gap-3 relative z-10">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
         {/* Header Row */}
         <div className="hidden lg:flex gap-3 px-1">
           <div className="w-24 shrink-0"><label className={headerClass}>Context</label></div>
@@ -106,7 +104,7 @@ const ArtworkForm: React.FC<Props> = ({ state, onSubmit }) => {
           
           {/* Context */}
           <div className="w-full lg:w-24 shrink-0">
-            <select name="work_context" value={formData.work_context} onChange={handleChange} className={`${selectBase} font-bold text-indigo-700 bg-indigo-50`}>
+            <select name="work_context" value={formData.work_context} onChange={handleChange} className={`${selectBase} text-indigo-700 bg-indigo-50/30`}>
               <option value={WorkContext.PROJECT}>PROJECT</option>
               <option value={WorkContext.LEAD}>LEAD</option>
               <option value={WorkContext.INTERNAL}>INTERNAL</option>
@@ -143,7 +141,7 @@ const ArtworkForm: React.FC<Props> = ({ state, onSubmit }) => {
 
           {/* Name */}
           <div className="w-full lg:flex-[2] lg:min-w-[200px]">
-            <input type="text" name="artwork_name" value={formData.artwork_name} onChange={handleChange} required placeholder="Artwork Name..." className={`${textBase} font-bold`} />
+            <input type="text" name="artwork_name" value={formData.artwork_name} onChange={handleChange} required placeholder="Artwork Name..." className={`${textBase}`} />
           </div>
 
           {/* Type */}
@@ -163,12 +161,12 @@ const ArtworkForm: React.FC<Props> = ({ state, onSubmit }) => {
           </div>
 
           {/* Timeline - Merged into single DateRangePicker */}
-          <div className="w-full lg:w-48 shrink-0">
+          <div className="w-full lg:w-48 shrink-0 relative z-40">
             <DateRangePicker 
               startDate={formData.start_date}
               endDate={formData.end_date}
               onChange={handleDateChange}
-              className={`${inputBase} h-[42px] bg-white border-transparent`}
+              className={`${inputBase} h-[38px]`}
               placeholder="Select Dates"
               showPresets={false}
             />
@@ -186,8 +184,8 @@ const ArtworkForm: React.FC<Props> = ({ state, onSubmit }) => {
 
           {/* Action */}
           <div className="w-full lg:w-10 shrink-0 flex justify-end">
-            <button type="submit" className="w-full h-[42px] bg-white hover:bg-slate-100 text-indigo-700 rounded-xl shadow-md transition-colors flex items-center justify-center border border-transparent" title="Add Log">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4"/></svg>
+            <button type="submit" className="w-full h-[38px] bg-slate-900 hover:bg-indigo-600 text-white rounded-lg shadow-sm transition-colors flex items-center justify-center border border-transparent" title="Add Log">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4"/></svg>
             </button>
           </div>
 
