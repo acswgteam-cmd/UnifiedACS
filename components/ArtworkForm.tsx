@@ -55,149 +55,125 @@ const ArtworkForm: React.FC<Props> = ({ state, onSubmit }) => {
       ...prev,
       artwork_name: '',
       notes: '',
+      revision_count: 0,
       approval_required: false
     }));
   };
 
-  const labelClass = "text-xs font-black text-slate-900 uppercase tracking-tight mb-1.5 block";
-  const inputClass = "w-full rounded-lg border-slate-300 text-slate-900 text-sm p-2.5 border bg-white focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 outline-none transition-all placeholder-slate-400 shadow-sm font-semibold appearance-none";
+  // Styles for the compact horizontal layout
+  const headerClass = "text-[9px] font-black text-slate-400 uppercase tracking-widest px-1 pb-1";
+  const inputBase = "w-full text-xs font-semibold bg-slate-50 border-transparent focus:bg-white focus:border-indigo-500 focus:ring-0 rounded-lg transition-all placeholder-slate-400 outline-none";
+  const selectBase = `${inputBase} py-2 px-1 cursor-pointer`;
+  const textBase = `${inputBase} py-2 px-2`;
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 mb-8 animate-in slide-in-from-top duration-300">
-      <div className="flex items-center justify-between mb-8">
-        <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-          <span className="w-1.5 h-6 bg-indigo-600 rounded-full"></span>
-          Log Production Activity
-        </h2>
-        
-        {formData.work_context === WorkContext.PROJECT && (
-          <label className="flex items-center gap-3 cursor-pointer group bg-slate-50 px-4 py-2 rounded-xl border border-slate-200 hover:border-indigo-300 transition-all">
-            <input 
-              type="checkbox" 
-              name="approval_required" 
-              checked={formData.approval_required} 
-              onChange={handleChange}
-              className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-            />
-            <div className="flex flex-col">
-              <span className="text-[10px] font-black text-slate-900 uppercase leading-none">Form Approval</span>
-              <span className="text-[8px] text-slate-400 font-bold uppercase tracking-tighter">Requires Validation</span>
-            </div>
-          </label>
-        )}
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 mb-6">
+      <div className="flex items-center gap-2 mb-3">
+        <span className="w-1.5 h-1.5 rounded-full bg-indigo-600"></span>
+        <h2 className="text-xs font-black text-slate-900 uppercase tracking-wide">Quick Log Entry</h2>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6">
-        <div className="space-y-1">
-          <label className={labelClass}>Work Context</label>
-          <select name="work_context" value={formData.work_context} onChange={handleChange} className={inputClass}>
-            <option value={WorkContext.PROJECT}>Project-Linked</option>
-            <option value={WorkContext.LEAD}>Direct Lead</option>
-            <option value={WorkContext.INTERNAL}>Internal / Dept</option>
-          </select>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-2">
+        {/* Header Row - visible on larger screens */}
+        <div className="hidden lg:flex gap-2 px-1">
+          <div className="w-24 shrink-0"><label className={headerClass}>Context</label></div>
+          <div className="flex-1 min-w-[140px]"><label className={headerClass}>Reference / Link</label></div>
+          <div className="flex-[2] min-w-[200px]"><label className={headerClass}>Artwork Name</label></div>
+          <div className="w-24 shrink-0"><label className={headerClass}>Type</label></div>
+          <div className="w-28 shrink-0"><label className={headerClass}>PIC</label></div>
+          <div className="w-48 shrink-0"><label className={headerClass}>Timeline (Start - End)</label></div>
+          <div className="w-12 shrink-0 text-center"><label className={headerClass}>Rev</label></div>
+          <div className="flex-1"><label className={headerClass}>Notes</label></div>
+          <div className="w-10 shrink-0"></div>
         </div>
 
-        {formData.work_context === WorkContext.PROJECT && (
-          <div className="space-y-1">
-            <label className={labelClass}>Select Event Project</label>
-            <select name="project_id" value={formData.project_id || ""} onChange={handleChange} required className={inputClass}>
-              <option value="">Choose Project...</option>
-              {state.projects.map(p => <option key={p.id} value={p.id}>{p.project_name}</option>)}
+        {/* Input Row */}
+        <div className="flex flex-col lg:flex-row gap-2 items-start lg:items-center">
+          
+          {/* Context */}
+          <div className="w-full lg:w-24 shrink-0">
+            <select name="work_context" value={formData.work_context} onChange={handleChange} className={`${selectBase} font-bold text-indigo-700 bg-indigo-50/50`}>
+              <option value={WorkContext.PROJECT}>PROJECT</option>
+              <option value={WorkContext.LEAD}>LEAD</option>
+              <option value={WorkContext.INTERNAL}>INTERNAL</option>
             </select>
           </div>
-        )}
 
-        {formData.work_context === WorkContext.LEAD && (
-          <div className="space-y-1">
-            <label className={labelClass}>Select Lead / Inquiry</label>
-            <select name="lead_id" value={formData.lead_id || ""} onChange={handleChange} required className={inputClass}>
-              <option value="">Choose Lead...</option>
-              {state.leads.map(l => <option key={l.id} value={l.id}>{l.lead_name}</option>)}
-            </select>
-          </div>
-        )}
-
-        {formData.work_context === WorkContext.INTERNAL && (
-          <>
-            <div className="space-y-1">
-              <label className={labelClass}>Linked Internal Task (Optional)</label>
-              <select name="internal_design_id" value={formData.internal_design_id || ""} onChange={handleChange} className={inputClass}>
-                <option value="">No specific internal project</option>
-                {state.internalDesigns.map(id => (
-                  <option key={id.id} value={id.id}>{id.task_name} ({id.status})</option>
-                ))}
+          {/* Dynamic Reference Selector */}
+          <div className="w-full lg:flex-1 lg:min-w-[140px]">
+            {formData.work_context === WorkContext.PROJECT && (
+              <select name="project_id" value={formData.project_id || ""} onChange={handleChange} required className={selectBase}>
+                <option value="">Select Project...</option>
+                {state.projects.map(p => <option key={p.id} value={p.id}>{p.project_name}</option>)}
               </select>
-            </div>
-            
-            {/* Hanya tampil jika tidak memilih internal task secara spesifik */}
-            {!formData.internal_design_id ? (
-              <div className="space-y-1 animate-in fade-in duration-300">
-                <label className={labelClass}>Requester Department</label>
-                <select name="department_id" value={formData.department_id || ""} onChange={handleChange} required className={inputClass}>
-                  <option value="">Choose Department...</option>
+            )}
+            {formData.work_context === WorkContext.LEAD && (
+              <select name="lead_id" value={formData.lead_id || ""} onChange={handleChange} required className={selectBase}>
+                <option value="">Select Lead...</option>
+                {state.leads.map(l => <option key={l.id} value={l.id}>{l.lead_name}</option>)}
+              </select>
+            )}
+            {formData.work_context === WorkContext.INTERNAL && (
+              <div className="flex gap-1">
+                 <select name="internal_design_id" value={formData.internal_design_id || ""} onChange={handleChange} className={`${selectBase} w-1/2`}>
+                  <option value="">Link Task...</option>
+                  {state.internalDesigns.map(id => <option key={id.id} value={id.id}>{id.task_name}</option>)}
+                </select>
+                <select name="department_id" value={formData.department_id || ""} onChange={handleChange} required className={`${selectBase} w-1/2`}>
+                  <option value="">Dept...</option>
                   {state.departments.filter(d => d.active).map(d => <option key={d.id} value={d.id}>{d.department_name}</option>)}
                 </select>
               </div>
-            ) : (
-              <div className="space-y-1 animate-in fade-in duration-300">
-                <label className={labelClass}>Linked Department</label>
-                <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-500 uppercase italic">
-                  {state.departments.find(d => d.id === formData.department_id)?.department_name || 'Loading department...'}
-                </div>
-              </div>
             )}
-          </>
-        )}
-
-        <div className="space-y-1">
-          <label className={labelClass}>Artwork Name</label>
-          <input type="text" name="artwork_name" value={formData.artwork_name} onChange={handleChange} required placeholder="e.g. KV Social Media Jan" className={inputClass} />
-        </div>
-
-        <div className="space-y-1">
-          <label className={labelClass}>Artwork Type</label>
-          <select name="artwork_type" value={formData.artwork_type} onChange={handleChange} className={inputClass}>
-            <option value="2D Design">2D Design</option>
-            <option value="3D Design">3D Design</option>
-            <option value="Video">Video</option>
-          </select>
-        </div>
-
-        <div className="space-y-1">
-          <label className={labelClass}>Designer (PIC)</label>
-          <select name="pic_designer_id" value={formData.pic_designer_id} onChange={handleChange} className={inputClass}>
-            {state.designers.filter(d => d.active).map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-          </select>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <label className={labelClass}>Start Date</label>
-            <input type="date" name="start_date" value={formData.start_date} onChange={handleChange} className={inputClass} />
           </div>
-          <div className="space-y-1">
-            <label className={labelClass}>End Date</label>
-            <input type="date" name="end_date" value={formData.end_date} onChange={handleChange} className={inputClass} />
+
+          {/* Name */}
+          <div className="w-full lg:flex-[2] lg:min-w-[200px]">
+            <input type="text" name="artwork_name" value={formData.artwork_name} onChange={handleChange} required placeholder="Artwork Name..." className={`${textBase} font-bold`} />
           </div>
-        </div>
 
-        <div className="space-y-1">
-          <label className={labelClass}>Revision Count</label>
-          <input type="number" name="revision_count" value={formData.revision_count} onChange={handleChange} min="0" className={inputClass} />
-        </div>
+          {/* Type */}
+          <div className="w-full lg:w-24 shrink-0">
+            <select name="artwork_type" value={formData.artwork_type} onChange={handleChange} className={selectBase}>
+              <option value="2D Design">2D</option>
+              <option value="3D Design">3D</option>
+              <option value="Video">Video</option>
+            </select>
+          </div>
 
-        <div className="md:col-span-2 lg:col-span-3 space-y-1">
-          <label className={labelClass}>Activity Notes</label>
-          <textarea name="notes" value={formData.notes} onChange={handleChange} rows={2} className={inputClass} placeholder="Summarize changes or status..." />
-        </div>
-      </div>
+          {/* PIC */}
+          <div className="w-full lg:w-28 shrink-0">
+            <select name="pic_designer_id" value={formData.pic_designer_id} onChange={handleChange} className={selectBase}>
+              {state.designers.filter(d => d.active).map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+            </select>
+          </div>
 
-      <div className="mt-8 flex justify-end">
-        <button type="submit" className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-xl shadow-lg transition-all hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-2 uppercase tracking-widest">
-          Commit Log Entry
-        </button>
-      </div>
-    </form>
+          {/* Timeline */}
+          <div className="w-full lg:w-48 shrink-0 flex gap-1">
+            <input type="date" name="start_date" value={formData.start_date} onChange={handleChange} className={textBase} title="Start Date" />
+            <input type="date" name="end_date" value={formData.end_date} onChange={handleChange} className={textBase} title="End Date" />
+          </div>
+
+          {/* Rev */}
+          <div className="w-full lg:w-12 shrink-0">
+            <input type="number" name="revision_count" value={formData.revision_count} onChange={handleChange} min="0" placeholder="0" className={`${textBase} text-center`} title="Revision Count" />
+          </div>
+
+          {/* Notes */}
+          <div className="w-full lg:flex-1">
+            <input type="text" name="notes" value={formData.notes || ''} onChange={handleChange} placeholder="Notes..." className={textBase} />
+          </div>
+
+          {/* Action */}
+          <div className="w-full lg:w-10 shrink-0 flex justify-end">
+            <button type="submit" className="w-full h-[34px] bg-slate-900 hover:bg-indigo-600 text-white rounded-lg shadow-md transition-colors flex items-center justify-center" title="Add Log">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4"/></svg>
+            </button>
+          </div>
+
+        </div>
+      </form>
+    </div>
   );
 };
 
