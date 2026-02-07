@@ -163,6 +163,7 @@ const ArtworkForm: React.FC<Props> = ({ state, onSubmit }) => {
               onChange={handleDateChange}
               className={`${inputBase} h-[42px] bg-slate-50 border-transparent`}
               placeholder="Select Dates"
+              showPresets={false}
             />
           </div>
 
