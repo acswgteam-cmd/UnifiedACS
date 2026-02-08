@@ -110,6 +110,8 @@ export interface ProjectSurvey {
   rating_agility: number;
   notes?: string;
   created_at: string;
+  status?: 'SUBMITTED' | 'CLARIFICATION_REQUESTED';
+  clarification_notes?: string;
 }
 
 export interface AppState {
