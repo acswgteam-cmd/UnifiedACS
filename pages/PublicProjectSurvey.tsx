@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, ChangeEvent } from 'react';
 import { useParams } from 'react-router-dom';
 import { Project, ProjectChecklist, ChecklistTemplate, ChecklistTemplateItem } from '../types';
 import { supabase } from '../lib/supabase';
@@ -631,7 +631,17 @@ const PublicProjectSurvey: React.FC = () => {
 };
 
 // --- Sub-components ---
-const TableRow = ({ cl, idx, isEditable, cellInputClass, handleLocalChange, handleSaveItem, handleDeleteItem }: any) => (
+interface TableRowProps {
+  cl: ProjectChecklist;
+  idx: number;
+  isEditable: boolean;
+  cellInputClass: string;
+  handleLocalChange: (id: string, field: keyof ProjectChecklist, value: any) => void;
+  handleSaveItem: (id: string, field: keyof ProjectChecklist, value: any) => void;
+  handleDeleteItem: (id: string) => void;
+}
+
+const TableRow: React.FC<TableRowProps> = ({ cl, idx, isEditable, cellInputClass, handleLocalChange, handleSaveItem, handleDeleteItem }) => (
   <tr key={cl.id} className="hover:bg-slate-50 transition-colors group border-b border-slate-50 last:border-0">
     <td className="px-6 py-2 text-center text-slate-400">{idx + 1}</td>
     <td className="px-6 py-2">
@@ -639,8 +649,8 @@ const TableRow = ({ cl, idx, isEditable, cellInputClass, handleLocalChange, hand
           <input 
             className={cellInputClass}
             value={cl.task_name}
-            onChange={e => handleLocalChange(cl.id, 'task_name', e.target.value)}
-            onBlur={e => handleSaveItem(cl.id, 'task_name', e.target.value)}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => handleLocalChange(cl.id, 'task_name', e.target.value)}
+            onBlur={(e: ChangeEvent<HTMLInputElement>) => handleSaveItem(cl.id, 'task_name', e.target.value)}
             readOnly={!isEditable}
             placeholder="Task Name"
           />
@@ -650,8 +660,8 @@ const TableRow = ({ cl, idx, isEditable, cellInputClass, handleLocalChange, hand
       <input 
           className={cellInputClass}
           value={cl.size || ''}
-          onChange={e => handleLocalChange(cl.id, 'size', e.target.value)}
-          onBlur={e => handleSaveItem(cl.id, 'size', e.target.value)}
+          onChange={(e: ChangeEvent<HTMLInputElement>) => handleLocalChange(cl.id, 'size', e.target.value)}
+          onBlur={(e: ChangeEvent<HTMLInputElement>) => handleSaveItem(cl.id, 'size', e.target.value)}
           readOnly={!isEditable}
           placeholder="Size"
       />
@@ -661,8 +671,8 @@ const TableRow = ({ cl, idx, isEditable, cellInputClass, handleLocalChange, hand
           type="number"
           className={`${cellInputClass} text-center`}
           value={cl.quantity}
-          onChange={e => handleLocalChange(cl.id, 'quantity', parseInt(e.target.value) || 0)}
-          onBlur={e => handleSaveItem(cl.id, 'quantity', parseInt(e.target.value) || 0)}
+          onChange={(e: ChangeEvent<HTMLInputElement>) => handleLocalChange(cl.id, 'quantity', parseInt(e.target.value) || 0)}
+          onBlur={(e: ChangeEvent<HTMLInputElement>) => handleSaveItem(cl.id, 'quantity', parseInt(e.target.value) || 0)}
           readOnly={!isEditable}
       />
     </td>
@@ -670,8 +680,8 @@ const TableRow = ({ cl, idx, isEditable, cellInputClass, handleLocalChange, hand
       <input 
           className={cellInputClass}
           value={cl.notes || ''}
-          onChange={e => handleLocalChange(cl.id, 'notes', e.target.value)}
-          onBlur={e => handleSaveItem(cl.id, 'notes', e.target.value)}
+          onChange={(e: ChangeEvent<HTMLInputElement>) => handleLocalChange(cl.id, 'notes', e.target.value)}
+          onBlur={(e: ChangeEvent<HTMLInputElement>) => handleSaveItem(cl.id, 'notes', e.target.value)}
           readOnly={!isEditable}
           placeholder="Notes"
       />
@@ -715,7 +725,14 @@ const TableRow = ({ cl, idx, isEditable, cellInputClass, handleLocalChange, hand
   </tr>
 );
 
-const AddRow = ({ newItem, updateNewItem, onAdd, newRowInputClass }: any) => (
+interface AddRowProps {
+  newItem: { task_name: string; size: string; quantity: number; notes: string };
+  updateNewItem: (field: string, val: any) => void;
+  onAdd: () => void;
+  newRowInputClass: string;
+}
+
+const AddRow: React.FC<AddRowProps> = ({ newItem, updateNewItem, onAdd, newRowInputClass }) => (
   <tr className="bg-slate-50/50 hover:bg-slate-50 transition-colors">
     <td className="px-6 py-4 text-center text-indigo-400 font-black">+</td>
     <td className="px-6 py-4">
@@ -723,8 +740,8 @@ const AddRow = ({ newItem, updateNewItem, onAdd, newRowInputClass }: any) => (
         placeholder="Add Item Name..." 
         className={newRowInputClass}
         value={newItem.task_name}
-        onChange={e => updateNewItem('task_name', e.target.value)}
-        onKeyDown={e => e.key === 'Enter' && onAdd()}
+        onChange={(e: ChangeEvent<HTMLInputElement>) => updateNewItem('task_name', e.target.value)}
+        onKeyDown={(e: React.KeyboardEvent) => e.key === 'Enter' && onAdd()}
       />
     </td>
     <td className="px-6 py-4">
@@ -732,8 +749,8 @@ const AddRow = ({ newItem, updateNewItem, onAdd, newRowInputClass }: any) => (
         placeholder="Size" 
         className={newRowInputClass}
         value={newItem.size}
-        onChange={e => updateNewItem('size', e.target.value)}
-        onKeyDown={e => e.key === 'Enter' && onAdd()}
+        onChange={(e: ChangeEvent<HTMLInputElement>) => updateNewItem('size', e.target.value)}
+        onKeyDown={(e: React.KeyboardEvent) => e.key === 'Enter' && onAdd()}
       />
     </td>
     <td className="px-6 py-4">
@@ -742,8 +759,8 @@ const AddRow = ({ newItem, updateNewItem, onAdd, newRowInputClass }: any) => (
         placeholder="1" 
         className={`${newRowInputClass} text-center`}
         value={newItem.quantity}
-        onChange={e => updateNewItem('quantity', parseInt(e.target.value) || 0)}
-        onKeyDown={e => e.key === 'Enter' && onAdd()}
+        onChange={(e: ChangeEvent<HTMLInputElement>) => updateNewItem('quantity', parseInt(e.target.value) || 0)}
+        onKeyDown={(e: React.KeyboardEvent) => e.key === 'Enter' && onAdd()}
       />
     </td>
     <td className="px-6 py-4">
@@ -751,8 +768,8 @@ const AddRow = ({ newItem, updateNewItem, onAdd, newRowInputClass }: any) => (
         placeholder="Notes..." 
         className={newRowInputClass}
         value={newItem.notes}
-        onChange={e => updateNewItem('notes', e.target.value)}
-        onKeyDown={e => e.key === 'Enter' && onAdd()}
+        onChange={(e: ChangeEvent<HTMLInputElement>) => updateNewItem('notes', e.target.value)}
+        onKeyDown={(e: React.KeyboardEvent) => e.key === 'Enter' && onAdd()}
       />
     </td>
     <td className="px-6 py-4 text-center text-[10px] text-slate-400 font-bold italic">Pending</td>
