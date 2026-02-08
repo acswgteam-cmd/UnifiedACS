@@ -293,14 +293,19 @@ const Dashboard: React.FC<Props> = ({ state }) => {
         </div>
       )}
 
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* Added relative z-20 to ensure datepicker pops over charts */}
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-20">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight uppercase">Executive Studio Hub</h1>
           <p className="text-slate-500 text-sm font-medium">Creative Production Insights.</p>
         </div>
+        {/* Pass filtered dates to DateRangePicker to properly control state */}
         <DateRangePicker 
+          startDate={filterStart}
+          endDate={filterEnd}
           onChange={(start, end) => { setFilterStart(start); setFilterEnd(end); }}
           onReset={() => { setFilterStart(''); setFilterEnd(''); }}
+          placeholder="Filter Date Range"
         />
       </header>
 
