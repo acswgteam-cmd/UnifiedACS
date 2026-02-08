@@ -108,6 +108,10 @@ const ProjectMaster: React.FC<Props> = ({
   const [newLocInput, setNewLocInput] = useState('');
   const [copySuccess, setCopySuccess] = useState(false);
   
+  // Clarification State
+  const [isClarifying, setIsClarifying] = useState(false);
+  const [clarificationNote, setClarificationNote] = useState('');
+
   // Checklist & Template State
   // New Item State is now a map: key = templateId (or 'manual') -> value = item data
   const [newItemsMap, setNewItemsMap] = useState<Record<string, { task_name: string, size: string, quantity: number, notes: string }>>({});
@@ -309,6 +313,22 @@ const ProjectMaster: React.FC<Props> = ({
     else onUpdate();
   };
 
+  const handleSubmitClarification = async (surveyId: string) => {
+    if (!supabase || !clarificationNote.trim()) return;
+    
+    const { error } = await supabase.from('project_surveys').update({
+      status: 'CLARIFICATION_REQUESTED',
+      clarification_notes: clarificationNote
+    }).eq('id', surveyId);
+
+    if (error) alert("Error: " + error.message);
+    else {
+      setIsClarifying(false);
+      setClarificationNote('');
+      onUpdate();
+    }
+  };
+
   // --- DETAIL VIEW UPDATERS ---
   const handleStatusUpdate = async (newStatus: string) => {
     if (!selectedProject || !supabase) return;
@@ -341,12 +361,12 @@ const ProjectMaster: React.FC<Props> = ({
     }
   };
 
-  // --- CHECKLIST & TEMPLATE HANDLERS ---
+  // ... (Remainder of existing helper functions like checklist logic omitted for brevity as they are unchanged) ...
+  // [Preserve all other existing functions: filteredChecklists, groupedChecklists, etc.]
   const filteredChecklists = useMemo(() => {
     if (!selectedProject) return [];
     return projectChecklists
       .filter(cl => cl.project_id === selectedProject.id)
-      // Sort by created_at AND ID for absolute stability
       .sort((a, b) => {
         const dateA = a.created_at || '';
         const dateB = b.created_at || '';
@@ -356,11 +376,9 @@ const ProjectMaster: React.FC<Props> = ({
       });
   }, [selectedProject, projectChecklists]);
 
-  // Group checklists by Template ID
   const groupedChecklists = useMemo(() => {
     const groups: Record<string, ProjectChecklist[]> = {};
     const manualItems: ProjectChecklist[] = [];
-
     filteredChecklists.forEach(item => {
       if (item.source_template_id) {
         if (!groups[item.source_template_id]) groups[item.source_template_id] = [];
@@ -369,11 +387,9 @@ const ProjectMaster: React.FC<Props> = ({
         manualItems.push(item);
       }
     });
-
     return { groups, manualItems };
   }, [filteredChecklists]);
 
-  // Stable Template List (Sorted by Name)
   const sortedActiveTemplateIds = useMemo(() => {
     const ids = Object.keys(groupedChecklists.groups);
     return ids.sort((a, b) => {
@@ -383,28 +399,16 @@ const ProjectMaster: React.FC<Props> = ({
     });
   }, [groupedChecklists, checklistTemplates]);
 
-  // Use a Set for fast lookup of active templates (for the toggle buttons)
   const activeTemplatesSet = useMemo(() => new Set(Object.keys(groupedChecklists.groups)), [groupedChecklists]);
 
   const handleToggleTemplate = async (templateId: string) => {
     if (!selectedProject || !supabase) return;
-
     if (activeTemplatesSet.has(templateId)) {
-      // Logic removed: Don't auto-remove items. User must manually delete if they want to remove a template's items.
-      // Or if we want strict toggle behavior:
-      const { error } = await supabase.from('project_checklists')
-        .delete()
-        .eq('project_id', selectedProject.id)
-        .eq('source_template_id', templateId);
-      
+      const { error } = await supabase.from('project_checklists').delete().eq('project_id', selectedProject.id).eq('source_template_id', templateId);
       if (error) alert("Error removing template items: " + error.message);
       else onUpdate();
-
     } else {
-      // Add Items (Click)
-      const itemsToAdd = checklistTemplateItems
-        .filter(ti => ti.template_id === templateId)
-        .map(ti => ({
+      const itemsToAdd = checklistTemplateItems.filter(ti => ti.template_id === templateId).map(ti => ({
           project_id: selectedProject.id,
           task_name: ti.task_name,
           size: ti.size,
@@ -413,43 +417,32 @@ const ProjectMaster: React.FC<Props> = ({
           status: 'NONE',
           source_template_id: templateId
         }));
-      
-      if (itemsToAdd.length === 0) {
-        alert("This template has no items defined.");
-        return;
-      }
-
+      if (itemsToAdd.length === 0) { alert("This template has no items defined."); return; }
       const { error } = await supabase.from('project_checklists').insert(itemsToAdd);
       if (error) alert("Error applying template: " + error.message);
       else onUpdate();
     }
   };
 
-  // --- INLINE EDIT HANDLERS (ALWAYS OPEN) ---
   const handleUpdateChecklistField = async (id: string, field: keyof ProjectChecklist, value: any) => {
     if (!supabase) return;
     const { error } = await supabase.from('project_checklists').update({ [field]: value }).eq('id', id);
     if (error) console.error("Error updating checklist:", error.message);
-    else onUpdate(); // Refetch to sync state
+    else onUpdate();
   };
 
   const handleDeleteChecklist = async (id: string) => {
-    if (!supabase) return; // No confirm needed
+    if (!supabase) return;
     const { error } = await supabase.from('project_checklists').delete().eq('id', id);
     if (error) alert(error.message);
     else onUpdate();
   };
 
-  // --- ADD NEW ITEM HANDLER (Context Aware) ---
   const handleAddNewItem = async (templateId: string | null) => {
     if (!selectedProject || !supabase) return;
-    
-    // Key for local state map (use 'manual' for null)
     const mapKey = templateId || 'manual';
     const currentNewItem = newItemsMap[mapKey] || { task_name: '', size: '', quantity: 1, notes: '' };
-
     if (!currentNewItem.task_name.trim()) return;
-
     const payload = {
       project_id: selectedProject.id,
       task_name: currentNewItem.task_name,
@@ -457,95 +450,29 @@ const ProjectMaster: React.FC<Props> = ({
       quantity: currentNewItem.quantity,
       notes: currentNewItem.notes,
       status: 'NONE',
-      source_template_id: templateId // Tag with template ID if adding to a group
+      source_template_id: templateId
     };
-
     const { error } = await supabase.from('project_checklists').insert([payload]);
-    
     if (error) alert(error.message);
     else {
-      // Reset specific input
-      setNewItemsMap(prev => ({
-        ...prev,
-        [mapKey]: { task_name: '', size: '', quantity: 1, notes: '' }
-      }));
+      setNewItemsMap(prev => ({ ...prev, [mapKey]: { task_name: '', size: '', quantity: 1, notes: '' } }));
       onUpdate();
     }
   };
 
   const updateNewItemState = (templateId: string | null, field: string, value: any) => {
     const mapKey = templateId || 'manual';
-    setNewItemsMap(prev => ({
-      ...prev,
-      [mapKey]: {
-        ...(prev[mapKey] || { task_name: '', size: '', quantity: 1, notes: '' }),
-        [field]: value
-      }
-    }));
+    setNewItemsMap(prev => ({ ...prev, [mapKey]: { ...(prev[mapKey] || { task_name: '', size: '', quantity: 1, notes: '' }), [field]: value } }));
   };
 
-  // --- TEMPLATE MANAGEMENT CRUD ---
-  const handleAddTemplate = async () => {
-    if (!newTemplateName.trim() || !supabase) return;
-    const { error } = await supabase.from('checklist_templates').insert([{ name: newTemplateName }]);
-    if (error) alert(error.message);
-    else { setNewTemplateName(''); onUpdate(); }
-  };
-
-  const handleEditTemplateNameStart = (template: ChecklistTemplate) => {
-    setEditingTemplateNameId(template.id);
-    setTempTemplateName(template.name);
-  };
-
-  const handleEditTemplateNameSave = async () => {
-    if (!supabase || !editingTemplateNameId) return;
-    const { error } = await supabase.from('checklist_templates').update({ name: tempTemplateName }).eq('id', editingTemplateNameId);
-    if (error) alert(error.message);
-    else {
-      setEditingTemplateNameId(null);
-      onUpdate();
-    }
-  };
-
-  const handleDeleteTemplate = async (id: string) => {
-    if (!supabase || !confirm("Delete this template and all its items?")) return;
-    const { error } = await supabase.from('checklist_templates').delete().eq('id', id);
-    if (error) alert(error.message);
-    else {
-      if (selectedTemplateForEdit?.id === id) setSelectedTemplateForEdit(null);
-      onUpdate();
-    }
-  };
-
-  // Template ITEMS Management
-  const handleAddTemplateItem = async () => {
-    if (!selectedTemplateForEdit || !newTemplateItem.task_name || !supabase) return;
-    const { error } = await supabase.from('checklist_template_items').insert([{
-      template_id: selectedTemplateForEdit.id,
-      task_name: newTemplateItem.task_name,
-      size: newTemplateItem.size,
-      notes: newTemplateItem.notes
-    }]);
-    if (error) alert(error.message);
-    else {
-      setNewTemplateItem({ task_name: '', size: '', notes: '' });
-      onUpdate();
-    }
-  };
-
-  const handleUpdateTemplateItem = async (itemId: string, field: keyof ChecklistTemplateItem, value: any) => {
-    if (!supabase) return;
-    const { error } = await supabase.from('checklist_template_items').update({ [field]: value }).eq('id', itemId);
-    if (error) console.error("Update failed", error);
-    else onUpdate();
-  };
-
-  const handleDeleteTemplateItem = async (id: string) => {
-    if (!supabase) return;
-    const { error } = await supabase.from('checklist_template_items').delete().eq('id', id);
-    if (error) alert(error.message);
-    else onUpdate();
-  };
+  // Template CRUD Handlers (Simplified for brevity)
+  const handleAddTemplate = async () => { if (!newTemplateName.trim() || !supabase) return; const { error } = await supabase.from('checklist_templates').insert([{ name: newTemplateName }]); if (error) alert(error.message); else { setNewTemplateName(''); onUpdate(); } };
+  const handleEditTemplateNameStart = (template: ChecklistTemplate) => { setEditingTemplateNameId(template.id); setTempTemplateName(template.name); };
+  const handleEditTemplateNameSave = async () => { if (!supabase || !editingTemplateNameId) return; const { error } = await supabase.from('checklist_templates').update({ name: tempTemplateName }).eq('id', editingTemplateNameId); if (error) alert(error.message); else { setEditingTemplateNameId(null); onUpdate(); } };
+  const handleDeleteTemplate = async (id: string) => { if (!supabase || !confirm("Delete this template and all its items?")) return; const { error } = await supabase.from('checklist_templates').delete().eq('id', id); if (error) alert(error.message); else { if (selectedTemplateForEdit?.id === id) setSelectedTemplateForEdit(null); onUpdate(); } };
+  const handleAddTemplateItem = async () => { if (!selectedTemplateForEdit || !newTemplateItem.task_name || !supabase) return; const { error } = await supabase.from('checklist_template_items').insert([{ template_id: selectedTemplateForEdit.id, task_name: newTemplateItem.task_name, size: newTemplateItem.size, notes: newTemplateItem.notes }]); if (error) alert(error.message); else { setNewTemplateItem({ task_name: '', size: '', notes: '' }); onUpdate(); } };
+  const handleUpdateTemplateItem = async (itemId: string, field: keyof ChecklistTemplateItem, value: any) => { if (!supabase) return; const { error } = await supabase.from('checklist_template_items').update({ [field]: value }).eq('id', itemId); if (error) console.error("Update failed", error); else onUpdate(); };
+  const handleDeleteTemplateItem = async (id: string) => { if (!supabase) return; const { error } = await supabase.from('checklist_template_items').delete().eq('id', id); if (error) alert(error.message); else onUpdate(); };
 
   // --- RENDERING HELPERS ---
   const renderCalendar = () => {
@@ -599,17 +526,17 @@ const ProjectMaster: React.FC<Props> = ({
   if (selectedProject) {
     return (
       <div className="flex flex-col h-full animate-in slide-in-from-right duration-300 relative">
-        {/* TEMPLATE MANAGER MODAL */}
+        {/* TEMPLATE MANAGER MODAL (Preserved) */}
         {isManageTemplatesOpen && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsManageTemplatesOpen(false)}>
-            <div className="bg-white w-full max-w-6xl h-[85vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+             {/* ... Same as original ... */}
+             <div className="bg-white w-full max-w-6xl h-[85vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
               <div className="p-6 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
                 <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Manage Checklist Templates</h3>
                 <button onClick={() => setIsManageTemplatesOpen(false)} className="p-2 bg-white rounded-lg hover:bg-slate-200 text-slate-500"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
               </div>
               
               <div className="flex flex-1 overflow-hidden">
-                {/* Sidebar: List of Templates */}
                 <div className="w-80 border-r border-slate-200 bg-white p-4 flex flex-col flex-shrink-0">
                    <div className="flex gap-2 mb-4">
                       <input type="text" placeholder="New Template Name" value={newTemplateName} onChange={e => setNewTemplateName(e.target.value)} className="w-full text-xs font-bold p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-600 outline-none" />
@@ -649,7 +576,6 @@ const ProjectMaster: React.FC<Props> = ({
                    </div>
                 </div>
 
-                {/* Main: Template Items */}
                 <div className="flex-1 p-8 bg-slate-50 overflow-y-auto">
                    {selectedTemplateForEdit ? (
                      <div className="space-y-8 max-w-4xl mx-auto">
@@ -661,7 +587,6 @@ const ProjectMaster: React.FC<Props> = ({
                           <span className="text-xs font-bold text-slate-500 bg-slate-200 px-3 py-1 rounded-full">{checklistTemplateItems.filter(ti => ti.template_id === selectedTemplateForEdit.id).length} Items</span>
                         </div>
                         
-                        {/* Add Item Form */}
                         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm grid grid-cols-4 gap-3">
                            <input type="text" placeholder="Design Name" value={newTemplateItem.task_name} onChange={e => setNewTemplateItem({...newTemplateItem, task_name: e.target.value})} className="col-span-2 text-xs font-bold p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-600 outline-none" />
                            <input type="text" placeholder="Size (e.g. A4)" value={newTemplateItem.size} onChange={e => setNewTemplateItem({...newTemplateItem, size: e.target.value})} className="col-span-1 text-xs font-bold p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-600 outline-none" />
@@ -669,7 +594,6 @@ const ProjectMaster: React.FC<Props> = ({
                            <input type="text" placeholder="Default Notes (Optional)" value={newTemplateItem.notes} onChange={e => setNewTemplateItem({...newTemplateItem, notes: e.target.value})} className="col-span-4 text-xs font-bold p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-600 outline-none" />
                         </div>
 
-                        {/* List Items */}
                         <div className="space-y-3">
                            {checklistTemplateItems.filter(ti => ti.template_id === selectedTemplateForEdit.id).map(ti => (
                              <div key={ti.id} className="bg-white p-4 rounded-xl border border-slate-200 flex justify-between items-start gap-4 hover:shadow-md transition-shadow group">
@@ -834,46 +758,90 @@ const ProjectMaster: React.FC<Props> = ({
                           </div>
                         );
                       }
+                      
+                      const isRequested = survey.status === 'CLARIFICATION_REQUESTED';
+
                       return (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                           <div className="space-y-2">
-                              {Object.entries(SURVEY_LABELS).slice(0, 4).map(([key, label]) => {
-                                 const score = (survey as any)[key];
-                                 let color = 'bg-slate-100 text-slate-500';
-                                 if (score === 3) color = 'bg-emerald-100 text-emerald-700';
-                                 else if (score === 2) color = 'bg-blue-100 text-blue-700';
-                                 else if (score === 1) color = 'bg-amber-100 text-amber-700';
-                                 return (
-                                   <div key={key} className="flex justify-between items-center bg-slate-50 p-2 rounded-lg border border-slate-100">
-                                     <span className="text-[10px] font-bold text-slate-600 uppercase pr-2">{label}</span>
-                                     <span className={`text-[10px] font-black px-2 py-0.5 rounded ${color}`}>{score} / 3</span>
-                                   </div>
-                                 );
-                              })}
-                           </div>
-                           <div className="space-y-2">
-                              {Object.entries(SURVEY_LABELS).slice(4).map(([key, label]) => {
-                                 const score = (survey as any)[key];
-                                 let color = 'bg-slate-100 text-slate-500';
-                                 if (score === 3) color = 'bg-emerald-100 text-emerald-700';
-                                 else if (score === 2) color = 'bg-blue-100 text-blue-700';
-                                 else if (score === 1) color = 'bg-amber-100 text-amber-700';
-                                 return (
-                                   <div key={key} className="flex justify-between items-center bg-slate-50 p-2 rounded-lg border border-slate-100">
-                                     <span className="text-[10px] font-bold text-slate-600 uppercase pr-2">{label}</span>
-                                     <span className={`text-[10px] font-black px-2 py-0.5 rounded ${color}`}>{score} / 3</span>
-                                   </div>
-                                 );
-                              })}
-                              {survey.notes && (
-                                <div className="mt-2 text-[10px] text-slate-600 italic bg-amber-50 p-2 rounded border border-amber-100">
-                                  <strong>Notes:</strong> "{survey.notes}"
-                                </div>
-                              )}
-                              <div className="pt-2 flex justify-end">
-                                <button onClick={() => handleDeleteSurvey(survey.id)} className="text-red-500 text-[10px] font-black uppercase hover:underline">Delete Result</button>
+                        <div className="flex flex-col gap-6">
+                           {isRequested && (
+                             <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl flex items-center gap-3">
+                               <div className="p-2 bg-amber-100 text-amber-600 rounded-lg">
+                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                               </div>
+                               <div>
+                                 <p className="text-xs font-black text-amber-800 uppercase">Pending Client Update</p>
+                                 <p className="text-xs text-amber-700 mt-0.5">Waiting for the client to revise their evaluation based on your clarification request.</p>
+                               </div>
+                             </div>
+                           )}
+
+                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                              <div className="space-y-2">
+                                  {Object.entries(SURVEY_LABELS).slice(0, 4).map(([key, label]) => {
+                                    const score = (survey as any)[key];
+                                    let color = 'bg-slate-100 text-slate-500';
+                                    if (score === 3) color = 'bg-emerald-100 text-emerald-700';
+                                    else if (score === 2) color = 'bg-blue-100 text-blue-700';
+                                    else if (score === 1) color = 'bg-amber-100 text-amber-700';
+                                    return (
+                                      <div key={key} className="flex justify-between items-center bg-slate-50 p-2 rounded-lg border border-slate-100">
+                                        <span className="text-[10px] font-bold text-slate-600 uppercase pr-2">{label}</span>
+                                        <span className={`text-[10px] font-black px-2 py-0.5 rounded ${color}`}>{score} / 3</span>
+                                      </div>
+                                    );
+                                  })}
+                              </div>
+                              <div className="space-y-2">
+                                  {Object.entries(SURVEY_LABELS).slice(4).map(([key, label]) => {
+                                    const score = (survey as any)[key];
+                                    let color = 'bg-slate-100 text-slate-500';
+                                    if (score === 3) color = 'bg-emerald-100 text-emerald-700';
+                                    else if (score === 2) color = 'bg-blue-100 text-blue-700';
+                                    else if (score === 1) color = 'bg-amber-100 text-amber-700';
+                                    return (
+                                      <div key={key} className="flex justify-between items-center bg-slate-50 p-2 rounded-lg border border-slate-100">
+                                        <span className="text-[10px] font-bold text-slate-600 uppercase pr-2">{label}</span>
+                                        <span className={`text-[10px] font-black px-2 py-0.5 rounded ${color}`}>{score} / 3</span>
+                                      </div>
+                                    );
+                                  })}
+                                  {survey.notes && (
+                                    <div className="mt-2 text-[10px] text-slate-600 italic bg-slate-50 p-2 rounded border border-slate-200">
+                                      <strong>Client Notes:</strong> "{survey.notes}"
+                                    </div>
+                                  )}
                               </div>
                            </div>
+
+                           {/* Request Clarification Section */}
+                           {!isRequested && (
+                             <div className="pt-4 border-t border-slate-100 mt-2">
+                                {isClarifying ? (
+                                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 animate-in fade-in slide-in-from-top-2">
+                                    <label className="text-[10px] font-black text-slate-500 uppercase block mb-2">Internal Note for Clarification</label>
+                                    <textarea 
+                                      className="w-full text-xs font-medium p-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-amber-500 outline-none mb-3"
+                                      placeholder="Explain what needs to be revised..."
+                                      rows={3}
+                                      value={clarificationNote}
+                                      onChange={(e) => setClarificationNote(e.target.value)}
+                                    />
+                                    <div className="flex justify-end gap-2">
+                                      <button onClick={() => setIsClarifying(false)} className="px-3 py-1.5 text-[10px] font-black uppercase text-slate-500 hover:bg-slate-200 rounded">Cancel</button>
+                                      <button onClick={() => handleSubmitClarification(survey.id)} className="px-4 py-1.5 text-[10px] font-black uppercase bg-amber-500 text-white rounded shadow-sm hover:bg-amber-600">Send Request</button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="flex justify-between items-center">
+                                    <div className="text-[10px] text-slate-400 italic">Is this evaluation inaccurate?</div>
+                                    <div className="flex gap-4">
+                                      <button onClick={() => handleDeleteSurvey(survey.id)} className="text-red-400 hover:text-red-600 text-[10px] font-black uppercase">Delete Result</button>
+                                      <button onClick={() => setIsClarifying(true)} className="text-amber-500 hover:text-amber-700 text-[10px] font-black uppercase bg-amber-50 px-3 py-1.5 rounded border border-amber-100 hover:border-amber-300 transition-all">Request Clarification</button>
+                                    </div>
+                                  </div>
+                                )}
+                             </div>
+                           )}
                         </div>
                       );
                   })()}
@@ -884,6 +852,7 @@ const ProjectMaster: React.FC<Props> = ({
           {/* ... Checklist Tab Content (Unchanged) ... */}
           {activeTab === 'checklist' && (
              <div className="grid grid-cols-1 gap-6 animate-in fade-in duration-300">
+                {/* ... existing checklist code ... */}
                 {/* TEMPLATE SECTION */}
                 <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4 flex-wrap">
                    <div className="flex items-center gap-2">
@@ -912,7 +881,6 @@ const ProjectMaster: React.FC<Props> = ({
                    </div>
                 </div>
 
-                {/* COMPACT TABLE (Refined Look - ALWAYS OPEN TO EDIT) */}
                 <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
                   <table className="w-full text-left text-xs border-collapse">
                     <thead className="bg-slate-50 border-b border-slate-200">
@@ -1003,10 +971,10 @@ const ProjectMaster: React.FC<Props> = ({
     );
   }
 
-  // === RENDER LIST VIEW (Default) ===
+  // ... (Rest of the component remains unchanged) ...
   return (
     <div className="space-y-6 flex flex-col h-full relative">
-      {/* ... (Rest of the component remains unchanged) ... */}
+      {/* ... (Header and View Toggle logic preserved) ... */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 flex-shrink-0">
         <div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Project Master</h1>
@@ -1146,7 +1114,7 @@ const ProjectMaster: React.FC<Props> = ({
   );
 };
 
-// --- Sub-components for Table ---
+// ... (Sub-components TableRow and AddRow remain unchanged) ...
 const TableRow = ({ cl, idx, cellInputClass, onUpdate, onDelete }: any) => (
   <tr className="border-b border-slate-100 hover:bg-slate-50 transition-colors group">
     <td className="px-3 py-2 text-center text-slate-400 font-medium">{idx + 1}</td>
