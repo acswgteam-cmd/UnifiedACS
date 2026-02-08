@@ -111,6 +111,46 @@ CREATE TABLE project_surveys (
 );
 ```
 
+### 4. Feature Updates (Jalankan Jika Belum Ada)
+
+#### Clarification Request Loop (Update 2024)
+Jalankan ini jika Anda mendapatkan error `Could not find the 'clarification_notes' column`.
+
+```sql
+ALTER TABLE project_surveys ADD COLUMN status TEXT DEFAULT 'SUBMITTED';
+ALTER TABLE project_surveys ADD COLUMN clarification_notes TEXT;
+```
+
+#### Project Checklist
+```sql
+CREATE TABLE checklist_templates (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+CREATE TABLE checklist_template_items (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  template_id UUID REFERENCES checklist_templates(id) ON DELETE CASCADE,
+  task_name TEXT NOT NULL,
+  size TEXT,
+  notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+CREATE TABLE project_checklists (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+  task_name TEXT NOT NULL,
+  size TEXT,
+  quantity INTEGER DEFAULT 1,
+  notes TEXT,
+  status TEXT DEFAULT 'NONE',
+  source_template_id UUID REFERENCES checklist_templates(id),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+```
+
 ## 🛠 Features
 - **Dashboard Analytics**: Visualisasi produksi bulanan (2D, 3D, Video).
 - **Internal Design Portal**: Form khusus untuk permintaan antar departemen.
