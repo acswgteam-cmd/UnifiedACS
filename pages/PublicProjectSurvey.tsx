@@ -258,6 +258,10 @@ const PublicProjectSurvey: React.FC = () => {
         throw error;
       } else {
         setSubmitted(true);
+        // IMPORTANT: Clear clarification flag locally to update UI immediately
+        setClarificationRequested(false);
+        setClarificationMessage('');
+        
         // Update local cache so we don't need to refetch list
         setProjectSurveyStatus(prev => ({ ...prev, [selectedProject.id]: 'SUBMITTED' }));
       }
