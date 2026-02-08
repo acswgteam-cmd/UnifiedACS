@@ -31,10 +31,9 @@ const DateRangePicker: React.FC<Props> = ({
   }), [startDate, endDate]);
 
   const formatDate = (date: Date) => {
-    // Ensure we use local time for the date string to avoid timezone shifts
-    const offset = date.getTimezoneOffset();
-    const localDate = new Date(date.getTime() - (offset * 60 * 1000));
-    return localDate.toISOString().split('T')[0];
+    // Use Sweden/Canada locale (YYYY-MM-DD) for consistent ISO-like format in local time
+    // This avoids timezone shifting issues with toISOString()
+    return date.toLocaleDateString('sv-SE'); 
   };
   
   const displayDate = (date: Date | null) => 
@@ -52,38 +51,33 @@ const DateRangePicker: React.FC<Props> = ({
   }, []);
 
   const handleDayClick = (day: Date) => {
-    // Normalize time to 00:00:00 to ensure strict date comparison
+    // 1. Normalize clicked date to local midnight to ensure strict comparison
     const clicked = new Date(day.getFullYear(), day.getMonth(), day.getDate());
+    const clickedTime = clicked.getTime();
     
-    let newStart = range.start;
-    let newEnd = range.end;
+    // 2. Normalize current state dates to midnight timestamps
+    const startTime = range.start ? new Date(range.start.getFullYear(), range.start.getMonth(), range.start.getDate()).getTime() : null;
+    const endTime = range.end ? new Date(range.end.getFullYear(), range.end.getMonth(), range.end.getDate()).getTime() : null;
 
-    // Case 1: Start fresh if we already have a range
-    if (newStart && newEnd) {
-      newStart = clicked;
-      newEnd = null;
-      onChange(formatDate(newStart), "");
+    // SCENARIO 1: Start Fresh (If range is already complete, or no start yet)
+    if ((startTime !== null && endTime !== null) || startTime === null) {
+      onChange(formatDate(clicked), "");
       return;
     }
 
-    // Case 2: No start date yet
-    if (!newStart) {
-      newStart = clicked;
-      onChange(formatDate(newStart), "");
-      return;
-    }
-
-    // Case 3: We have a start date, picking end date
-    if (clicked < newStart) {
-      // If clicked before start, make it the new start
-      newStart = clicked;
-      newEnd = null; // Clear end because user might want to pick a new range
-      onChange(formatDate(newStart), "");
-    } else {
-      // Valid end date
-      newEnd = clicked;
-      onChange(formatDate(newStart), formatDate(newEnd));
-      setIsOpen(false); // Close on selection complete
+    // SCENARIO 2: Picking End Date (Start exists, End is null)
+    if (startTime !== null && endTime === null) {
+      if (clickedTime < startTime) {
+        // If user clicks a date BEFORE the start date, treat it as a new Start date correction
+        onChange(formatDate(clicked), "");
+      } else {
+        // If user clicks AFTER or ON THE SAME DAY as start -> Valid Range
+        // Re-construct dates to ensure format consistency
+        const newStart = new Date(startTime);
+        const newEnd = new Date(clickedTime);
+        onChange(formatDate(newStart), formatDate(newEnd));
+        setIsOpen(false); // Close immediately on selection complete
+      }
     }
   };
 
@@ -153,7 +147,7 @@ const DateRangePicker: React.FC<Props> = ({
   const isBetween = (d: Date) => range.start && range.end && d > range.start && d < range.end;
 
   return (
-    <div className={`relative ${className || ''}`} ref={containerRef}>
+    <div className={`relative ${className || ''} select-none`} ref={containerRef}>
       <button 
         type="button"
         onClick={() => setIsOpen(!isOpen)}
@@ -228,7 +222,7 @@ const DateRangePicker: React.FC<Props> = ({
                 const start = isStart(d.date);
                 const end = isEnd(d.date);
                 const middle = isBetween(d.date);
-                const valid = d.current; // only visually deemphasize non-current month, but still clickable
+                const valid = d.current;
 
                 return (
                   <div key={idx} className="relative h-9 w-full flex items-center justify-center">
@@ -259,6 +253,13 @@ const DateRangePicker: React.FC<Props> = ({
                 );
               })}
             </div>
+
+            {/* Helper Text for User Guidance */}
+            {range.start && !range.end && (
+               <div className="mt-3 text-center">
+                 <p className="text-[10px] text-indigo-600 font-bold animate-pulse">Select end date or click same date for 1-day range.</p>
+               </div>
+            )}
           </div>
         </div>
       )}
