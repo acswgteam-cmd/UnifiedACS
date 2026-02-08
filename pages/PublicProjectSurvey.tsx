@@ -76,13 +76,12 @@ const PublicProjectSurvey: React.FC = () => {
   const isAuthorized = token === SURVEY_FORM_SECRET;
 
   const [loading, setLoading] = useState(true);
-  // Default tab changed to 'checklist'
   const [activeTab, setActiveTab] = useState<'evaluation' | 'checklist'>('checklist');
   
   // Data State
   const [projects, setProjects] = useState<Project[]>([]);
-  // Changed from Set<string> to Record<string, string> to store specific status
-  const [projectSurveyStatus, setProjectSurveyStatus] = useState<Record<string, string>>({});
+  // Store full survey objects mapped by project_id
+  const [projectSurveysMap, setProjectSurveysMap] = useState<Record<string, ProjectSurvey>>({});
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   
   // Evaluation State
@@ -100,7 +99,7 @@ const PublicProjectSurvey: React.FC = () => {
   const [templates, setTemplates] = useState<ChecklistTemplate[]>([]);
   const [templateItems, setTemplateItems] = useState<ChecklistTemplateItem[]>([]);
   
-  // New Item State per group: key = templateId (or 'manual') -> value = item data
+  // New Item State per group
   const [newItemsMap, setNewItemsMap] = useState<Record<string, { task_name: string, size: string, quantity: number, notes: string }>>({});
 
   const isEditable = useMemo(() => {
@@ -116,7 +115,7 @@ const PublicProjectSurvey: React.FC = () => {
       try {
         const [projRes, survRes, tplRes, tplItemsRes] = await Promise.all([
           supabase.from('projects').select('*').in('status', ['DONE', 'ON PROGRESS', 'ON HOLD']).order('end_date', { ascending: false }),
-          supabase.from('project_surveys').select('project_id, status'),
+          supabase.from('project_surveys').select('*'), // Fetch all fields for score calculation
           supabase.from('checklist_templates').select('*').order('name'),
           supabase.from('checklist_template_items').select('*')
         ]);
@@ -125,12 +124,12 @@ const PublicProjectSurvey: React.FC = () => {
 
         setProjects(projRes.data || []);
         
-        // Map project_id -> status
-        const statusMap: Record<string, string> = {};
+        // Map full survey object by project_id
+        const surveyMap: Record<string, ProjectSurvey> = {};
         survRes.data?.forEach(s => {
-          statusMap[s.project_id] = s.status || 'SUBMITTED';
+          surveyMap[s.project_id] = s;
         });
-        setProjectSurveyStatus(statusMap);
+        setProjectSurveysMap(surveyMap);
 
         setTemplates(tplRes.data || []);
         setTemplateItems(tplItemsRes.data || []);
@@ -198,6 +197,18 @@ const PublicProjectSurvey: React.FC = () => {
     setChecklists(data || []);
   };
 
+  const calculateAverageScore = (survey: ProjectSurvey) => {
+    const sum = 
+      (survey.rating_speed || 0) + 
+      (survey.rating_quality || 0) + 
+      (survey.rating_accuracy || 0) + 
+      (survey.rating_coord_internal || 0) + 
+      (survey.rating_coord_client || 0) + 
+      (survey.rating_problem_solving || 0) + 
+      (survey.rating_agility || 0);
+    return (sum / 7).toFixed(1);
+  };
+
   // Group checklists by Template ID
   const groupedChecklists = useMemo(() => {
     const groups: Record<string, ProjectChecklist[]> = {};
@@ -252,18 +263,20 @@ const PublicProjectSurvey: React.FC = () => {
       };
 
       // Upsert: Updates if exists, Inserts if new
-      const { error } = await supabase.from('project_surveys').upsert(payload, { onConflict: 'project_id' });
+      const { data, error } = await supabase.from('project_surveys').upsert(payload, { onConflict: 'project_id' }).select();
 
       if (error) {
         throw error;
       } else {
         setSubmitted(true);
-        // IMPORTANT: Clear clarification flag locally to update UI immediately
+        // Reset states to transition to Thank You view
         setClarificationRequested(false);
         setClarificationMessage('');
         
-        // Update local cache so we don't need to refetch list
-        setProjectSurveyStatus(prev => ({ ...prev, [selectedProject.id]: 'SUBMITTED' }));
+        // Update local cache with full data so the score appears on the list view immediately after returning
+        if (data && data.length > 0) {
+           setProjectSurveysMap(prev => ({ ...prev, [selectedProject.id]: data[0] as ProjectSurvey }));
+        }
       }
     } catch (err: any) {
       if (err.message && (err.message.includes('clarification_notes') || err.message.includes('status'))) {
@@ -412,36 +425,75 @@ const PublicProjectSurvey: React.FC = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {projects.map(p => {
-                const surveyStatus = projectSurveyStatus[p.id];
-                const isClarificationNeeded = surveyStatus === 'CLARIFICATION_REQUESTED';
-                const isDone = surveyStatus === 'SUBMITTED';
+                const survey = projectSurveysMap[p.id];
+                const status = survey?.status || 'NONE'; // Default if undefined
+                const isClarificationNeeded = status === 'CLARIFICATION_REQUESTED';
+                const isDone = status === 'SUBMITTED';
                 
-                return (
-                  <button 
-                    key={p.id}
-                    onClick={() => { setSelectedProject(p); setActiveTab('checklist'); }}
-                    className={`text-left relative p-6 rounded-2xl border transition-all duration-300 group flex flex-col h-full shadow-sm hover:shadow-xl hover:-translate-y-1 ${isClarificationNeeded ? 'bg-amber-50 border-amber-300 hover:border-amber-500' : 'bg-white border-slate-200 hover:border-indigo-300'}`}
-                  >
+                // Card Classes
+                const baseCard = "text-left relative p-6 rounded-2xl border transition-all duration-300 flex flex-col h-full shadow-sm";
+                const activeCard = "bg-white border-slate-200 hover:shadow-xl hover:-translate-y-1 hover:border-indigo-300 cursor-pointer group";
+                const clarificationCard = "bg-amber-50 border-amber-300 hover:border-amber-500 hover:shadow-lg hover:-translate-y-1 cursor-pointer group";
+                const doneCard = "bg-slate-50 border-slate-200 opacity-90 cursor-default"; // Reduced interactivity for done
+
+                const cardClass = isClarificationNeeded ? clarificationCard : (isDone ? doneCard : activeCard);
+                const avgScore = isDone ? calculateAverageScore(survey) : null;
+
+                const CardContent = (
+                  <>
                     <div className="flex items-center justify-between mb-4">
                       <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase border ${p.status === 'DONE' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : p.status === 'ON HOLD' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
                         {p.status}
                       </span>
-                      {isClarificationNeeded ? (
+                      {isClarificationNeeded && (
                         <span className="flex items-center gap-1 text-[9px] font-black text-white uppercase bg-amber-500 px-2 py-0.5 rounded shadow-sm animate-pulse">
                           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                           Action Required
                         </span>
-                      ) : isDone ? (
-                        <span className="text-[9px] font-black text-slate-500 uppercase bg-slate-200 px-2 py-0.5 rounded">Eval Done</span>
-                      ) : null}
+                      )}
+                      {isDone && (
+                        <span className="flex items-center gap-1 text-[9px] font-black text-slate-500 uppercase bg-slate-200 px-2 py-0.5 rounded">
+                           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                           Submitted
+                        </span>
+                      )}
                     </div>
-                    <h3 className="text-lg font-black text-slate-900 uppercase leading-tight mb-2 group-hover:text-indigo-600 transition-colors">{p.project_name}</h3>
+                    <h3 className={`text-lg font-black text-slate-900 uppercase leading-tight mb-2 ${!isDone && 'group-hover:text-indigo-600'} transition-colors`}>{p.project_name}</h3>
                     <div className="mt-auto pt-4 border-t border-slate-100 w-full">
-                      <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 uppercase">
-                        <span>End: {p.end_date}</span>
-                        <span>{p.project_type}</span>
-                      </div>
+                      {isDone && avgScore ? (
+                        <div className="flex justify-between items-center">
+                           <span className="text-[10px] font-bold text-slate-400 uppercase">Your Rating</span>
+                           <div className="flex items-center gap-1.5 bg-emerald-50 px-2 py-1 rounded border border-emerald-100">
+                              <span className="text-emerald-500 text-xs">★</span>
+                              <span className="text-xs font-black text-emerald-700">{avgScore} / 3.0</span>
+                           </div>
+                        </div>
+                      ) : (
+                        <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 uppercase">
+                          <span>End: {p.end_date}</span>
+                          <span>{p.project_type}</span>
+                        </div>
+                      )}
                     </div>
+                  </>
+                );
+
+                // Determine if wrapper should be a clickable button or a static div
+                if (isDone) {
+                  return (
+                    <div key={p.id} className={cardClass}>
+                      {CardContent}
+                    </div>
+                  );
+                }
+
+                return (
+                  <button 
+                    key={p.id}
+                    onClick={() => { setSelectedProject(p); setActiveTab('checklist'); }}
+                    className={cardClass}
+                  >
+                    {CardContent}
                   </button>
                 );
               })}
