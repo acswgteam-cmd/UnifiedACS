@@ -83,29 +83,43 @@ const DateRangePicker: React.FC<Props> = ({
 
   const applyPreset = (preset: string) => {
     const now = new Date();
+    // Normalize now to midnight to avoid time issues
+    now.setHours(0,0,0,0);
+    
     let start = new Date(now);
     let end = new Date(now);
 
     switch (preset) {
-      case 'today': break;
+      case 'today': 
+        // start and end are already today
+        break;
       case 'yesterday':
         start.setDate(now.getDate() - 1);
         end.setDate(now.getDate() - 1);
         break;
-      case 'this-week':
+      case 'this-week': {
         const day = now.getDay();
-        const diff = now.getDate() - day + (day === 0 ? -6 : 1);
-        start = new Date(now.setDate(diff));
-        end = new Date(now.setDate(start.getDate() + 6));
+        const diff = (day === 0 ? -6 : 1) - day; // Monday as start
+        start.setDate(now.getDate() + diff);
+        end = new Date(start);
+        end.setDate(start.getDate() + 6);
         break;
+      }
+      case 'last-week': {
+        const day = now.getDay();
+        const diff = (day === 0 ? -6 : 1) - day - 7; // Monday of last week
+        start.setDate(now.getDate() + diff);
+        end = new Date(start);
+        end.setDate(start.getDate() + 6);
+        break;
+      }
       case 'this-month':
         start = new Date(now.getFullYear(), now.getMonth(), 1);
         end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
         break;
       case 'last-month':
-        start.setMonth(now.getMonth() - 1);
-        start.setDate(1);
-        end = new Date(start.getFullYear(), start.getMonth() + 1, 0);
+        start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        end = new Date(now.getFullYear(), now.getMonth(), 0);
         break;
     }
     
@@ -152,14 +166,14 @@ const DateRangePicker: React.FC<Props> = ({
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className={className ? 
-          `w-full h-full flex items-center justify-between px-3 text-left outline-none transition-all ${range.start ? 'text-slate-900 font-bold' : 'text-slate-400 font-semibold'}` : 
+          `w-full h-full flex items-center justify-between px-3 text-left outline-none transition-all ${range.start ? 'text-slate-900 font-bold' : 'text-slate-500 font-semibold'}` : 
           "flex items-center gap-2 bg-white border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm hover:border-slate-400 transition-all min-w-[200px]"
         }
       >
         <span className={className ? "truncate" : "text-xs font-black text-slate-700"}>
           {range.start ? `${displayDate(range.start)} – ${displayDate(range.end)}` : (placeholder || 'Select Date Range')}
         </span>
-        <svg className={`w-4 h-4 ml-1 flex-shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''} ${className ? 'text-slate-400' : 'text-slate-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className={`w-4 h-4 ml-1 flex-shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''} ${className ? 'text-slate-500' : 'text-slate-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
         </svg>
       </button>
@@ -169,9 +183,9 @@ const DateRangePicker: React.FC<Props> = ({
           
           {/* Sidebar Presets */}
           {showPresets && (
-            <div className="w-28 flex flex-col gap-1.5 border-r border-slate-100 pr-4">
+            <div className="w-32 flex flex-col gap-1.5 border-r border-slate-100 pr-4">
               <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Presets</span>
-              {['today', 'this-week', 'this-month', 'last-month'].map((p) => (
+              {['today', 'yesterday', 'this-week', 'last-week', 'this-month', 'last-month'].map((p) => (
                 <button 
                   key={p} 
                   type="button"
