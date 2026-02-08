@@ -430,13 +430,19 @@ const PublicProjectSurvey: React.FC = () => {
                 const isClarificationNeeded = status === 'CLARIFICATION_REQUESTED';
                 const isDone = status === 'SUBMITTED';
                 
-                // Card Classes
-                const baseCard = "text-left relative p-6 rounded-2xl border transition-all duration-300 flex flex-col h-full shadow-sm";
+                // Card Classes - Refined for better padding and structure
+                const baseCard = "w-full text-left relative p-6 rounded-2xl border transition-all duration-300 flex flex-col h-full shadow-sm min-h-[180px]";
+                
+                // Active Card: Standard white, lift effect, vibrant
                 const activeCard = "bg-white border-slate-200 hover:shadow-xl hover:-translate-y-1 hover:border-indigo-300 cursor-pointer group";
+                
+                // Clarification Card: Amber warning style
                 const clarificationCard = "bg-amber-50 border-amber-300 hover:border-amber-500 hover:shadow-lg hover:-translate-y-1 cursor-pointer group";
-                const doneCard = "bg-slate-50 border-slate-200 opacity-90 cursor-default"; // Reduced interactivity for done
+                
+                // Done Card: Light gray, static, no lift, no pointer
+                const doneCard = "bg-slate-100 border-slate-300 cursor-default opacity-90";
 
-                const cardClass = isClarificationNeeded ? clarificationCard : (isDone ? doneCard : activeCard);
+                const cardClass = `${baseCard} ${isClarificationNeeded ? clarificationCard : (isDone ? doneCard : activeCard)}`;
                 const avgScore = isDone ? calculateAverageScore(survey) : null;
 
                 const CardContent = (
@@ -452,20 +458,24 @@ const PublicProjectSurvey: React.FC = () => {
                         </span>
                       )}
                       {isDone && (
-                        <span className="flex items-center gap-1 text-[9px] font-black text-slate-500 uppercase bg-slate-200 px-2 py-0.5 rounded">
-                           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                        <span className="flex items-center gap-1 text-[9px] font-black text-emerald-700 uppercase bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded">
+                           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg>
                            Submitted
                         </span>
                       )}
                     </div>
-                    <h3 className={`text-lg font-black text-slate-900 uppercase leading-tight mb-2 ${!isDone && 'group-hover:text-indigo-600'} transition-colors`}>{p.project_name}</h3>
-                    <div className="mt-auto pt-4 border-t border-slate-100 w-full">
+                    
+                    <h3 className={`text-lg font-black uppercase leading-tight mb-4 ${isDone ? 'text-slate-500' : 'text-slate-900 group-hover:text-indigo-600'} transition-colors`}>
+                      {p.project_name}
+                    </h3>
+                    
+                    <div className="mt-auto pt-4 border-t border-slate-200/50 w-full">
                       {isDone && avgScore ? (
                         <div className="flex justify-between items-center">
                            <span className="text-[10px] font-bold text-slate-400 uppercase">Your Rating</span>
-                           <div className="flex items-center gap-1.5 bg-emerald-50 px-2 py-1 rounded border border-emerald-100">
-                              <span className="text-emerald-500 text-xs">★</span>
-                              <span className="text-xs font-black text-emerald-700">{avgScore} / 3.0</span>
+                           <div className="flex items-center gap-1.5 bg-white px-2 py-1 rounded border border-slate-200">
+                              <span className="text-amber-500 text-xs">★</span>
+                              <span className="text-xs font-black text-slate-700">{avgScore} / 3.0</span>
                            </div>
                         </div>
                       ) : (
