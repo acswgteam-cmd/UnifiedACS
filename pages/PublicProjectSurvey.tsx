@@ -81,7 +81,8 @@ const PublicProjectSurvey: React.FC = () => {
   
   // Data State
   const [projects, setProjects] = useState<Project[]>([]);
-  const [surveyedProjectIds, setSurveyedProjectIds] = useState<Set<string>>(new Set());
+  // Changed from Set<string> to Record<string, string> to store specific status
+  const [projectSurveyStatus, setProjectSurveyStatus] = useState<Record<string, string>>({});
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   
   // Evaluation State
@@ -115,7 +116,7 @@ const PublicProjectSurvey: React.FC = () => {
       try {
         const [projRes, survRes, tplRes, tplItemsRes] = await Promise.all([
           supabase.from('projects').select('*').in('status', ['DONE', 'ON PROGRESS', 'ON HOLD']).order('end_date', { ascending: false }),
-          supabase.from('project_surveys').select('project_id'),
+          supabase.from('project_surveys').select('project_id, status'),
           supabase.from('checklist_templates').select('*').order('name'),
           supabase.from('checklist_template_items').select('*')
         ]);
@@ -123,7 +124,14 @@ const PublicProjectSurvey: React.FC = () => {
         if (projRes.error) throw projRes.error;
 
         setProjects(projRes.data || []);
-        setSurveyedProjectIds(new Set(survRes.data?.map(s => s.project_id) || []));
+        
+        // Map project_id -> status
+        const statusMap: Record<string, string> = {};
+        survRes.data?.forEach(s => {
+          statusMap[s.project_id] = s.status || 'SUBMITTED';
+        });
+        setProjectSurveyStatus(statusMap);
+
         setTemplates(tplRes.data || []);
         setTemplateItems(tplItemsRes.data || []);
       } catch (err) {
@@ -251,7 +259,7 @@ const PublicProjectSurvey: React.FC = () => {
       } else {
         setSubmitted(true);
         // Update local cache so we don't need to refetch list
-        setSurveyedProjectIds(prev => new Set(prev).add(selectedProject.id));
+        setProjectSurveyStatus(prev => ({ ...prev, [selectedProject.id]: 'SUBMITTED' }));
       }
     } catch (err: any) {
       if (err.message && (err.message.includes('clarification_notes') || err.message.includes('status'))) {
@@ -400,20 +408,28 @@ const PublicProjectSurvey: React.FC = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {projects.map(p => {
-                // Determine status badge
-                const isDone = surveyedProjectIds.has(p.id);
+                const surveyStatus = projectSurveyStatus[p.id];
+                const isClarificationNeeded = surveyStatus === 'CLARIFICATION_REQUESTED';
+                const isDone = surveyStatus === 'SUBMITTED';
                 
                 return (
                   <button 
                     key={p.id}
                     onClick={() => { setSelectedProject(p); setActiveTab('checklist'); }}
-                    className="text-left relative p-6 rounded-2xl border transition-all duration-300 group flex flex-col h-full bg-white border-slate-200 shadow-sm hover:shadow-xl hover:border-indigo-300 hover:-translate-y-1"
+                    className={`text-left relative p-6 rounded-2xl border transition-all duration-300 group flex flex-col h-full shadow-sm hover:shadow-xl hover:-translate-y-1 ${isClarificationNeeded ? 'bg-amber-50 border-amber-300 hover:border-amber-500' : 'bg-white border-slate-200 hover:border-indigo-300'}`}
                   >
                     <div className="flex items-center justify-between mb-4">
                       <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase border ${p.status === 'DONE' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : p.status === 'ON HOLD' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
                         {p.status}
                       </span>
-                      {isDone && <span className="text-[9px] font-black text-slate-500 uppercase bg-slate-200 px-2 py-0.5 rounded">Eval Done</span>}
+                      {isClarificationNeeded ? (
+                        <span className="flex items-center gap-1 text-[9px] font-black text-white uppercase bg-amber-500 px-2 py-0.5 rounded shadow-sm animate-pulse">
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                          Action Required
+                        </span>
+                      ) : isDone ? (
+                        <span className="text-[9px] font-black text-slate-500 uppercase bg-slate-200 px-2 py-0.5 rounded">Eval Done</span>
+                      ) : null}
                     </div>
                     <h3 className="text-lg font-black text-slate-900 uppercase leading-tight mb-2 group-hover:text-indigo-600 transition-colors">{p.project_name}</h3>
                     <div className="mt-auto pt-4 border-t border-slate-100 w-full">
@@ -637,7 +653,7 @@ const PublicProjectSurvey: React.FC = () => {
                  <form onSubmit={handleSubmitSurvey} className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
                     <div className="p-8 border-b border-slate-100 bg-amber-50">
                       <h2 className="text-lg font-bold text-slate-900 uppercase tracking-wide flex items-center gap-2">
-                        <span className="text-amber-500 text-xl">★</span> Performance Survey
+                        <span className="text-amber-500 text-xl">★</span> PM Performance Survey
                       </h2>
                       <p className="text-xs text-slate-500 mt-1">Rate the design team's performance for this specific project.</p>
                     </div>
@@ -668,7 +684,7 @@ const PublicProjectSurvey: React.FC = () => {
                         </div>
                       ))}
                       <div>
-                        <label className="text-sm font-bold text-slate-900 uppercase tracking-wide mb-3 block">Additional Notes</label>
+                        <label className="text-sm font-bold text-slate-900 uppercase tracking-wide mb-3 block">Project Manager Notes</label>
                         <textarea 
                           rows={3}
                           maxLength={200}
