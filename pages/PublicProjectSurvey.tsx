@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, ChangeEvent } from 'react';
 import { useParams } from 'react-router-dom';
 import { Project, ProjectChecklist, ChecklistTemplate, ChecklistTemplateItem, ProjectSurvey } from '../types';
@@ -155,6 +156,7 @@ const PublicProjectSurvey: React.FC = () => {
         .single();
 
       if (surveyData) {
+        // If status column exists and is populated
         if (surveyData.status === 'CLARIFICATION_REQUESTED') {
           // If clarification is requested, populate form and show edit mode
           setClarificationRequested(true);
@@ -252,7 +254,11 @@ const PublicProjectSurvey: React.FC = () => {
         setSurveyedProjectIds(prev => new Set(prev).add(selectedProject.id));
       }
     } catch (err: any) {
-      alert(`Error submitting survey: ${err.message}`);
+      if (err.message && (err.message.includes('clarification_notes') || err.message.includes('status'))) {
+        alert("DATABASE ERROR: Missing required columns in 'project_surveys' table. Please ask the administrator to run the 'Clarification Request Update' SQL migration found in README.md");
+      } else {
+        alert(`Error submitting survey: ${err.message}`);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -396,8 +402,6 @@ const PublicProjectSurvey: React.FC = () => {
               {projects.map(p => {
                 // Determine status badge
                 const isDone = surveyedProjectIds.has(p.id);
-                // Note: We don't check for clarification here efficiently without fetching all rows, 
-                // but clicking the project will reveal the state.
                 
                 return (
                   <button 
