@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, ChangeEvent } from 'react';
 import { useParams } from 'react-router-dom';
-import { Project, ProjectChecklist, ChecklistTemplate, ChecklistTemplateItem } from '../types';
+import { Project, ProjectChecklist, ChecklistTemplate, ChecklistTemplateItem, ProjectSurvey } from '../types';
 import { supabase } from '../lib/supabase';
 import { SURVEY_FORM_SECRET } from '../App';
 
@@ -88,6 +88,10 @@ const PublicProjectSurvey: React.FC = () => {
   const [submitted, setSubmitted] = useState(false);
   const [ratings, setRatings] = useState<Record<string, number>>({});
   const [notes, setNotes] = useState('');
+  
+  // Clarification State
+  const [clarificationRequested, setClarificationRequested] = useState(false);
+  const [clarificationMessage, setClarificationMessage] = useState('');
 
   // Checklist State
   const [checklists, setChecklists] = useState<ProjectChecklist[]>([]);
@@ -131,10 +135,51 @@ const PublicProjectSurvey: React.FC = () => {
     loadData();
   }, [isAuthorized]);
 
-  // 2. Fetch Checklists when a project is selected
+  // 2. Fetch Checklists & Specific Survey Data when a project is selected
   useEffect(() => {
     if (!selectedProject || !supabase) return;
-    fetchChecklists();
+    
+    // Reset States
+    setSubmitted(false);
+    setRatings({});
+    setNotes('');
+    setClarificationRequested(false);
+    setClarificationMessage('');
+
+    const initProjectData = async () => {
+      // Check for existing survey data to handle clarification state
+      const { data: surveyData } = await supabase
+        .from('project_surveys')
+        .select('*')
+        .eq('project_id', selectedProject.id)
+        .single();
+
+      if (surveyData) {
+        if (surveyData.status === 'CLARIFICATION_REQUESTED') {
+          // If clarification is requested, populate form and show edit mode
+          setClarificationRequested(true);
+          setClarificationMessage(surveyData.clarification_notes || 'Please review your evaluation.');
+          setRatings({
+            rating_speed: surveyData.rating_speed,
+            rating_quality: surveyData.rating_quality,
+            rating_accuracy: surveyData.rating_accuracy,
+            rating_coord_internal: surveyData.rating_coord_internal,
+            rating_coord_client: surveyData.rating_coord_client,
+            rating_problem_solving: surveyData.rating_problem_solving,
+            rating_agility: surveyData.rating_agility
+          });
+          setNotes(surveyData.notes || '');
+          setSubmitted(false); // Ensure form is visible
+        } else {
+          // Normal submitted state
+          setSubmitted(true);
+        }
+      }
+
+      fetchChecklists();
+    };
+
+    initProjectData();
   }, [selectedProject]);
 
   const fetchChecklists = async () => {
@@ -191,20 +236,20 @@ const PublicProjectSurvey: React.FC = () => {
         rating_coord_client: ratings['rating_coord_client'],
         rating_problem_solving: ratings['rating_problem_solving'],
         rating_agility: ratings['rating_agility'],
-        notes: notes
+        notes: notes,
+        status: 'SUBMITTED', // Reset status to submitted on update
+        clarification_notes: null // Clear the clarification flag notes on resolve
       };
 
-      const { error } = await supabase.from('project_surveys').insert([payload]);
+      // Upsert: Updates if exists, Inserts if new
+      const { error } = await supabase.from('project_surveys').upsert(payload, { onConflict: 'project_id' });
 
       if (error) {
-        if (error.code === '23505') {
-          alert("Survey for this project has already been submitted!");
-          setSurveyedProjectIds(prev => new Set(prev).add(selectedProject.id));
-        } else {
-          throw error;
-        }
+        throw error;
       } else {
         setSubmitted(true);
+        // Update local cache so we don't need to refetch list
+        setSurveyedProjectIds(prev => new Set(prev).add(selectedProject.id));
       }
     } catch (err: any) {
       alert(`Error submitting survey: ${err.message}`);
@@ -318,7 +363,7 @@ const PublicProjectSurvey: React.FC = () => {
     </div>
   );
 
-  if (submitted) {
+  if (submitted && !clarificationRequested) {
     return (
       <div className="min-h-screen bg-indigo-50 flex items-center justify-center p-6">
         <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl p-10 text-center animate-in zoom-in duration-300 border-t-8 border-indigo-600">
@@ -349,7 +394,11 @@ const PublicProjectSurvey: React.FC = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {projects.map(p => {
+                // Determine status badge
                 const isDone = surveyedProjectIds.has(p.id);
+                // Note: We don't check for clarification here efficiently without fetching all rows, 
+                // but clicking the project will reveal the state.
+                
                 return (
                   <button 
                     key={p.id}
@@ -414,7 +463,7 @@ const PublicProjectSurvey: React.FC = () => {
                }`}
              >
                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
-               Evaluation Survey
+               {clarificationRequested ? '⚠️ Action Required' : 'Evaluation Survey'}
              </button>
            </div>
         </div>
@@ -423,7 +472,7 @@ const PublicProjectSurvey: React.FC = () => {
       <div className="flex-1 overflow-y-auto px-6 py-8">
         <div className="max-w-5xl mx-auto">
           
-          {/* TAB 2 (Now displayed first if active): CHECKLIST */}
+          {/* TAB 2: CHECKLIST */}
           {activeTab === 'checklist' && (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
                {/* Template Selector */}
@@ -557,10 +606,24 @@ const PublicProjectSurvey: React.FC = () => {
             </div>
           )}
 
-          {/* TAB 1 (Now second): EVALUATION */}
+          {/* TAB 1: EVALUATION */}
           {activeTab === 'evaluation' && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
-               {surveyedProjectIds.has(selectedProject.id) ? (
+               {/* Clarification Alert */}
+               {clarificationRequested && (
+                 <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-xl shadow-sm mb-6 flex items-start gap-4">
+                    <div className="p-2 bg-white rounded-full text-amber-500 shadow-sm">
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-black text-amber-800 uppercase tracking-wide">Clarification Requested</h3>
+                      <p className="text-xs text-amber-700 font-bold mt-1">From Design Team: "{clarificationMessage}"</p>
+                      <p className="text-[10px] text-amber-600 mt-2">Please update your evaluation below and resubmit.</p>
+                    </div>
+                 </div>
+               )}
+
+               {submitted && !clarificationRequested ? (
                  <div className="p-10 bg-white rounded-3xl border border-slate-200 text-center shadow-sm">
                     <div className="text-4xl mb-4">✅</div>
                     <h2 className="text-xl font-bold text-slate-900">Evaluation Completed</h2>
@@ -616,7 +679,7 @@ const PublicProjectSurvey: React.FC = () => {
                         disabled={submitting || !SURVEY_QUESTIONS.every(q => ratings[q.id] !== undefined)}
                         className="w-full py-4 rounded-xl font-bold text-sm shadow-lg uppercase tracking-widest bg-amber-500 text-white hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                       >
-                        {submitting ? 'Submitting...' : 'Submit Evaluation'}
+                        {submitting ? 'Submitting...' : (clarificationRequested ? 'Update Evaluation' : 'Submit Evaluation')}
                       </button>
                     </div>
                  </form>
@@ -630,7 +693,6 @@ const PublicProjectSurvey: React.FC = () => {
   );
 };
 
-// --- Sub-components ---
 interface TableRowProps {
   cl: ProjectChecklist;
   idx: number;
