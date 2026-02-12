@@ -55,14 +55,14 @@ const ArtworkForm: React.FC<Props> = ({ state, onSubmit }) => {
     const { id, ...logData } = formData as ArtworkLog;
     onSubmit(logData);
     
+    // Reset form but PERSIST THE DATES to allow bulk entry for the same range
     setFormData(prev => ({
       ...prev,
       artwork_name: '',
       notes: '',
       revision_count: 0,
       approval_required: false,
-      start_date: new Date().toISOString().split('T')[0],
-      end_date: ''
+      // start_date and end_date are intentionally omitted here to persist their values
     }));
   };
 
