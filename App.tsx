@@ -39,6 +39,9 @@ const App: React.FC = () => {
   const fetchData = async () => {
     if (!supabase || useDemoMode) return;
     try {
+      // Increased limits to 50,000 to prevent data cutoff (default is 1,000)
+      const MAX_ROWS = 50000;
+      
       const [
         designersRes, 
         departmentsRes, 
@@ -53,12 +56,12 @@ const App: React.FC = () => {
       ] = await Promise.all([
         supabase.from('designers').select('*').order('name'),
         supabase.from('departments').select('*').order('department_name'),
-        supabase.from('projects').select('*').order('created_at', { ascending: false }),
-        supabase.from('leads').select('*').order('created_at', { ascending: false }),
-        supabase.from('internal_designs').select('*').order('created_at', { ascending: false }),
-        supabase.from('artwork_logs').select('*').order('created_at', { ascending: false }),
-        supabase.from('project_surveys').select('*'),
-        supabase.from('project_checklists').select('*').order('created_at', { ascending: true }),
+        supabase.from('projects').select('*').order('created_at', { ascending: false }).limit(MAX_ROWS),
+        supabase.from('leads').select('*').order('created_at', { ascending: false }).limit(MAX_ROWS),
+        supabase.from('internal_designs').select('*').order('created_at', { ascending: false }).limit(MAX_ROWS),
+        supabase.from('artwork_logs').select('*').order('created_at', { ascending: false }).limit(MAX_ROWS),
+        supabase.from('project_surveys').select('*').limit(MAX_ROWS),
+        supabase.from('project_checklists').select('*').order('created_at', { ascending: true }).limit(MAX_ROWS),
         supabase.from('checklist_templates').select('*').order('name'),
         supabase.from('checklist_template_items').select('*').order('created_at')
       ]);
