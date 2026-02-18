@@ -68,7 +68,14 @@ const ArtworkTable: React.FC<Props> = ({ state, onUpdate, onDelete }) => {
 
   const handleEditChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
-    const val = (type === 'checkbox' && e.target instanceof HTMLInputElement) ? e.target.checked : value;
+    let val = (type === 'checkbox' && e.target instanceof HTMLInputElement) ? e.target.checked : value;
+    
+    // Prevent negative numbers for revision_count
+    if (name === 'revision_count') {
+      val = parseInt(val as string);
+      if (val < 0 || isNaN(val)) val = 0;
+    }
+
     setEditFormData(prev => ({ ...prev, [name]: val }));
   };
 
@@ -147,7 +154,16 @@ const ArtworkTable: React.FC<Props> = ({ state, onUpdate, onDelete }) => {
                         <input type="date" name="end_date" value={editFormData.end_date || ''} onChange={handleEditChange} className={editInputClass} />
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-center"><input type="number" name="revision_count" value={editFormData.revision_count} onChange={handleEditChange} className={`${editInputClass} text-center w-12`} /></td>
+                    <td className="px-6 py-4 text-center">
+                      <input 
+                        type="number" 
+                        name="revision_count" 
+                        min="0"
+                        value={editFormData.revision_count} 
+                        onChange={handleEditChange} 
+                        className={`${editInputClass} text-center w-12`} 
+                      />
+                    </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex justify-end gap-2">
                         <button onClick={handleSaveEdit} className="text-[10px] font-black uppercase bg-indigo-600 text-white px-2 py-1 rounded">Save</button>
