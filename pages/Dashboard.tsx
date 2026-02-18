@@ -124,8 +124,10 @@ const Dashboard: React.FC<Props> = ({ state }) => {
       return trends; 
     };
 
+    // Corrected Department Stats: Only count Internal Requests
     const departmentStats = departments.map(dept => {
-      const logs = filteredLogs.filter(l => l.department_id === dept.id);
+      // STRICT FILTER: Only include artwork logs where context is INTERNAL and matches department
+      const logs = filteredLogs.filter(l => l.department_id === dept.id && l.work_context === WorkContext.INTERNAL);
       return {
         ...dept,
         counts: {
@@ -173,13 +175,16 @@ const Dashboard: React.FC<Props> = ({ state }) => {
       
       if (relevantSurveys.length > 0) {
         let totalScoreSum = 0;
-        let accSpeed = 0, accQual = 0, accAcc = 0, accCoordInt = 0, accCoordExt = 0, accProb = 0, accAgility = 0;
+        let accSpeed = 0, accQual = 0, accAcc = 0, accCoordInt = 0, accCoordExt = 0, accProb = 0, accAgility = 0, accImpact = 0;
 
         relevantSurveys.forEach(survey => {
-          const sum7 = survey.rating_speed + survey.rating_quality + survey.rating_accuracy + 
+          const impact = survey.rating_impact || 0; // Handle legacy surveys without this field
+          const divisor = 8; // Increased from 7 to 8
+          
+          const sum = survey.rating_speed + survey.rating_quality + survey.rating_accuracy + 
                        survey.rating_coord_internal + survey.rating_coord_client + 
-                       survey.rating_problem_solving + survey.rating_agility;
-          totalScoreSum += (sum7 / 7);
+                       survey.rating_problem_solving + survey.rating_agility + impact;
+          totalScoreSum += (sum / divisor);
 
           accSpeed += survey.rating_speed;
           accQual += survey.rating_quality;
@@ -188,6 +193,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
           accCoordExt += survey.rating_coord_client;
           accProb += survey.rating_problem_solving;
           accAgility += survey.rating_agility;
+          accImpact += impact;
 
           if (survey.notes) {
             evalNotes.push({
@@ -208,7 +214,8 @@ const Dashboard: React.FC<Props> = ({ state }) => {
            coord_int: (accCoordInt / relevantSurveys.length).toFixed(1),
            coord_ext: (accCoordExt / relevantSurveys.length).toFixed(1),
            prob_solve: (accProb / relevantSurveys.length).toFixed(1),
-           agility: (accAgility / relevantSurveys.length).toFixed(1)
+           agility: (accAgility / relevantSurveys.length).toFixed(1),
+           impact: (accImpact / relevantSurveys.length).toFixed(1)
         };
       }
 
@@ -444,7 +451,10 @@ const Dashboard: React.FC<Props> = ({ state }) => {
       {/* DEPARTMENT REQUEST VOLUME */}
       <section className={cardClass}>
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-sm font-bold text-slate-900 uppercase tracking-tight">Department Request Volume</h2>
+          <div className="flex flex-col">
+            <h2 className="text-sm font-bold text-slate-900 uppercase tracking-tight">Department Request Volume</h2>
+            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wide">Internal Context Only</span>
+          </div>
           <div className="flex gap-4">
             <LegendDot color="bg-blue-500" label="2D" />
             <LegendDot color="bg-emerald-500" label="3D" />
@@ -455,16 +465,18 @@ const Dashboard: React.FC<Props> = ({ state }) => {
           <div className="space-y-6">
             {analytics.departmentStats.length === 0 ? (
                <div className="text-center py-8 text-xs font-bold text-slate-400 italic border border-dashed border-slate-200 rounded-xl">
-                 No department activity found in this period.
+                 No internal department activity found in this period.
                </div>
             ) : analytics.departmentStats.map(dept => {
               const deptTotal = dept.counts.total || 0;
               const globalMax = Math.max(...analytics.departmentStats.map(d => d.counts.total)) || 1;
+              const percentage = analytics.artworksInternal ? Math.round((deptTotal / analytics.artworksInternal) * 100) : 0;
+              
               return (
                 <div key={dept.id} className="grid grid-cols-5 items-center gap-4">
                   <div className="col-span-1 min-w-0">
                     <p className="text-xs font-bold text-slate-800 uppercase truncate leading-none mb-1">{dept.department_name}</p>
-                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">{deptTotal} Total Artworks</p>
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">{deptTotal} Items</p>
                   </div>
                   <div className="col-span-3 flex flex-col gap-2">
                     <div className="h-3.5 bg-slate-50 rounded-full flex border border-slate-100 overflow-hidden shadow-inner">
@@ -479,10 +491,11 @@ const Dashboard: React.FC<Props> = ({ state }) => {
                        <span className="text-orange-600">Vid: {dept.counts["Video"]}</span>
                     </div>
                   </div>
-                  <div className="col-span-1 text-right">
+                  <div className="col-span-1 text-right flex flex-col items-end">
                     <span className="text-xs font-bold text-slate-900 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
-                      {analytics.totalArtworks ? Math.round((deptTotal / analytics.totalArtworks) * 100) : 0}%
+                      {percentage}%
                     </span>
+                    <span className="text-[9px] font-bold text-slate-400 mt-0.5">{deptTotal} / {analytics.artworksInternal}</span>
                   </div>
                 </div>
               );
@@ -553,6 +566,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
                      <TinyScore label="Ext. Co" val={ds.detailedScores.coord_ext} />
                      <TinyScore label="Prob Solv" val={ds.detailedScores.prob_solve} />
                      <TinyScore label="Agility" val={ds.detailedScores.agility} />
+                     <TinyScore label="Impact" val={ds.detailedScores.impact} />
                   </div>
                 )}
               </div>
