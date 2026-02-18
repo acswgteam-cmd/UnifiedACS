@@ -15,7 +15,8 @@ const SURVEY_LABELS: Record<string, string> = {
   rating_coord_internal: 'Koordinasi Internal Tim',
   rating_coord_client: 'Koordinasi dengan Klien',
   rating_problem_solving: 'Problem Solving Capability',
-  rating_agility: 'Agility terhadap Perubahan'
+  rating_agility: 'Agility terhadap Perubahan',
+  rating_impact: 'Impact Value Project' // Added New Field
 };
 
 // --- Rich Text Editor Component ---
@@ -361,8 +362,6 @@ const ProjectMaster: React.FC<Props> = ({
     }
   };
 
-  // ... (Remainder of existing helper functions like checklist logic omitted for brevity as they are unchanged) ...
-  // [Preserve all other existing functions: filteredChecklists, groupedChecklists, etc.]
   const filteredChecklists = useMemo(() => {
     if (!selectedProject) return [];
     return projectChecklists
