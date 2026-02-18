@@ -108,6 +108,7 @@ export interface ProjectSurvey {
   rating_coord_client: number;
   rating_problem_solving: number;
   rating_agility: number;
+  rating_impact: number; // New Field
   notes?: string;
   created_at: string;
   status?: 'SUBMITTED' | 'CLARIFICATION_REQUESTED';
