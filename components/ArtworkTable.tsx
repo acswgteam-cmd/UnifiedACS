@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { WorkContext, ArtworkLog, AppState } from '../types';
 
@@ -68,12 +67,12 @@ const ArtworkTable: React.FC<Props> = ({ state, onUpdate, onDelete }) => {
 
   const handleEditChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
-    let val = (type === 'checkbox' && e.target instanceof HTMLInputElement) ? e.target.checked : value;
+    let val: string | number | boolean = (type === 'checkbox' && e.target instanceof HTMLInputElement) ? e.target.checked : value;
     
     // Prevent negative numbers for revision_count
     if (name === 'revision_count') {
-      val = parseInt(val as string);
-      if (val < 0 || isNaN(val)) val = 0;
+      const num = parseInt(value, 10);
+      val = (isNaN(num) || num < 0) ? 0 : num;
     }
 
     setEditFormData(prev => ({ ...prev, [name]: val }));
