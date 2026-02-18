@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, ChangeEvent } from 'react';
 import { useParams } from 'react-router-dom';
 import { Project, ProjectChecklist, ChecklistTemplate, ChecklistTemplateItem, ProjectSurvey } from '../types';
@@ -68,6 +67,15 @@ const SURVEY_QUESTIONS = [
       { val: 2, text: 'Adaptif standar' },
       { val: 3, text: 'Cepat & fleksibel' }
     ]
+  },
+  {
+    id: 'rating_impact',
+    label: '8. Impact terhadap value project',
+    options: [
+      { val: 1, text: 'Memenuhi kebutuhan project' },
+      { val: 2, text: 'Meningkatkan kualitas & value project' },
+      { val: 3, text: 'Memberi dampak signifikan pada hasil project' }
+    ]
   }
 ];
 
@@ -113,11 +121,12 @@ const PublicProjectSurvey: React.FC = () => {
     const loadData = async () => {
       setLoading(true);
       try {
+        const MAX_ROWS = 1000000;
         const [projRes, survRes, tplRes, tplItemsRes] = await Promise.all([
-          supabase.from('projects').select('*').in('status', ['DONE', 'ON PROGRESS', 'ON HOLD']).order('end_date', { ascending: false }),
-          supabase.from('project_surveys').select('*'), // Fetch all fields for score calculation
-          supabase.from('checklist_templates').select('*').order('name'),
-          supabase.from('checklist_template_items').select('*')
+          supabase.from('projects').select('*').in('status', ['DONE', 'ON PROGRESS', 'ON HOLD']).order('end_date', { ascending: false }).limit(MAX_ROWS),
+          supabase.from('project_surveys').select('*').limit(MAX_ROWS), // Fetch all fields for score calculation
+          supabase.from('checklist_templates').select('*').order('name').limit(MAX_ROWS),
+          supabase.from('checklist_template_items').select('*').limit(MAX_ROWS)
         ]);
 
         if (projRes.error) throw projRes.error;
@@ -175,7 +184,8 @@ const PublicProjectSurvey: React.FC = () => {
             rating_coord_internal: surveyData.rating_coord_internal,
             rating_coord_client: surveyData.rating_coord_client,
             rating_problem_solving: surveyData.rating_problem_solving,
-            rating_agility: surveyData.rating_agility
+            rating_agility: surveyData.rating_agility,
+            rating_impact: surveyData.rating_impact || 0 // Populate new field
           });
           setNotes(surveyData.notes || '');
           setSubmitted(false); // Ensure form is visible
@@ -193,11 +203,12 @@ const PublicProjectSurvey: React.FC = () => {
 
   const fetchChecklists = async () => {
     if (!selectedProject || !supabase) return;
-    const { data } = await supabase.from('project_checklists').select('*').eq('project_id', selectedProject.id).order('created_at');
+    const { data } = await supabase.from('project_checklists').select('*').eq('project_id', selectedProject.id).order('created_at').limit(10000);
     setChecklists(data || []);
   };
 
   const calculateAverageScore = (survey: ProjectSurvey) => {
+    const impact = survey.rating_impact || 0;
     const sum = 
       (survey.rating_speed || 0) + 
       (survey.rating_quality || 0) + 
@@ -205,8 +216,9 @@ const PublicProjectSurvey: React.FC = () => {
       (survey.rating_coord_internal || 0) + 
       (survey.rating_coord_client || 0) + 
       (survey.rating_problem_solving || 0) + 
-      (survey.rating_agility || 0);
-    return (sum / 7).toFixed(1);
+      (survey.rating_agility || 0) + 
+      impact;
+    return (sum / 8).toFixed(1); // Divisor updated to 8
   };
 
   // Group checklists by Template ID
@@ -257,6 +269,7 @@ const PublicProjectSurvey: React.FC = () => {
         rating_coord_client: ratings['rating_coord_client'],
         rating_problem_solving: ratings['rating_problem_solving'],
         rating_agility: ratings['rating_agility'],
+        rating_impact: ratings['rating_impact'], // Include new field
         notes: notes,
         status: 'SUBMITTED', // Reset status to submitted on update
         clarification_notes: null // Clear the clarification flag notes on resolve
@@ -548,7 +561,7 @@ const PublicProjectSurvey: React.FC = () => {
                  : 'text-slate-500 hover:text-amber-700 hover:bg-amber-50'
                }`}
              >
-               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363 1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
                {clarificationRequested ? '⚠️ Action Required' : 'Evaluation Survey'}
              </button>
            </div>
@@ -838,7 +851,7 @@ const TableRow: React.FC<TableRowProps> = ({ cl, idx, isEditable, cellInputClass
        {isEditable ? (
           <select 
             value={cl.status} 
-            onChange={(e) => {
+            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
               const val = e.target.value;
               handleLocalChange(cl.id, 'status', val);
               handleSaveItem(cl.id, 'status', val);
