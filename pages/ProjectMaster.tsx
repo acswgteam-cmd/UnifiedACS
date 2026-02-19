@@ -166,15 +166,91 @@ export const ProjectMaster: React.FC<Props> = ({ projects, designers, projectSur
   if (selectedProject) {
     return (
       <div className="flex flex-col h-full animate-in slide-in-from-right duration-300 relative">
+        {/* MODAL START */}
         {isManageTemplatesOpen && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsManageTemplatesOpen(false)}>
              <div className="bg-white w-full max-w-6xl h-[85vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
-              <div className="p-6 border-b border-slate-200 bg-slate-50 flex justify-between items-center"><h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Manage Checklist Templates</h3><button onClick={() => setIsManageTemplatesOpen(false)} className="p-2 bg-white rounded-lg hover:bg-slate-200 text-slate-500"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg></button></div>
-              <div className="flex flex-1 overflow-hidden">
-                <div className="w-80 border-r border-slate-200 bg-white p-4 flex flex-col flex-shrink-0">
-                   <div className="flex gap-2 mb-4"><input type="text" placeholder="New Template Name" value={newTemplateName} onChange={e => setNewTemplateName(e.target.value)} className="w-full text-xs font-bold p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-600 outline-none" /><button onClick={handleAddTemplate} className="px-4 bg-indigo-600 text-white rounded-lg text-xs font-bold shadow-sm hover:bg-indigo-700">Add</button></div>
-                   <div className="flex-1 overflow-y-auto space-y-2 pr-1">{checklistTemplates.map(t => (<div key={t.id} onClick={() => setSelectedTemplateForEdit(t)} className={`p-3 rounded-lg border cursor-pointer flex justify-between items-center group transition-all ${selectedTemplateForEdit?.id === t.id ? 'bg-indigo-50 border-indigo-300 ring-1 ring-indigo-200' : 'bg-slate-50 border-slate-200 hover:border-indigo-300 hover:bg-white'}`}>{editingTemplateNameId === t.id ? (<div className="flex items-center gap-1 w-full"><input className="w-full text-xs font-bold p-1 border border-indigo-300 rounded bg-white" value={tempTemplateName} onChange={(e) => setTempTemplateName(e.target.value)} onBlur={handleEditTemplateNameSave} onKeyDown={(e) => e.key === 'Enter' && handleEditTemplateNameSave()} autoFocus onClick={(e) => e.stopPropagation()}/></div>) : (<div className="flex items-center gap-2 overflow-hidden flex-1"><span className="text-xs font-black text-slate-800 uppercase truncate">{t.name}</span></div>)}<div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 ml-2"><button onClick={(e) => { e.stopPropagation(); handleEditTemplateNameStart(t); }} className="p-1 text-slate-400 hover:text-indigo-600 hover:bg-indigo-100 rounded"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg></button><button onClick={(e) => { e.stopPropagation(); handleDeleteTemplate(t.id); }} className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button></div></div>))}</div></div>
-                <div className="flex-1 p-8 bg-slate-50 overflow-y-auto">{selectedTemplateForEdit ? (<div className="space-y-8 max-w-4xl mx-auto"><div className="flex justify-between items-end border-b border-slate-200 pb-4"><div><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Editing Template</span><h4 className="text-2xl font-black text-slate-900 uppercase tracking-tight">{selectedTemplateForEdit.name}</h4></div><span className="text-xs font-bold text-slate-500 bg-slate-200 px-3 py-1 rounded-full">{checklistTemplateItems.filter(ti => ti.template_id === selectedTemplateForEdit.id).length} Items</span></div><div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm grid grid-cols-4 gap-3"><input type="text" placeholder="Design Name" value={newTemplateItem.task_name} onChange={e => setNewTemplateItem({...newTemplateItem, task_name: e.target.value})} className="col-span-2 text-xs font-bold p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-600 outline-none" /><input type="text" placeholder="Size (e.g. A4)" value={newTemplateItem.size} onChange={e => setNewTemplateItem({...newTemplateItem, size: e.target.value})} className="col-span-1 text-xs font-bold p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-600 outline-none" /><button onClick={handleAddTemplateItem} className="col-span-1 bg-indigo-600 text-white rounded-xl text-xs font-black uppercase tracking-wide shadow-md hover:bg-indigo-700 transition-all">Add Item</button><input type="text" placeholder="Default Notes (Optional)" value={newTemplateItem.notes} onChange={e => setNewTemplateItem({...newTemplateItem, notes: e.target.value})} className="col-span-4 text-xs font-bold p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-600 outline-none" /></div><div className="space-y-3">{checklistTemplateItems.filter(ti => ti.template_id === selectedTemplateForEdit.id).map(ti => (<div key={ti.id} className="bg-white p-4 rounded-xl border border-slate-200 flex justify-between items-start gap-4 hover:shadow-md transition-shadow group"><div className="flex-1 grid grid-cols-12 gap-4"><div className="col-span-5"><span className="text-[9px] font-black text-slate-400 uppercase block mb-1">Item Name</span><input className="w-full text-sm font-black text-slate-900 uppercase bg-transparent border-b border-transparent focus:border-indigo-500 outline-none pb-1 transition-colors" defaultValue={ti.task_name} onBlur={(e) => handleUpdateTemplateItem(ti.id, 'task_name', e.target.value)} placeholder="Item Name"/></div><div className="col-span-3"><span className="text-[9px] font-black text-slate-400 uppercase block mb-1">Size</span><input className="w-full text-xs font-bold text-slate-600 bg-transparent border-b border-transparent focus:border-indigo-500 outline-none pb-1 transition-colors" defaultValue={ti.size} onBlur={(e) => handleUpdateTemplateItem(ti.id, 'size', e.target.value)} placeholder="Size"/></div><div className="col-span-4"><span className="text-[9px] font-black text-slate-400 uppercase block mb-1">Default Notes</span><input className="w-full text-xs font-medium text-slate-500 bg-transparent border-b border-transparent focus:border-indigo-500 outline-none pb-1 transition-colors italic" defaultValue={ti.notes} onBlur={(e) => handleUpdateTemplateItem(ti.id, 'notes', e.target.value)} placeholder="Notes"/></div></div><button onClick={() => handleDeleteTemplateItem(ti.id)} className="text-slate-300 hover:text-red-500 p-2 rounded-lg hover:bg-red-50 transition-all self-center opacity-0 group-hover:opacity-100"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg></button></div>))}</div></div>) : (<div className="h-full flex flex-col items-center justify-center text-center opacity-60"><div className="w-20 h-20 bg-slate-200 rounded-full flex items-center justify-center mb-4 text-4xl">📝</div><h4 className="text-xl font-black text-slate-400 uppercase">No Template Selected</h4><p className="text-slate-400 text-sm font-medium mt-2">Select a template from the sidebar to manage its items.</p></div>)}</div></div></div>)}
+                {/* Modal Header */}
+                <div className="p-6 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+                  <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Manage Checklist Templates</h3>
+                  <button onClick={() => setIsManageTemplatesOpen(false)} className="p-2 bg-white rounded-lg hover:bg-slate-200 text-slate-500">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                  </button>
+                </div>
+                
+                <div className="flex flex-1 overflow-hidden">
+                  {/* Sidebar */}
+                  <div className="w-80 border-r border-slate-200 bg-white p-4 flex flex-col flex-shrink-0">
+                     <div className="flex gap-2 mb-4">
+                       <input type="text" placeholder="New Template Name" value={newTemplateName} onChange={e => setNewTemplateName(e.target.value)} className="w-full text-xs font-bold p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-600 outline-none" />
+                       <button onClick={handleAddTemplate} className="px-4 bg-indigo-600 text-white rounded-lg text-xs font-bold shadow-sm hover:bg-indigo-700">Add</button>
+                     </div>
+                     <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+                       {checklistTemplates.map(t => (
+                         <div key={t.id} onClick={() => setSelectedTemplateForEdit(t)} className={`p-3 rounded-lg border cursor-pointer flex justify-between items-center group transition-all ${selectedTemplateForEdit?.id === t.id ? 'bg-indigo-50 border-indigo-300 ring-1 ring-indigo-200' : 'bg-slate-50 border-slate-200 hover:border-indigo-300 hover:bg-white'}`}>
+                           {editingTemplateNameId === t.id ? (
+                             <div className="flex items-center gap-1 w-full">
+                               <input className="w-full text-xs font-bold p-1 border border-indigo-300 rounded bg-white" value={tempTemplateName} onChange={(e) => setTempTemplateName(e.target.value)} onBlur={handleEditTemplateNameSave} onKeyDown={(e) => e.key === 'Enter' && handleEditTemplateNameSave()} autoFocus onClick={(e) => e.stopPropagation()}/>
+                             </div>
+                           ) : (
+                             <div className="flex items-center gap-2 overflow-hidden flex-1">
+                               <span className="text-xs font-black text-slate-800 uppercase truncate">{t.name}</span>
+                             </div>
+                           )}
+                           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 ml-2">
+                             <button onClick={(e) => { e.stopPropagation(); handleEditTemplateNameStart(t); }} className="p-1 text-slate-400 hover:text-indigo-600 hover:bg-indigo-100 rounded"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg></button>
+                             <button onClick={(e) => { e.stopPropagation(); handleDeleteTemplate(t.id); }} className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>
+                           </div>
+                         </div>
+                       ))}
+                     </div>
+                  </div>
+                  
+                  {/* Main Content */}
+                  <div className="flex-1 p-8 bg-slate-50 overflow-y-auto">
+                    {selectedTemplateForEdit ? (
+                      <div className="space-y-8 max-w-4xl mx-auto">
+                        <div className="flex justify-between items-end border-b border-slate-200 pb-4">
+                          <div>
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Editing Template</span>
+                            <h4 className="text-2xl font-black text-slate-900 uppercase tracking-tight">{selectedTemplateForEdit.name}</h4>
+                          </div>
+                          <span className="text-xs font-bold text-slate-500 bg-slate-200 px-3 py-1 rounded-full">{checklistTemplateItems.filter(ti => ti.template_id === selectedTemplateForEdit.id).length} Items</span>
+                        </div>
+                        
+                        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm grid grid-cols-4 gap-3">
+                          <input type="text" placeholder="Design Name" value={newTemplateItem.task_name} onChange={e => setNewTemplateItem({...newTemplateItem, task_name: e.target.value})} className="col-span-2 text-xs font-bold p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-600 outline-none" />
+                          <input type="text" placeholder="Size (e.g. A4)" value={newTemplateItem.size} onChange={e => setNewTemplateItem({...newTemplateItem, size: e.target.value})} className="col-span-1 text-xs font-bold p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-600 outline-none" />
+                          <button onClick={handleAddTemplateItem} className="col-span-1 bg-indigo-600 text-white rounded-xl text-xs font-black uppercase tracking-wide shadow-md hover:bg-indigo-700 transition-all">Add Item</button>
+                          <input type="text" placeholder="Default Notes (Optional)" value={newTemplateItem.notes} onChange={e => setNewTemplateItem({...newTemplateItem, notes: e.target.value})} className="col-span-4 text-xs font-bold p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-600 outline-none" />
+                        </div>
+                        
+                        <div className="space-y-3">
+                          {checklistTemplateItems.filter(ti => ti.template_id === selectedTemplateForEdit.id).map(ti => (
+                            <div key={ti.id} className="bg-white p-4 rounded-xl border border-slate-200 flex justify-between items-start gap-4 hover:shadow-md transition-shadow group">
+                              <div className="flex-1 grid grid-cols-12 gap-4">
+                                <div className="col-span-5"><span className="text-[9px] font-black text-slate-400 uppercase block mb-1">Item Name</span><input className="w-full text-sm font-black text-slate-900 uppercase bg-transparent border-b border-transparent focus:border-indigo-500 outline-none pb-1 transition-colors" defaultValue={ti.task_name} onBlur={(e) => handleUpdateTemplateItem(ti.id, 'task_name', e.target.value)} placeholder="Item Name"/></div>
+                                <div className="col-span-3"><span className="text-[9px] font-black text-slate-400 uppercase block mb-1">Size</span><input className="w-full text-xs font-bold text-slate-600 bg-transparent border-b border-transparent focus:border-indigo-500 outline-none pb-1 transition-colors" defaultValue={ti.size} onBlur={(e) => handleUpdateTemplateItem(ti.id, 'size', e.target.value)} placeholder="Size"/></div>
+                                <div className="col-span-4"><span className="text-[9px] font-black text-slate-400 uppercase block mb-1">Default Notes</span><input className="w-full text-xs font-medium text-slate-500 bg-transparent border-b border-transparent focus:border-indigo-500 outline-none pb-1 transition-colors italic" defaultValue={ti.notes} onBlur={(e) => handleUpdateTemplateItem(ti.id, 'notes', e.target.value)} placeholder="Notes"/></div>
+                              </div>
+                              <button onClick={() => handleDeleteTemplateItem(ti.id)} className="text-slate-300 hover:text-red-500 p-2 rounded-lg hover:bg-red-50 transition-all self-center opacity-0 group-hover:opacity-100"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="h-full flex flex-col items-center justify-center text-center opacity-60">
+                        <div className="w-20 h-20 bg-slate-200 rounded-full flex items-center justify-center mb-4 text-4xl">📝</div>
+                        <h4 className="text-xl font-black text-slate-400 uppercase">No Template Selected</h4>
+                        <p className="text-slate-400 text-sm font-medium mt-2">Select a template from the sidebar to manage its items.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+             </div>
+          </div>
+        )}
+        {/* MODAL END */}
 
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 pb-4 border-b border-slate-200">
           <div className="flex items-center gap-4 w-full md:w-auto">
