@@ -91,7 +91,7 @@ interface TableRowProps {
 }
 
 const TableRow: React.FC<TableRowProps> = ({ cl, idx, isEditable, cellInputClass, handleLocalChange, handleSaveItem, handleDeleteItem }) => (
-  <tr className="hover:bg-slate-50 transition-colors group border-b border-slate-50 last:border-0">
+  <tr key={cl.id} className="hover:bg-slate-50 transition-colors group border-b border-slate-50 last:border-0">
     <td className="px-6 py-2 text-center text-slate-400">{idx + 1}</td>
     <td className="px-6 py-2">
        <div className="flex items-center gap-2">
@@ -237,6 +237,7 @@ const PublicProjectSurvey: React.FC = () => {
   
   // Data State
   const [projects, setProjects] = useState<Project[]>([]);
+  // Store full survey objects mapped by project_id
   const [projectSurveysMap, setProjectSurveysMap] = useState<Record<string, ProjectSurvey>>({});
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   
@@ -270,10 +271,10 @@ const PublicProjectSurvey: React.FC = () => {
     const loadData = async () => {
       setLoading(true);
       try {
-        const MAX_ROWS = 10000;
+        const MAX_ROWS = 1000000;
         const [projRes, survRes, tplRes, tplItemsRes] = await Promise.all([
           supabase.from('projects').select('*').in('status', ['DONE', 'ON PROGRESS', 'ON HOLD']).order('end_date', { ascending: false }).limit(MAX_ROWS),
-          supabase.from('project_surveys').select('*').limit(MAX_ROWS),
+          supabase.from('project_surveys').select('*').limit(MAX_ROWS), // Fetch all fields for score calculation
           supabase.from('checklist_templates').select('*').order('name').limit(MAX_ROWS),
           supabase.from('checklist_template_items').select('*').limit(MAX_ROWS)
         ]);
@@ -324,6 +325,7 @@ const PublicProjectSurvey: React.FC = () => {
       if (surveyData) {
         // If status column exists and is populated
         if (surveyData.status === 'CLARIFICATION_REQUESTED') {
+          // If clarification is requested, populate form and show edit mode
           setClarificationRequested(true);
           setClarificationMessage(surveyData.clarification_notes || 'Please review your evaluation.');
           setRatings({
@@ -338,8 +340,9 @@ const PublicProjectSurvey: React.FC = () => {
           });
           setEvaluatorName(surveyData.evaluator_name || ''); // Populate Name
           setNotes(surveyData.notes || '');
-          setSubmitted(false); 
+          setSubmitted(false); // Ensure form is visible
         } else {
+          // Normal submitted state
           setSubmitted(true);
         }
       }
@@ -370,9 +373,12 @@ const PublicProjectSurvey: React.FC = () => {
     return (sum / 8).toFixed(1); 
   };
 
+  // Group checklists by Template ID
   const groupedChecklists = useMemo(() => {
     const groups: Record<string, ProjectChecklist[]> = {};
     const manualItems: ProjectChecklist[] = [];
+
+    // Sort first to ensure order within groups
     const sortedChecklists = [...checklists].sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
 
     sortedChecklists.forEach(item => {
@@ -395,6 +401,7 @@ const PublicProjectSurvey: React.FC = () => {
     return templateIds;
   }, [checklists]);
 
+  // --- SURVEY HANDLERS ---
   const handleRatingChange = (questionId: string, val: number) => {
     setRatings(prev => ({ ...prev, [questionId]: val }));
   };
@@ -415,27 +422,35 @@ const PublicProjectSurvey: React.FC = () => {
         rating_problem_solving: ratings['rating_problem_solving'],
         rating_agility: ratings['rating_agility'],
         rating_impact: ratings['rating_impact'],
-        evaluator_name: evaluatorName,
+        evaluator_name: evaluatorName, // SAVE NAME
         notes: notes,
-        status: 'SUBMITTED',
-        clarification_notes: null
+        status: 'SUBMITTED', // Reset status to submitted on update
+        clarification_notes: null // Clear the clarification flag notes on resolve
       };
 
+      // Upsert: Updates if exists, Inserts if new
       const { data, error } = await supabase.from('project_surveys').upsert(payload, { onConflict: 'project_id' }).select();
 
       if (error) {
         throw error;
       } else {
         setSubmitted(true);
+        // Reset states to transition to Thank You view
         setClarificationRequested(false);
         setClarificationMessage('');
+        
+        // Update local cache with full data so the score appears on the list view immediately after returning
         if (data && data.length > 0) {
            setProjectSurveysMap(prev => ({ ...prev, [selectedProject.id]: data[0] as ProjectSurvey }));
         }
       }
     } catch (err: any) {
-      if (err.message && (err.message.includes('clarification_notes') || err.message.includes('status'))) {
-        alert("DATABASE ERROR: Missing required columns. Please ask admin to update schema.");
+      if (err.message && (
+        err.message.includes('clarification_notes') || 
+        err.message.includes('status') ||
+        err.message.includes('evaluator_name')
+      )) {
+        alert("DATABASE UPDATE REQUIRED: Database Anda belum memiliki kolom 'evaluator_name' atau 'clarification_notes'. Silakan minta Admin untuk menjalankan perintah SQL update yang ada di README.md bagian 'Troubleshooting / Update Schema'.");
       } else {
         alert(`Error submitting survey: ${err.message}`);
       }
@@ -444,6 +459,7 @@ const PublicProjectSurvey: React.FC = () => {
     }
   };
 
+  // --- CHECKLIST HANDLERS ---
   const updateNewItemState = (templateId: string | null, field: string, value: any) => {
     const mapKey = templateId || 'manual';
     setNewItemsMap(prev => ({
@@ -477,6 +493,7 @@ const PublicProjectSurvey: React.FC = () => {
     const { error } = await supabase.from('project_checklists').insert([payload]);
     if (error) alert(error.message);
     else {
+      // Reset specific input
       setNewItemsMap(prev => ({
         ...prev,
         [mapKey]: { task_name: '', size: '', quantity: 1, notes: '' }
@@ -488,15 +505,19 @@ const PublicProjectSurvey: React.FC = () => {
   const handleDeleteItem = async (id: string) => {
     if (!supabase) return;
     if (!isEditable) return;
+
+    // Optimistic update
     setChecklists(prev => prev.filter(c => c.id !== id));
     await supabase.from('project_checklists').delete().eq('id', id);
   };
 
+  // INLINE EDIT: Update state immediately for UI response
   const handleLocalChange = (id: string, field: keyof ProjectChecklist, value: any) => {
     if (!isEditable) return;
     setChecklists(prev => prev.map(c => c.id === id ? { ...c, [field]: value } : c));
   };
 
+  // INLINE EDIT: Save to DB on Blur
   const handleSaveItem = async (id: string, field: keyof ProjectChecklist, value: any) => {
     if (!supabase || !isEditable) return;
     await supabase.from('project_checklists').update({ [field]: value }).eq('id', id);
@@ -504,13 +525,14 @@ const PublicProjectSurvey: React.FC = () => {
 
   const handleToggleTemplate = async (templateId: string) => {
     if (!selectedProject || !supabase) return;
-    if (!isEditable) return;
+    if (!isEditable) return; // Guard clause
 
     if (activeTemplatesInProject.has(templateId)) {
       if (!confirm("Remove all items from this template?")) return;
       await supabase.from('project_checklists').delete().eq('project_id', selectedProject.id).eq('source_template_id', templateId);
       fetchChecklists();
     } else {
+      // Add Items
       const itemsToAdd = templateItems
         .filter(ti => ti.template_id === templateId)
         .map(ti => ({
@@ -530,8 +552,11 @@ const PublicProjectSurvey: React.FC = () => {
     }
   };
 
+  // Styles for inline inputs
   const cellInputClass = "w-full bg-transparent border-b border-transparent focus:border-indigo-600 outline-none text-xs font-bold text-slate-700 py-1 px-1 transition-colors placeholder-slate-300";
   const newRowInputClass = "w-full bg-white border border-slate-300 rounded px-2 py-2 text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none";
+
+  // --- RENDERING ---
 
   if (!isAuthorized) return (
     <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6 text-white font-bold">
@@ -554,6 +579,7 @@ const PublicProjectSurvey: React.FC = () => {
     );
   }
 
+  // --- SCREEN 1: PROJECT LIST ---
   if (!selectedProject) {
     return (
       <div className="min-h-screen bg-slate-100 py-12 px-6">
@@ -570,13 +596,16 @@ const PublicProjectSurvey: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {projects.map(p => {
                 const survey = projectSurveysMap[p.id];
-                const status = survey?.status || 'NONE'; 
+                const status = survey?.status || 'NONE'; // Default if undefined
                 const isClarificationNeeded = status === 'CLARIFICATION_REQUESTED';
                 const isDone = status === 'SUBMITTED';
+                
+                // Card Classes
                 const baseCard = "w-full text-left relative p-6 rounded-2xl border transition-all duration-300 flex flex-col h-full shadow-sm min-h-[180px]";
                 const activeCard = "bg-white border-slate-200 hover:shadow-xl hover:-translate-y-1 hover:border-indigo-300 cursor-pointer group";
                 const clarificationCard = "bg-amber-50 border-amber-300 hover:border-amber-500 hover:shadow-lg hover:-translate-y-1 cursor-pointer group";
                 const doneCard = "bg-slate-100 border-slate-300 cursor-default opacity-90";
+
                 const cardClass = `${baseCard} ${isClarificationNeeded ? clarificationCard : (isDone ? doneCard : activeCard)}`;
                 const avgScore = isDone ? calculateAverageScore(survey) : null;
 
@@ -623,8 +652,13 @@ const PublicProjectSurvey: React.FC = () => {
                   </>
                 );
 
-                if (isDone) return <div key={p.id} className={cardClass}>{CardContent}</div>;
-                return <button key={p.id} onClick={() => { setSelectedProject(p); setActiveTab('checklist'); }} className={cardClass}>{CardContent}</button>;
+                if (isDone) {
+                  return <div key={p.id} className={cardClass}>{CardContent}</div>;
+                }
+
+                return (
+                  <button key={p.id} onClick={() => { setSelectedProject(p); setActiveTab('checklist'); }} className={cardClass}>{CardContent}</button>
+                );
               })}
             </div>
           )}
@@ -633,8 +667,10 @@ const PublicProjectSurvey: React.FC = () => {
     );
   }
 
+  // --- SCREEN 2: PROJECT HUB (TABS) ---
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
+      {/* Header */}
       <div className="bg-white border-b border-slate-200 px-6 py-4 sticky top-0 z-30">
         <div className="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
            <div className="flex items-center gap-4">
@@ -648,8 +684,20 @@ const PublicProjectSurvey: React.FC = () => {
            </div>
            
            <div className="flex bg-slate-100 p-1 rounded-xl gap-1">
-             <button onClick={() => setActiveTab('checklist')} className={`px-6 py-2 rounded-lg text-xs font-black uppercase tracking-wide transition-all ${activeTab === 'checklist' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Design Checklist</button>
-             <button onClick={() => setActiveTab('evaluation')} className={`px-6 py-2 rounded-lg text-xs font-black uppercase tracking-wide transition-all flex items-center gap-1.5 ${activeTab === 'evaluation' ? 'bg-amber-400 text-amber-900 shadow-md ring-1 ring-amber-500/20' : 'text-slate-500 hover:text-amber-700 hover:bg-amber-50'}`}>
+             <button 
+               onClick={() => setActiveTab('checklist')}
+               className={`px-6 py-2 rounded-lg text-xs font-black uppercase tracking-wide transition-all ${activeTab === 'checklist' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+             >
+               Design Checklist
+             </button>
+             <button 
+               onClick={() => setActiveTab('evaluation')}
+               className={`px-6 py-2 rounded-lg text-xs font-black uppercase tracking-wide transition-all flex items-center gap-1.5 ${
+                 activeTab === 'evaluation' 
+                 ? 'bg-amber-400 text-amber-900 shadow-md ring-1 ring-amber-500/20' 
+                 : 'text-slate-500 hover:text-amber-700 hover:bg-amber-50'
+               }`}
+             >
                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363 1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
                {clarificationRequested ? '⚠️ Action Required' : 'Evaluation Survey'}
              </button>
