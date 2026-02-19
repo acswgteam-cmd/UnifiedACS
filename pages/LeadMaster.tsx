@@ -3,7 +3,7 @@ import React, { useState, useMemo, useRef } from 'react';
 import { Lead } from '../types';
 import { jsPDF } from 'jspdf';
 import { supabase } from '../lib/supabase';
-import { PUBLIC_FORM_SECRET } from '../App';
+import { PUBLIC_FORM_SECRET } from '../data/mockData';
 
 interface Props {
   leads: Lead[];

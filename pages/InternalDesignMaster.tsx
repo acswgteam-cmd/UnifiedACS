@@ -1,8 +1,7 @@
-
 import React, { useState, useMemo, useRef } from 'react';
 import { InternalDesign, Department, InternalStatus } from '../types';
 import { supabase } from '../lib/supabase';
-import { INTERNAL_FORM_SECRET } from '../App';
+import { INTERNAL_FORM_SECRET } from '../data/mockData';
 
 interface Props {
   internalDesigns: InternalDesign[];

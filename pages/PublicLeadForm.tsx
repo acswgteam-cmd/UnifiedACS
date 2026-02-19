@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Lead } from '../types';
 import { supabase } from '../lib/supabase';
-import { PUBLIC_FORM_SECRET } from '../App';
+import { PUBLIC_FORM_SECRET } from '../data/mockData';
 
 interface Props {
   onHostSubmit?: (leads: Lead[]) => void;
@@ -141,7 +141,7 @@ const PublicLeadForm: React.FC<Props> = ({ onHostSubmit, currentLeads = [] }) =>
 
             <section className="space-y-6">
               <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2 border-b-2 border-slate-100 pb-2">
-                <span className="text-indigo-600">02</span> Brief & Assets
+                <span className="text-indigo-600">02</span> Brief & Artworks
               </h2>
               <div>
                 <label className={labelClass}>Brief / Scope of Work</label>

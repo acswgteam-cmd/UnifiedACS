@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { InternalDesign, Department } from '../types';
 import { supabase } from '../lib/supabase';
-import { INTERNAL_FORM_SECRET } from '../App';
+import { INTERNAL_FORM_SECRET } from '../data/mockData';
 
 interface Props {
   onHostSubmit?: () => void;
