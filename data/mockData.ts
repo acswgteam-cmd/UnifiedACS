@@ -1,6 +1,10 @@
 
 import { WorkContext, AppState, ArtworkLog, Project, Lead, InternalDesign } from '../types';
 
+export const PUBLIC_FORM_SECRET = 'acs-creative-portal-v1-992837465';
+export const INTERNAL_FORM_SECRET = 'acs-internal-request-v1-554219830';
+export const SURVEY_FORM_SECRET = 'acs-project-eval-v1-11223344';
+
 const formatDate = (date: Date) => date.toISOString().split('T')[0];
 const dateOffset = (days: number) => {
   const d = new Date();
