@@ -5,7 +5,7 @@ import { AppState, ArtworkLog } from './types';
 import ArtworkLogPage from './pages/ArtworkLogPage';
 import DepartmentMaster from './pages/DepartmentMaster';
 import DesignerMaster from './pages/DesignerMaster';
-import ProjectMaster from './pages/ProjectMaster';
+import { ProjectMaster } from './pages/ProjectMaster';
 import LeadMaster from './pages/LeadMaster';
 import InternalDesignMaster from './pages/InternalDesignMaster';
 import PublicLeadForm from './pages/PublicLeadForm';
@@ -14,10 +14,6 @@ import PublicProjectSurvey from './pages/PublicProjectSurvey';
 import Dashboard from './pages/Dashboard';
 import { supabase, isSupabaseConfigured } from './lib/supabase';
 import { INITIAL_STATE } from './data/mockData';
-
-export const PUBLIC_FORM_SECRET = 'acs-creative-portal-v1-992837465';
-export const INTERNAL_FORM_SECRET = 'acs-internal-request-v1-554219830';
-export const SURVEY_FORM_SECRET = 'acs-project-eval-v1-11223344';
 
 const App: React.FC = () => {
   const [useDemoMode, setUseDemoMode] = useState(false);
