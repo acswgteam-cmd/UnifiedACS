@@ -106,22 +106,17 @@ CREATE TABLE project_surveys (
   rating_coord_client INTEGER NOT NULL,
   rating_problem_solving INTEGER NOT NULL,
   rating_agility INTEGER NOT NULL,
+  rating_impact INTEGER DEFAULT 0,
+  evaluator_name TEXT,
   notes TEXT,
+  status TEXT DEFAULT 'SUBMITTED',
+  clarification_notes TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 ```
 
-### 4. Feature Updates (Jalankan Jika Belum Ada)
+### 4. Project Checklist (Fitur Baru)
 
-#### Clarification Request Loop (Update 2024)
-Jalankan ini jika Anda mendapatkan error `Could not find the 'clarification_notes' column`.
-
-```sql
-ALTER TABLE project_surveys ADD COLUMN status TEXT DEFAULT 'SUBMITTED';
-ALTER TABLE project_surveys ADD COLUMN clarification_notes TEXT;
-```
-
-#### Project Checklist
 ```sql
 CREATE TABLE checklist_templates (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -151,12 +146,23 @@ CREATE TABLE project_checklists (
 );
 ```
 
-## 🛠 Features
-- **Dashboard Analytics**: Visualisasi produksi bulanan (2D, 3D, Video).
-- **Internal Design Portal**: Form khusus untuk permintaan antar departemen.
-- **Project Evaluation**: Form survei kinerja tim per project.
-- **Project & Lead Master**: Manajemen timeline event dan proposal.
-- **Secure Links**: Link form publik yang diamankan dengan token rahasia.
+---
+
+## 🛠 Troubleshooting / Update Schema
+
+Jika Anda mengalami error seperti `Could not find the 'evaluator_name' column` atau `clarification_notes`, jalankan perintah update ini di SQL Editor untuk menambahkan kolom yang kurang secara otomatis:
+
+```sql
+-- Menambahkan kolom evaluator_name jika belum ada
+ALTER TABLE project_surveys ADD COLUMN IF NOT EXISTS evaluator_name TEXT;
+
+-- Menambahkan kolom untuk fitur klarifikasi jika belum ada
+ALTER TABLE project_surveys ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'SUBMITTED';
+ALTER TABLE project_surveys ADD COLUMN IF NOT EXISTS clarification_notes TEXT;
+
+-- Menambahkan rating impact jika belum ada
+ALTER TABLE project_surveys ADD COLUMN IF NOT EXISTS rating_impact INTEGER DEFAULT 0;
+```
 
 ---
 *Built for ACS Creative Operations.*
