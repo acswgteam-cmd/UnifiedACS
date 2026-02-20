@@ -11,24 +11,55 @@ const ArtworkTable: React.FC<Props> = ({ state, onUpdate, onDelete }) => {
   const [filterContext, setFilterContext] = useState<string>('ALL');
   const [filterDesigner, setFilterDesigner] = useState<string>('ALL');
   const [filterDept, setFilterDept] = useState<string>('ALL');
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editFormData, setEditFormData] = useState<Partial<ArtworkLog>>({});
 
+  const getContextLabelForSearch = (log: ArtworkLog): string => {
+    switch (log.work_context) {
+      case WorkContext.PROJECT: return state.projects.find(p => p.id === log.project_id)?.project_name || 'Project';
+      case WorkContext.LEAD: return state.leads.find(l => l.id === log.lead_id)?.lead_name || 'Lead';
+      case WorkContext.INTERNAL:
+        const dept = state.departments.find(d => d.id === log.department_id)?.department_name || 'Internal';
+        const task = state.internalDesigns.find(it => it.id === log.internal_design_id)?.task_name;
+        return task ? `${task} (${dept})` : dept;
+    }
+  };
+
   const filteredLogs = useMemo(() => {
+    const query = searchQuery.toLowerCase().trim();
     return state.artworkLogs.filter(log => {
       const matchContext = filterContext === 'ALL' || log.work_context === filterContext;
       const matchDesigner = filterDesigner === 'ALL' || log.pic_designer_id === filterDesigner;
       const matchDept = filterDept === 'ALL' || log.department_id === filterDept;
-      return matchContext && matchDesigner && matchDept;
+
+      if (!matchContext || !matchDesigner || !matchDept) return false;
+
+      if (!query) return true;
+
+      const designerName = state.designers.find(d => d.id === log.pic_designer_id)?.name || '';
+      const contextLabel = getContextLabelForSearch(log);
+      const searchableFields = [
+        log.artwork_name,
+        log.artwork_type,
+        log.work_context,
+        designerName,
+        contextLabel,
+        log.notes || '',
+        log.start_date,
+        log.end_date,
+      ].join(' ').toLowerCase();
+
+      return searchableFields.includes(query);
     });
-  }, [state.artworkLogs, filterContext, filterDesigner, filterDept]);
+  }, [state.artworkLogs, filterContext, filterDesigner, filterDept, searchQuery, state.designers, state.projects, state.leads, state.departments, state.internalDesigns]);
 
   const getContextLabel = (log: ArtworkLog) => {
     switch (log.work_context) {
       case WorkContext.PROJECT: return state.projects.find(p => p.id === log.project_id)?.project_name || 'Project';
       case WorkContext.LEAD: return state.leads.find(l => l.id === log.lead_id)?.lead_name || 'Lead';
-      case WorkContext.INTERNAL: 
+      case WorkContext.INTERNAL:
         const dept = state.departments.find(d => d.id === log.department_id)?.department_name || 'Internal';
         const task = state.internalDesigns.find(it => it.id === log.internal_design_id)?.task_name;
         return task ? `${task} (${dept})` : dept;
@@ -68,7 +99,7 @@ const ArtworkTable: React.FC<Props> = ({ state, onUpdate, onDelete }) => {
   const handleEditChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     let val: string | number | boolean = (type === 'checkbox' && e.target instanceof HTMLInputElement) ? e.target.checked : value;
-    
+
     // Prevent negative numbers for revision_count
     if (name === 'revision_count') {
       const num = parseInt(value, 10);
@@ -83,8 +114,34 @@ const ArtworkTable: React.FC<Props> = ({ state, onUpdate, onDelete }) => {
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
       <div className="p-4 border-b border-slate-200 bg-slate-50 flex flex-wrap items-center gap-4 z-10">
-        <h3 className="text-sm font-black text-slate-900 mr-auto uppercase tracking-wide">Logged Production ({filteredLogs.length})</h3>
-        
+        <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide">Logged Production ({filteredLogs.length})</h3>
+
+        {/* Search Bar */}
+        <div className="relative mr-auto">
+          <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
+            <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search artwork..."
+            className="text-[11px] font-bold border border-slate-300 rounded-lg py-1.5 pl-8 pr-7 bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none transition-all text-slate-700 w-52 placeholder-slate-400"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute inset-y-0 right-0 pr-2 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
+
         <div className="flex items-center gap-2 border-l border-slate-300 pl-4">
           <label className="text-[10px] font-black text-slate-700 uppercase">Context</label>
           <select value={filterContext} onChange={(e) => setFilterContext(e.target.value)} className="text-[10px] font-bold border-slate-400 rounded-lg p-1.5 bg-white border">
@@ -123,17 +180,17 @@ const ArtworkTable: React.FC<Props> = ({ state, onUpdate, onDelete }) => {
                 return (
                   <tr key={log.id} className="bg-indigo-50/20">
                     <td className="px-6 py-4">
-                      <input 
-                        name="artwork_name" 
-                        value={editFormData.artwork_name} 
-                        onChange={handleEditChange} 
-                        className={`${editInputClass} mb-2`} 
+                      <input
+                        name="artwork_name"
+                        value={editFormData.artwork_name}
+                        onChange={handleEditChange}
+                        className={`${editInputClass} mb-2`}
                         placeholder="Artwork Name"
                       />
-                      <select 
-                        name="artwork_type" 
-                        value={editFormData.artwork_type} 
-                        onChange={handleEditChange} 
+                      <select
+                        name="artwork_type"
+                        value={editFormData.artwork_type}
+                        onChange={handleEditChange}
                         className={editInputClass}
                       >
                         <option value="2D Design">2D Design</option>
@@ -154,13 +211,13 @@ const ArtworkTable: React.FC<Props> = ({ state, onUpdate, onDelete }) => {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-center">
-                      <input 
-                        type="number" 
-                        name="revision_count" 
+                      <input
+                        type="number"
+                        name="revision_count"
                         min="0"
-                        value={editFormData.revision_count} 
-                        onChange={handleEditChange} 
-                        className={`${editInputClass} text-center w-12`} 
+                        value={editFormData.revision_count}
+                        onChange={handleEditChange}
+                        className={`${editInputClass} text-center w-12`}
                       />
                     </td>
                     <td className="px-6 py-4 text-right">

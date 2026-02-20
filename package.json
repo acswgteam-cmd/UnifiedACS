@@ -1,4 +1,3 @@
-
 {
   "name": "acs-unified-log-artwork",
   "private": true,
@@ -11,7 +10,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.7",
-    "jspdf": "^2.5.1",
+    "jspdf": "^4.2.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.1.0"
