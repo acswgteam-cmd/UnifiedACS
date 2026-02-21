@@ -54,11 +54,11 @@ const PublicInternalForm: React.FC<Props> = ({ onHostSubmit, departments }) => {
     }
   };
 
-  const inputClass = "w-full rounded-xl border-slate-300 text-slate-900 text-base p-4 border focus:ring-4 focus:ring-purple-100 focus:border-purple-600 outline-none transition-all placeholder-slate-400 bg-white shadow-sm font-medium appearance-none";
-  const labelClass = "text-sm font-semibold text-slate-900 uppercase tracking-wide mb-2 block ml-1";
+  const inputClass = "w-full rounded-xl border-zinc-300 text-zinc-900 text-base p-4 border focus:ring-4 focus:ring-purple-100 focus:border-purple-600 outline-none transition-all placeholder-slate-400 bg-white shadow-sm font-medium appearance-none";
+  const labelClass = "text-sm font-semibold text-zinc-900 uppercase tracking-wide mb-2 block ml-1";
 
   if (!isAuthorized) return (
-    <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6 text-white font-bold">
+    <div className="min-h-screen bg-[#1A1C20] flex items-center justify-center p-6 text-white font-bold">
       403 UNAUTHORIZED PORTAL
     </div>
   );
@@ -66,13 +66,13 @@ const PublicInternalForm: React.FC<Props> = ({ onHostSubmit, departments }) => {
   if (submitted) {
     return (
       <div className="min-h-screen bg-purple-50 flex items-center justify-center p-6">
-        <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl p-10 text-center animate-in zoom-in duration-300 border-t-8 border-purple-600">
+        <div className="max-w-md w-full bg-white rounded-[20px] shadow-2xl p-10 text-center animate-in zoom-in duration-300 border-t-8 border-purple-600">
           <div className="w-20 h-20 bg-purple-100 text-purple-700 rounded-full flex items-center justify-center mx-auto mb-6">
             <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"/></svg>
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 mb-2">Request Sent!</h1>
-          <p className="text-slate-700 mb-8 font-medium">Internal creative task has been logged as 'NEW'. Our studio team will review it.</p>
-          <button onClick={() => setSubmitted(false)} className="w-full py-4 bg-purple-600 text-white rounded-2xl font-bold shadow-lg">Submit Another</button>
+          <h1 className="text-2xl font-bold text-zinc-900 mb-2">Request Sent!</h1>
+          <p className="text-zinc-700 mb-8 font-medium">Internal creative task has been logged as 'NEW'. Our studio team will review it.</p>
+          <button onClick={() => setSubmitted(false)} className="w-full py-4 bg-purple-600 text-white rounded-[20px] font-bold shadow-sm border border-[#EAEAEA]">Submit Another</button>
         </div>
       </div>
     );
@@ -82,11 +82,11 @@ const PublicInternalForm: React.FC<Props> = ({ onHostSubmit, departments }) => {
     <div className="min-h-screen bg-purple-50 py-12 px-6">
       <div className="max-w-2xl mx-auto">
         <div className="text-center mb-10">
-          <div className="inline-block px-4 py-1.5 bg-purple-600 text-white rounded-full text-[10px] font-bold uppercase tracking-widest mb-4">Internal Studio Portal</div>
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Internal Creative Request</h1>
+          <div className="inline-block px-4 py-1.5 bg-purple-600 text-white rounded-full text-[10px] font-bold uppercase tracking-wider mb-4">Internal Studio Portal</div>
+          <h1 className="text-3xl font-bold text-zinc-900 tracking-tight">Internal Creative Request</h1>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-3xl shadow-2xl border border-slate-200 p-8 md:p-12 overflow-hidden relative">
+        <form onSubmit={handleSubmit} className="bg-white rounded-[20px] shadow-2xl border border-[#EAEAEA] p-8 md:p-12 overflow-hidden relative">
           {loading && <div className="absolute top-0 left-0 w-full h-1.5 bg-purple-600 animate-pulse"></div>}
           <div className="space-y-8">
             <section className="space-y-6">
@@ -118,7 +118,7 @@ const PublicInternalForm: React.FC<Props> = ({ onHostSubmit, departments }) => {
                 <textarea rows={4} placeholder="Describe what you need, size, colors, and links to assets..." value={formData.brief} onChange={e => setFormData({...formData, brief: e.target.value})} className={inputClass} />
               </div>
             </section>
-            <button type="submit" disabled={loading} className="w-full py-5 bg-purple-600 text-white rounded-2xl font-bold text-lg shadow-xl shadow-purple-100 hover:bg-purple-700 transition-all flex items-center justify-center gap-3">
+            <button type="submit" disabled={loading} className="w-full py-5 bg-purple-600 text-white rounded-[20px] font-bold text-lg shadow-sm border border-[#EAEAEA] shadow-purple-100 hover:bg-purple-700 transition-all flex items-center justify-center gap-3">
               {loading ? 'Submitting...' : 'Send to Studio Team'}
             </button>
           </div>

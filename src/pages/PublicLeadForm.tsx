@@ -56,17 +56,17 @@ const PublicLeadForm: React.FC<Props> = ({ onHostSubmit, currentLeads = [] }) =>
     }
   };
 
-  const inputClass = "w-full rounded-xl border-slate-300 text-slate-900 text-base p-4 border focus:ring-4 focus:ring-indigo-100 focus:border-indigo-600 outline-none transition-all placeholder-slate-400 bg-white shadow-sm font-medium appearance-none";
-  const labelClass = "text-sm font-semibold text-slate-900 uppercase tracking-wide mb-2 block ml-1";
+  const inputClass = "w-full rounded-xl border-zinc-300 text-zinc-900 text-base p-4 border focus:ring-4 focus:ring-indigo-100 focus:border-indigo-600 outline-none transition-all placeholder-slate-400 bg-white shadow-sm font-medium appearance-none";
+  const labelClass = "text-sm font-semibold text-zinc-900 uppercase tracking-wide mb-2 block ml-1";
 
   if (!isAuthorized) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6">
-        <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl p-10 text-center animate-in zoom-in duration-300">
+      <div className="min-h-screen bg-[#1A1C20] flex items-center justify-center p-6">
+        <div className="max-w-md w-full bg-white rounded-[20px] shadow-2xl p-10 text-center animate-in zoom-in duration-300">
           <div className="text-6xl mb-6">🔒</div>
-          <h1 className="text-2xl font-bold text-slate-900 mb-2">Access Denied</h1>
-          <p className="text-slate-500 mb-8 font-medium">Invalid or expired inquiry token. Please contact the design department for a valid link.</p>
-          <div className="p-4 bg-slate-50 rounded-2xl text-[10px] text-slate-400 font-mono break-all">
+          <h1 className="text-2xl font-bold text-zinc-900 mb-2">Access Denied</h1>
+          <p className="text-zinc-500 mb-8 font-medium">Invalid or expired inquiry token. Please contact the design department for a valid link.</p>
+          <div className="p-4 bg-[#FCFCFC] rounded-[20px] text-[10px] text-zinc-400 font-mono break-all">
             ERR_INVALID_AUTH_TOKEN_V1
           </div>
         </div>
@@ -76,16 +76,16 @@ const PublicLeadForm: React.FC<Props> = ({ onHostSubmit, currentLeads = [] }) =>
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-slate-100 flex items-center justify-center p-6">
-        <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl p-10 text-center animate-in zoom-in duration-300">
+      <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center p-6">
+        <div className="max-w-md w-full bg-white rounded-[20px] shadow-2xl p-10 text-center animate-in zoom-in duration-300">
           <div className="w-20 h-20 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto mb-6">
             <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"/></svg>
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 mb-2">Request Submitted!</h1>
-          <p className="text-slate-700 mb-8 font-medium">Your creative request has been queued. Our designers will review it shortly.</p>
+          <h1 className="text-2xl font-bold text-zinc-900 mb-2">Request Submitted!</h1>
+          <p className="text-zinc-700 mb-8 font-medium">Your creative request has been queued. Our designers will review it shortly.</p>
           <button 
             onClick={() => setSubmitted(false)}
-            className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold shadow-lg hover:bg-slate-800 transition-colors"
+            className="w-full py-4 bg-[#1A1C20] text-white rounded-[20px] font-bold shadow-sm border border-[#EAEAEA] hover:bg-[#FAFAFA]800 transition-colors"
           >
             Submit Another Request
           </button>
@@ -95,22 +95,22 @@ const PublicLeadForm: React.FC<Props> = ({ onHostSubmit, currentLeads = [] }) =>
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 py-12 px-6">
+    <div className="min-h-screen bg-[#F8F9FA] py-12 px-6">
       <div className="max-w-2xl mx-auto">
         <div className="text-center mb-10">
-          <div className="inline-block px-4 py-1.5 bg-indigo-600 text-white rounded-full text-[10px] font-bold uppercase tracking-widest mb-4">
+          <div className="inline-block px-4 py-1.5 bg-zinc-900 text-white rounded-full text-[10px] font-bold uppercase tracking-wider mb-4">
             Creative Support Request
           </div>
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Inquiry Request</h1>
+          <h1 className="text-3xl font-bold text-zinc-900 tracking-tight">Inquiry Request</h1>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-3xl shadow-2xl border border-slate-200 p-8 md:p-12 overflow-hidden relative">
-          {loading && <div className="absolute top-0 left-0 w-full h-1.5 bg-indigo-600 animate-pulse"></div>}
+        <form onSubmit={handleSubmit} className="bg-white rounded-[20px] shadow-2xl border border-[#EAEAEA] p-8 md:p-12 overflow-hidden relative">
+          {loading && <div className="absolute top-0 left-0 w-full h-1.5 bg-zinc-900 animate-pulse"></div>}
           
           <div className="space-y-8">
             <section className="space-y-6">
-              <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2 border-b-2 border-slate-100 pb-2">
-                <span className="text-indigo-600">01</span> Project Details
+              <h2 className="text-lg font-bold text-zinc-900 flex items-center gap-2 border-b-2 border-zinc-100 pb-2">
+                <span className="text-zinc-900">01</span> Project Details
               </h2>
               <div>
                 <label className={labelClass}>Project Name</label>
@@ -132,7 +132,7 @@ const PublicLeadForm: React.FC<Props> = ({ onHostSubmit, currentLeads = [] }) =>
                     <option value="B">Grade B (Standard)</option>
                     <option value="C">Grade C (Low)</option>
                   </select>
-                  <div className="pointer-events-none absolute right-4 top-[50px] text-slate-400">
+                  <div className="pointer-events-none absolute right-4 top-[50px] text-zinc-400">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"/></svg>
                   </div>
                 </div>
@@ -140,8 +140,8 @@ const PublicLeadForm: React.FC<Props> = ({ onHostSubmit, currentLeads = [] }) =>
             </section>
 
             <section className="space-y-6">
-              <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2 border-b-2 border-slate-100 pb-2">
-                <span className="text-indigo-600">02</span> Brief & Artworks
+              <h2 className="text-lg font-bold text-zinc-900 flex items-center gap-2 border-b-2 border-zinc-100 pb-2">
+                <span className="text-zinc-900">02</span> Brief & Artworks
               </h2>
               <div>
                 <label className={labelClass}>Brief / Scope of Work</label>
@@ -153,7 +153,7 @@ const PublicLeadForm: React.FC<Props> = ({ onHostSubmit, currentLeads = [] }) =>
               </div>
             </section>
 
-            <button type="submit" disabled={loading} className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-bold text-lg shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center justify-center gap-3">
+            <button type="submit" disabled={loading} className="w-full py-5 bg-zinc-900 text-white rounded-[20px] font-bold text-lg shadow-sm border border-[#EAEAEA] shadow-indigo-100 hover:bg-black transition-all flex items-center justify-center gap-3">
               {loading ? 'Submitting...' : 'Send Request to Design Team'}
               {!loading && <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>}
             </button>

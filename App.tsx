@@ -174,12 +174,12 @@ const App: React.FC = () => {
         <Route path="/portal/v1/survey/:token" element={<PublicProjectSurvey />} />
 
         <Route path="/admin/*" element={
-          <div className="flex h-screen overflow-hidden bg-slate-50 text-slate-900">
-            {/* Sidebar: Added overflow-visible for tooltips when collapsed */}
-            <aside className={`${collapsed ? 'w-20 overflow-visible' : 'w-64 overflow-hidden'} bg-slate-900 text-white flex-shrink-0 flex flex-col shadow-xl z-20 transition-all duration-300 relative`}>
-              <div className={`p-4 flex items-center ${collapsed ? 'justify-center' : 'justify-between'}`}>
-                {!collapsed && <h1 className="text-lg font-bold tracking-tight leading-tight">ACS UNIFIED<br /><span className="text-indigo-400">LOG ARTWORK</span></h1>}
-                <button onClick={() => setCollapsed(!collapsed)} className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors">
+          <div className="flex h-screen overflow-hidden bg-[#F8F9FA] text-slate-900">
+            {/* Sidebar: Updated to match elegant dark theme */}
+            <aside className={`${collapsed ? 'w-20 overflow-visible' : 'w-64 overflow-hidden'} bg-[#1A1C20] text-zinc-300 flex-shrink-0 flex flex-col z-20 transition-all duration-300 relative border-r border-zinc-800`}>
+              <div className={`p-6 flex items-center ${collapsed ? 'justify-center' : 'justify-between'}`}>
+                {!collapsed && <h1 className="text-xl font-bold tracking-tight text-white">ACS UNIFIED</h1>}
+                <button onClick={() => setCollapsed(!collapsed)} className="p-1.5 rounded-lg bg-zinc-800/50 hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors">
                   {collapsed ? (
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" /></svg>
                   ) : (
@@ -188,11 +188,11 @@ const App: React.FC = () => {
                 </button>
               </div>
               {/* Nav: Switch overflow based on state to allow tooltips when collapsed */}
-              <nav className={`flex-1 px-3 py-4 space-y-2 ${collapsed ? 'overflow-visible' : 'overflow-y-auto scrollbar-hide'}`}>
+              <nav className={`flex-1 px-4 py-6 space-y-1 ${collapsed ? 'overflow-visible' : 'overflow-y-auto scrollbar-hide'}`}>
                 <NavLink to="/admin/dashboard" icon={icons.dashboard} label="Dashboard" collapsed={collapsed} />
                 <NavLink to="/admin/artwork-logs" icon={icons.artwork} label="Artwork Logs" collapsed={collapsed} />
 
-                <div className={`mt-8 mb-2 px-3 text-[10px] font-bold text-slate-500 uppercase ${collapsed ? 'text-center' : ''}`}>
+                <div className={`mt-10 mb-4 px-3 text-[11px] font-semibold text-zinc-500 uppercase tracking-widest ${collapsed ? 'text-center' : ''}`}>
                   {collapsed ? '•••' : 'Master Data'}
                 </div>
 
@@ -252,14 +252,14 @@ const NavLink: React.FC<{ to: string; icon: React.ReactNode; label: string; coll
   return (
     <Link
       to={to}
-      className={`group relative flex items-center ${collapsed ? 'justify-center px-2' : 'px-4'} py-3 rounded-xl text-sm font-semibold transition-all ${isActive ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+      className={`group relative flex items-center ${collapsed ? 'justify-center px-2' : 'px-3'} py-3 rounded-xl text-sm font-medium transition-all duration-200 ${isActive ? 'bg-white/10 text-white' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}
     >
       <span className="text-xl leading-none flex items-center justify-center">{icon}</span>
-      {!collapsed && <span className="ml-3 truncate">{label}</span>}
+      {!collapsed && <span className="ml-3.5 truncate">{label}</span>}
 
       {/* Tooltip on Hover when Collapsed */}
       {collapsed && (
-        <div className="absolute left-full ml-4 px-3 py-1.5 bg-slate-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 whitespace-nowrap z-50 shadow-xl border border-slate-700 font-bold tracking-wide transform translate-x-2 group-hover:translate-x-0">
+        <div className="absolute left-full ml-4 px-3 py-1.5 bg-zinc-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 whitespace-nowrap z-50 shadow-xl border border-zinc-700 font-medium tracking-wide transform translate-x-2 group-hover:translate-x-0">
           {label}
           {/* Arrow */}
           <div className="absolute top-1/2 right-full -mt-1 -mr-[1px] border-4 border-transparent border-r-slate-900"></div>

@@ -282,38 +282,38 @@ const Dashboard: React.FC<Props> = ({ state }) => {
     };
   }, [state, filterStart, filterEnd]);
 
-  const cardClass = "bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col transition-all hover:shadow-md";
-  const labelClass = "text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 block";
+  const cardClass = "bg-white p-6 rounded-[20px] border border-[#EAEAEA] shadow-sm flex flex-col transition-all hover:shadow-md";
+  const labelClass = "text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1 block";
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-12 relative">
       {/* EVALUATION DETAIL MODAL */}
       {viewNotes && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm" onClick={() => setViewNotes(null)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-6 max-h-[85vh] overflow-hidden flex flex-col animate-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-center mb-4 pb-4 border-b border-slate-100">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-[#1A1C20]/50 backdrop-blur-sm" onClick={() => setViewNotes(null)}>
+          <div className="bg-white rounded-[20px] shadow-2xl w-full max-w-2xl p-6 max-h-[85vh] overflow-hidden flex flex-col animate-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4 pb-4 border-b border-zinc-100">
               <div>
-                <h3 className="font-bold text-slate-900 uppercase tracking-tight">Evaluasi Designer: {viewNotes.name}</h3>
-                <p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">{viewNotes.projectEvals?.length || 0} Project Evaluations</p>
+                <h3 className="font-bold text-zinc-900 uppercase tracking-tight">Evaluasi Designer: {viewNotes.name}</h3>
+                <p className="text-[10px] text-zinc-400 font-bold uppercase mt-0.5">{viewNotes.projectEvals?.length || 0} Project Evaluations</p>
               </div>
-              <button onClick={() => setViewNotes(null)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors">
+              <button onClick={() => setViewNotes(null)} className="p-1.5 rounded-lg hover:bg-[#F8F9FA] text-zinc-400 hover:text-zinc-700 transition-colors">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
             <div className="overflow-y-auto pr-2 space-y-4">
               {(!viewNotes.projectEvals || viewNotes.projectEvals.length === 0) ? (
-                <p className="text-center text-xs text-slate-400 italic py-8">Belum ada evaluasi untuk designer ini.</p>
+                <p className="text-center text-xs text-zinc-400 italic py-8">Belum ada evaluasi untuk designer ini.</p>
               ) : (
                 <>
                   {/* Per-project evaluation cards */}
                   {viewNotes.projectEvals.map((pe: any, idx: number) => (
-                    <div key={idx} className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                    <div key={idx} className="bg-[#FCFCFC] p-4 rounded-xl border border-zinc-100">
                       <div className="flex justify-between items-center mb-3">
-                        <span className="text-[11px] font-black text-indigo-600 uppercase truncate max-w-[60%]">{pe.project_name}</span>
-                        <span className="inline-block px-2.5 py-1 rounded-lg text-xs font-black bg-indigo-100 text-indigo-700 border border-indigo-200">{pe.avg}</span>
+                        <span className="text-[11px] font-bold text-zinc-900 uppercase truncate max-w-[60%]">{pe.project_name}</span>
+                        <span className="inline-block px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-100 text-zinc-800 border border-indigo-200">{pe.avg}</span>
                       </div>
                       {pe.evaluator_name && (
-                        <p className="text-[9px] font-bold text-slate-400 uppercase mb-2">Evaluator: {pe.evaluator_name}</p>
+                        <p className="text-[9px] font-bold text-zinc-400 uppercase mb-2">Evaluator: {pe.evaluator_name}</p>
                       )}
                       <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 mb-2">
                         {[
@@ -325,19 +325,19 @@ const Dashboard: React.FC<Props> = ({ state }) => {
                           { key: 'respon_masukan', label: 'Respon' },
                         ].map(c => {
                           const score = pe[c.key] || 0;
-                          const colorClass = score >= 4 ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : score >= 3 ? 'bg-blue-100 text-blue-700 border-blue-200' : score >= 2 ? 'bg-amber-100 text-amber-700 border-amber-200' : score > 0 ? 'bg-red-100 text-red-700 border-red-200' : 'bg-slate-100 text-slate-400 border-slate-200';
+                          const colorClass = score >= 4 ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : score >= 3 ? 'bg-blue-100 text-blue-700 border-blue-200' : score >= 2 ? 'bg-amber-100 text-amber-700 border-amber-200' : score > 0 ? 'bg-red-100 text-red-700 border-red-200' : 'bg-[#F8F9FA] text-zinc-400 border-[#EAEAEA]';
                           return (
                             <div key={c.key} className={`flex flex-col items-center py-1.5 px-1 rounded-lg border ${colorClass}`}>
-                              <span className="text-[7px] font-bold uppercase tracking-tighter">{c.label}</span>
-                              <span className="text-[11px] font-black">{score || '-'}</span>
+                              <span className="text-[7px] font-bold uppercase tracking-tight">{c.label}</span>
+                              <span className="text-[11px] font-bold">{score || '-'}</span>
                             </div>
                           );
                         })}
                       </div>
                       {pe.masukan && (
-                        <div className="mt-2 pt-2 border-t border-slate-200">
-                          <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider">Masukan Pengembangan</span>
-                          <p className="text-xs text-slate-700 font-medium leading-relaxed italic mt-1">"{pe.masukan}"</p>
+                        <div className="mt-2 pt-2 border-t border-[#EAEAEA]">
+                          <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider">Masukan Pengembangan</span>
+                          <p className="text-xs text-zinc-700 font-medium leading-relaxed italic mt-1">"{pe.masukan}"</p>
                         </div>
                       )}
                     </div>
@@ -345,12 +345,12 @@ const Dashboard: React.FC<Props> = ({ state }) => {
 
                   {/* Masukan Pengembangan summary */}
                   {viewNotes.notes && viewNotes.notes.length > 0 && (
-                    <div className="pt-3 border-t border-slate-200">
-                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Semua Masukan Pengembangan Diri</h4>
+                    <div className="pt-3 border-t border-[#EAEAEA]">
+                      <h4 className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-3">Semua Masukan Pengembangan Diri</h4>
                       {viewNotes.notes.map((note: any, idx: number) => (
                         <div key={idx} className="bg-amber-50 p-3 rounded-lg border border-amber-100 mb-2 last:mb-0">
                           <div className="flex justify-between items-center mb-1">
-                            <span className="text-[9px] font-black text-amber-700 uppercase truncate max-w-[70%]">{note.project_name}</span>
+                            <span className="text-[9px] font-bold text-amber-700 uppercase truncate max-w-[70%]">{note.project_name}</span>
                             <span className="text-[8px] font-bold text-amber-400">{new Date(note.date).toLocaleDateString()}</span>
                           </div>
                           <p className="text-xs text-amber-900 font-medium leading-relaxed italic">"{note.note}"</p>
@@ -368,8 +368,8 @@ const Dashboard: React.FC<Props> = ({ state }) => {
       {/* Added relative z-20 to ensure datepicker pops over charts */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-20">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight uppercase">Executive Studio Hub</h1>
-          <p className="text-slate-500 text-sm font-medium">Creative Production Insights.</p>
+          <h1 className="text-2xl font-bold text-zinc-900 tracking-tight uppercase">Executive Studio Hub</h1>
+          <p className="text-zinc-500 text-sm font-medium">Creative Production Insights.</p>
         </div>
         {/* Pass filtered dates to DateRangePicker to properly control state */}
         <DateRangePicker
@@ -451,7 +451,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <section className={cardClass}>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-bold text-slate-900 uppercase tracking-tight">Artwork Type Trend</h2>
+            <h2 className="text-sm font-bold text-zinc-900 uppercase tracking-tight">Artwork Type Trend</h2>
             <div className="flex gap-2">
               <LegendDot color="bg-blue-500" label="2D" />
               <LegendDot color="bg-emerald-500" label="3D" />
@@ -478,7 +478,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
 
         <section className={cardClass}>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-bold text-slate-900 uppercase tracking-tight">Work Context Trend</h2>
+            <h2 className="text-sm font-bold text-zinc-900 uppercase tracking-tight">Work Context Trend</h2>
             <div className="flex gap-2">
               <LegendDot color="bg-blue-600" label="Proj" />
               <LegendDot color="bg-emerald-600" label="Lead" />
@@ -504,10 +504,10 @@ const Dashboard: React.FC<Props> = ({ state }) => {
         </section>
 
         <section className={cardClass}>
-          <h2 className="text-sm font-bold text-slate-900 uppercase tracking-tight mb-4">Distribution Split</h2>
+          <h2 className="text-sm font-bold text-zinc-900 uppercase tracking-tight mb-4">Distribution Split</h2>
           <div className="flex flex-col gap-8 h-full justify-center py-4">
             <PieRow title="By Artwork Type" data={analytics.globalTypeSplit} total={analytics.totalArtworks} />
-            <div className="h-px bg-slate-100"></div>
+            <div className="h-px bg-[#F8F9FA]"></div>
             <PieRow title="By Work Context" data={analytics.globalContextSplit} total={analytics.totalArtworks} />
           </div>
         </section>
@@ -517,8 +517,8 @@ const Dashboard: React.FC<Props> = ({ state }) => {
       <section className={cardClass}>
         <div className="flex items-center justify-between mb-6">
           <div className="flex flex-col">
-            <h2 className="text-sm font-bold text-slate-900 uppercase tracking-tight">Department Request Volume</h2>
-            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wide">Internal Context Only</span>
+            <h2 className="text-sm font-bold text-zinc-900 uppercase tracking-tight">Department Request Volume</h2>
+            <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wide">Internal Context Only</span>
           </div>
           <div className="flex gap-4">
             <LegendDot color="bg-blue-500" label="2D" />
@@ -529,7 +529,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
         <div className="max-h-[400px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-200">
           <div className="space-y-6">
             {analytics.departmentStats.length === 0 ? (
-              <div className="text-center py-8 text-xs font-bold text-slate-400 italic border border-dashed border-slate-200 rounded-xl">
+              <div className="text-center py-8 text-xs font-bold text-zinc-400 italic border border-dashed border-[#EAEAEA] rounded-xl">
                 No internal department activity found in this period.
               </div>
             ) : analytics.departmentStats.map(dept => {
@@ -540,11 +540,11 @@ const Dashboard: React.FC<Props> = ({ state }) => {
               return (
                 <div key={dept.id} className="grid grid-cols-5 items-center gap-4">
                   <div className="col-span-1 min-w-0">
-                    <p className="text-xs font-bold text-slate-800 uppercase truncate leading-none mb-1">{dept.department_name}</p>
-                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">{deptTotal} Items</p>
+                    <p className="text-xs font-bold text-zinc-800 uppercase truncate leading-none mb-1">{dept.department_name}</p>
+                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-tight">{deptTotal} Items</p>
                   </div>
                   <div className="col-span-3 flex flex-col gap-2">
-                    <div className="h-3.5 bg-slate-50 rounded-full flex border border-slate-100 overflow-hidden shadow-inner">
+                    <div className="h-3.5 bg-[#FCFCFC] rounded-full flex border border-zinc-100 overflow-hidden shadow-inner">
                       <StackedSegment count={dept.counts["2D Design"]} total={deptTotal} globalMax={globalMax} gradient="from-blue-400 to-cyan-500" />
                       <StackedSegment count={dept.counts["3D Design"]} total={deptTotal} globalMax={globalMax} gradient="from-emerald-400 to-teal-500" />
                       <StackedSegment count={dept.counts["Video"]} total={deptTotal} globalMax={globalMax} gradient="from-orange-400 to-rose-500" />
@@ -557,10 +557,10 @@ const Dashboard: React.FC<Props> = ({ state }) => {
                     </div>
                   </div>
                   <div className="col-span-1 text-right flex flex-col items-end">
-                    <span className="text-xs font-bold text-slate-900 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
+                    <span className="text-xs font-bold text-zinc-900 bg-[#FCFCFC] px-2 py-1 rounded-md border border-zinc-100">
                       {percentage}%
                     </span>
-                    <span className="text-[9px] font-bold text-slate-400 mt-0.5">{deptTotal} / {analytics.artworksInternal}</span>
+                    <span className="text-[9px] font-bold text-zinc-400 mt-0.5">{deptTotal} / {analytics.artworksInternal}</span>
                   </div>
                 </div>
               );
@@ -574,14 +574,14 @@ const Dashboard: React.FC<Props> = ({ state }) => {
         <span className={labelClass}>Team Output & Performance</span>
         <div className="flex overflow-x-auto flex-nowrap gap-6 mt-4 pb-4 snap-x scrollbar-thin scrollbar-thumb-slate-300">
           {analytics.teamStats.map(ds => (
-            <div key={ds.id} className="flex-shrink-0 w-[300px] snap-start bg-white p-6 rounded-3xl border border-slate-200 shadow-sm group">
+            <div key={ds.id} className="flex-shrink-0 w-[300px] snap-start bg-white p-6 rounded-[20px] border border-[#EAEAEA] shadow-sm group">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 text-white flex items-center justify-center font-bold text-lg group-hover:from-indigo-500 group-hover:to-purple-600 transition-all shadow-md">
                   {ds.name.charAt(0)}
                 </div>
                 <div className="min-w-0">
-                  <h4 className="text-sm font-bold text-slate-900 truncate uppercase tracking-tighter">{ds.name}</h4>
-                  <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">{ds.role}</p>
+                  <h4 className="text-sm font-bold text-zinc-900 truncate uppercase tracking-tight">{ds.name}</h4>
+                  <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider">{ds.role}</p>
                 </div>
               </div>
 
@@ -591,34 +591,34 @@ const Dashboard: React.FC<Props> = ({ state }) => {
                 <MetricBox label="Lead Days" value={ds.avgLeadDuration} unit="d" gradient="from-purple-50 to-fuchsia-50" textGradient="from-purple-600 to-fuchsia-600" />
               </div>
 
-              <div className="space-y-3 pt-4 border-t border-slate-100">
+              <div className="space-y-3 pt-4 border-t border-zinc-100">
                 <StatBar label="Project" value={ds.projectArtworks} max={ds.totalArtworks} gradient="from-blue-500 to-indigo-500" />
                 <StatBar label="Lead" value={ds.leadArtworks} max={ds.totalArtworks} gradient="from-emerald-500 to-teal-500" />
                 <StatBar label="Internal" value={ds.internalArtworks} max={ds.totalArtworks} gradient="from-purple-500 to-fuchsia-500" />
               </div>
 
-              <div className="mt-6 pt-4 border-t border-slate-100 flex justify-between items-center">
-                <span className="text-[10px] font-bold text-slate-900 uppercase">Total Logged</span>
-                <span className="text-xl font-black bg-clip-text text-transparent bg-gradient-to-r from-slate-700 to-slate-900 tracking-tighter">{ds.totalArtworks}</span>
+              <div className="mt-6 pt-4 border-t border-zinc-100 flex justify-between items-center">
+                <span className="text-[10px] font-bold text-zinc-900 uppercase">Total Logged</span>
+                <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-700 to-slate-900 tracking-tight">{ds.totalArtworks}</span>
               </div>
 
               {/* EVALUATION SCORE SECTION (Bottom) */}
-              <div className="mt-4 pt-4 border-t border-dashed border-slate-200">
+              <div className="mt-4 pt-4 border-t border-dashed border-[#EAEAEA]">
                 <div
-                  className="flex justify-between items-center mb-2 cursor-pointer hover:bg-slate-50 rounded p-1 -mx-1 transition-colors"
+                  className="flex justify-between items-center mb-2 cursor-pointer hover:bg-[#FCFCFC] rounded p-1 -mx-1 transition-colors"
                   onClick={() => setViewNotes({ name: ds.name, notes: ds.evalNotes, projectEvals: ds.projectEvalDetails })}
                   title="Lihat detail evaluasi per project"
                 >
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Designer Eval</span>
+                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Designer Eval</span>
                     {ds.evalNotes.length > 0 && <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span>}
                   </div>
                   {ds.avgRating ? (
-                    <span className="bg-gradient-to-r from-amber-100 to-orange-100 text-orange-700 px-2 py-0.5 rounded text-[10px] font-black border border-orange-200 hover:from-amber-200 hover:to-orange-200 transition-colors">
+                    <span className="bg-gradient-to-r from-amber-100 to-orange-100 text-orange-700 px-2 py-0.5 rounded text-[10px] font-bold border border-orange-200 hover:from-amber-200 hover:to-orange-200 transition-colors">
                       {ds.avgRating} / 5.0
                     </span>
                   ) : (
-                    <span className="text-[9px] text-slate-300 font-bold italic">No data</span>
+                    <span className="text-[9px] text-zinc-300 font-bold italic">No data</span>
                   )}
                 </div>
 
@@ -644,28 +644,28 @@ const Dashboard: React.FC<Props> = ({ state }) => {
 // --- Sub-Components ---
 
 const TinyScore = ({ label, val }: { label: string, val: string }) => (
-  <div className="flex justify-between items-center bg-slate-50 px-2 py-1 rounded border border-slate-100">
-    <span className="text-[7px] font-bold text-slate-500 uppercase tracking-tighter">{label}</span>
-    <span className="text-[9px] font-black text-slate-800">{val}</span>
+  <div className="flex justify-between items-center bg-[#FCFCFC] px-2 py-1 rounded border border-zinc-100">
+    <span className="text-[7px] font-bold text-zinc-500 uppercase tracking-tight">{label}</span>
+    <span className="text-[9px] font-bold text-zinc-800">{val}</span>
   </div>
 );
 
 const TrendDataList = ({ data, cols }: { data: any[], cols: { key: string, label: string, color: string }[] }) => {
   const renderData = data;
   return (
-    <div className="border-t border-slate-100 pt-3 mt-auto">
+    <div className="border-t border-zinc-100 pt-3 mt-auto">
       <div className="grid grid-cols-4 gap-2 mb-2 px-2">
-        <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Month</div>
+        <div className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Month</div>
         {cols.map((c, i) => (
-          <div key={i} className={`text-[9px] font-black uppercase text-center tracking-widest ${c.color}`}>{c.label}</div>
+          <div key={i} className={`text-[9px] font-bold uppercase text-center tracking-wider ${c.color}`}>{c.label}</div>
         ))}
       </div>
       <div className="max-h-[120px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-100 pr-1">
         {renderData.map((d, i) => (
-          <div key={i} className="grid grid-cols-4 gap-2 py-1.5 border-b border-slate-50 last:border-0 hover:bg-slate-50 rounded px-2">
-            <div className="text-[10px] font-bold text-slate-600 truncate">{d.label}</div>
+          <div key={i} className="grid grid-cols-4 gap-2 py-1.5 border-b border-zinc-50 last:border-0 hover:bg-[#FCFCFC] rounded px-2">
+            <div className="text-[10px] font-bold text-zinc-600 truncate">{d.label}</div>
             {cols.map((c, idx) => (
-              <div key={idx} className="text-[10px] font-black text-slate-900 text-center">
+              <div key={idx} className="text-[10px] font-bold text-zinc-900 text-center">
                 {d[c.key] || 0}
               </div>
             ))}
@@ -679,35 +679,35 @@ const TrendDataList = ({ data, cols }: { data: any[], cols: { key: string, label
 const LegendDot = ({ color, label }: { color: string, label: string }) => (
   <div className="flex items-center gap-1.5">
     <div className={`w-2 h-2 rounded-full ${color}`}></div>
-    <span className="text-[9px] font-bold text-slate-500 uppercase">{label}</span>
+    <span className="text-[9px] font-bold text-zinc-500 uppercase">{label}</span>
   </div>
 );
 
 const KPICard = ({ label, value, sub, gradient, keywords, statsList }: any) => (
-  <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col h-full transition-all hover:shadow-lg relative overflow-hidden group">
+  <div className="bg-white p-6 rounded-[20px] border border-[#EAEAEA] shadow-sm flex flex-col h-full transition-all hover:shadow-sm border border-[#EAEAEA] relative overflow-hidden group">
     {/* Decorative Gradient Background Opacity */}
     <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${gradient} opacity-5 rounded-bl-full pointer-events-none transition-opacity group-hover:opacity-10`}></div>
 
     <div className="mb-4 relative z-10">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block">{label}</span>
+        <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block">{label}</span>
         <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${gradient} flex items-center justify-center text-white shadow-sm`}>
           {/* Simple icon based on gradient type - just generic shapes for visual consistency */}
           <div className="w-3 h-3 bg-white/30 rounded-full"></div>
         </div>
       </div>
-      <div className={`text-4xl font-black bg-clip-text text-transparent bg-gradient-to-br ${gradient} tracking-tight`}>{value}</div>
-      <p className="text-[10px] font-medium text-slate-400 uppercase mt-1">{sub}</p>
+      <div className={`text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-br ${gradient} tracking-tight`}>{value}</div>
+      <p className="text-[10px] font-medium text-zinc-400 uppercase mt-1">{sub}</p>
     </div>
 
     <div className="mt-auto relative z-10">
       {keywords && keywords.length > 0 && (
-        <div className="pt-3 border-t border-slate-100">
-          <span className="text-[8px] font-black text-slate-400 uppercase tracking-wide block mb-1.5">Top Keywords</span>
+        <div className="pt-3 border-t border-zinc-100">
+          <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-wide block mb-1.5">Top Keywords</span>
           <div className="flex flex-wrap gap-1">
             {keywords.map((k: any) => (
-              <span key={k.word} className="px-1.5 py-0.5 bg-slate-50 text-slate-600 rounded text-[9px] font-bold uppercase border border-slate-200">
-                {k.word} <span className="text-[7px] text-slate-400">({k.count})</span>
+              <span key={k.word} className="px-1.5 py-0.5 bg-[#FCFCFC] text-zinc-600 rounded text-[9px] font-bold uppercase border border-[#EAEAEA]">
+                {k.word} <span className="text-[7px] text-zinc-400">({k.count})</span>
               </span>
             ))}
           </div>
@@ -715,15 +715,15 @@ const KPICard = ({ label, value, sub, gradient, keywords, statsList }: any) => (
       )}
 
       {statsList && statsList.length > 0 && (
-        <div className="pt-3 border-t border-slate-100 grid grid-cols-2 gap-3">
+        <div className="pt-3 border-t border-zinc-100 grid grid-cols-2 gap-3">
           {statsList.map((list: any, idx: number) => (
             <div key={idx}>
-              <span className="text-[8px] font-black text-slate-400 uppercase tracking-wide block mb-1.5 truncate">{list.title}</span>
+              <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-wide block mb-1.5 truncate">{list.title}</span>
               <div className="flex flex-col gap-1">
                 {list.items.map((item: any, i: number) => (
                   <div key={i} className="flex justify-between items-center text-[9px]">
-                    <span className="font-bold text-slate-600 truncate max-w-[70%]">{item.label}</span>
-                    <span className="font-black text-slate-900 bg-slate-50 px-1 rounded">{item.count}</span>
+                    <span className="font-bold text-zinc-600 truncate max-w-[70%]">{item.label}</span>
+                    <span className="font-bold text-zinc-900 bg-[#FCFCFC] px-1 rounded">{item.count}</span>
                   </div>
                 ))}
               </div>
@@ -737,27 +737,27 @@ const KPICard = ({ label, value, sub, gradient, keywords, statsList }: any) => (
 
 const VolumeCard = ({ title, count, duration, typeSplit, gradient }: any) => {
   return (
-    <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex flex-col relative overflow-hidden group hover:shadow-md transition-all">
+    <div className="bg-white p-5 rounded-[20px] border border-[#EAEAEA] shadow-sm flex flex-col relative overflow-hidden group hover:shadow-md transition-all">
       <div className={`absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b ${gradient}`}></div>
       <div className="flex justify-between items-center mb-4 pl-3">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">{title} Context</h3>
-        <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase bg-slate-100 text-slate-500`}>Volume</span>
+        <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-700">{title} Context</h3>
+        <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase bg-[#F8F9FA] text-zinc-500`}>Volume</span>
       </div>
       <div className="grid grid-cols-2 gap-2 mb-5 pl-3">
         <div>
-          <div className={`text-3xl font-black bg-clip-text text-transparent bg-gradient-to-r ${gradient}`}>{count}</div>
-          <div className="text-[9px] font-bold text-slate-400 uppercase">Artworks</div>
+          <div className={`text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r ${gradient}`}>{count}</div>
+          <div className="text-[9px] font-bold text-zinc-400 uppercase">Artworks</div>
         </div>
-        <div className="border-l border-slate-100 pl-4">
-          <div className="text-xl font-bold text-slate-900">~{duration}</div>
-          <div className="text-[9px] font-bold text-slate-400 uppercase">Avg Days</div>
+        <div className="border-l border-zinc-100 pl-4">
+          <div className="text-xl font-bold text-zinc-900">~{duration}</div>
+          <div className="text-[9px] font-bold text-zinc-400 uppercase">Avg Days</div>
         </div>
       </div>
       <div className="space-y-2 mt-auto pl-3">
         {typeSplit.map((t: any) => (
           <div key={t.type}>
-            <div className="flex justify-between text-[8px] font-bold text-slate-500 uppercase mb-0.5"><span>{t.type}</span><span>{t.percentage}%</span></div>
-            <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+            <div className="flex justify-between text-[8px] font-bold text-zinc-500 uppercase mb-0.5"><span>{t.type}</span><span>{t.percentage}%</span></div>
+            <div className="h-1.5 bg-[#F8F9FA] rounded-full overflow-hidden">
               <div className={`h-full bg-gradient-to-r ${gradient} opacity-80`} style={{ width: `${t.percentage}%` }}></div>
             </div>
           </div>
@@ -817,21 +817,21 @@ const PieRow = ({ title, data, total }: any) => {
           })}
         </svg>
         <div className="absolute inset-0 m-auto w-16 h-16 bg-white rounded-full flex flex-col items-center justify-center shadow-sm z-10 pointer-events-none">
-          <span className="text-lg font-black text-slate-900 leading-none">{total}</span>
-          <span className="text-[8px] font-bold text-slate-400 uppercase mt-0.5">Total</span>
+          <span className="text-lg font-bold text-zinc-900 leading-none">{total}</span>
+          <span className="text-[8px] font-bold text-zinc-400 uppercase mt-0.5">Total</span>
         </div>
       </div>
 
       <div className="flex-1 w-full space-y-2">
-        <p className="text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-wider border-b border-slate-100 pb-1 text-center sm:text-left">{title}</p>
+        <p className="text-[10px] font-bold text-zinc-400 uppercase mb-2 tracking-wider border-b border-zinc-100 pb-1 text-center sm:text-left">{title}</p>
         {data.map((d: any) => (
-          <div key={d.type || d.context} className="flex justify-between items-center text-[10px] font-bold text-slate-700">
+          <div key={d.type || d.context} className="flex justify-between items-center text-[10px] font-bold text-zinc-700">
             <div className="flex items-center gap-2">
               <div className={`w-2.5 h-2.5 rounded-full bg-gradient-to-br ${d.gradient}`}></div>
               <span className="uppercase truncate max-w-[85px]">{d.type || d.context}</span>
             </div>
-            <span className="text-slate-900 font-bold bg-slate-50 px-2 py-0.5 rounded border border-slate-100 min-w-[3rem] text-center">
-              {d.count} <span className="text-slate-400 text-[8px] font-medium opacity-70">({total ? Math.round((d.count / total) * 100) : 0}%)</span>
+            <span className="text-zinc-900 font-bold bg-[#FCFCFC] px-2 py-0.5 rounded border border-zinc-100 min-w-[3rem] text-center">
+              {d.count} <span className="text-zinc-400 text-[8px] font-medium opacity-70">({total ? Math.round((d.count / total) * 100) : 0}%)</span>
             </span>
           </div>
         ))}
@@ -924,7 +924,7 @@ const TrendLineChart = ({ data, keys, labels, colors }: any) => {
 
         {/* Labels */}
         {data.map((d: any, i: number) => (
-          <text key={i} x={getX(i)} y={height - 10} textAnchor="middle" fontSize="9" fontWeight="bold" className="fill-slate-400 uppercase tracking-tighter">
+          <text key={i} x={getX(i)} y={height - 10} textAnchor="middle" fontSize="9" fontWeight="bold" className="fill-slate-400 uppercase tracking-tight">
             {d.label}
           </text>
         ))}
@@ -943,17 +943,17 @@ const TrendLineChart = ({ data, keys, labels, colors }: any) => {
       </svg>
 
       {hoverIndex !== null && (
-        <div className="absolute z-10 bg-slate-900/95 backdrop-blur-sm text-white p-3 rounded-xl shadow-xl pointer-events-none transform -translate-x-1/2 -translate-y-full border border-slate-700/50" style={{ left: `${(getX(hoverIndex) / width) * 100}%`, top: '20px' }}>
-          <p className="text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest text-center border-b border-slate-700 pb-1">{data[hoverIndex].fullDate}</p>
+        <div className="absolute z-10 bg-[#1A1C20]/95 backdrop-blur-sm text-white p-3 rounded-xl shadow-sm border border-[#EAEAEA] pointer-events-none transform -translate-x-1/2 -translate-y-full border border-zinc-700/50" style={{ left: `${(getX(hoverIndex) / width) * 100}%`, top: '20px' }}>
+          <p className="text-[10px] font-bold uppercase text-zinc-400 mb-2 tracking-wider text-center border-b border-zinc-700 pb-1">{data[hoverIndex].fullDate}</p>
           <div className="flex gap-4">
             {keys.map((key: string, kIdx: number) => (
               <div key={key} className="flex flex-col items-center">
                 <span className="text-[9px] font-bold uppercase mb-0.5" style={{ color: colors[kIdx] }}>{labels[kIdx]}</span>
-                <span className="text-sm font-black">{data[hoverIndex][key]}</span>
+                <span className="text-sm font-bold">{data[hoverIndex][key]}</span>
               </div>
             ))}
           </div>
-          <div className="absolute left-1/2 -bottom-1.5 w-3 h-3 bg-slate-900 rotate-45 transform -translate-x-1/2 border-r border-b border-slate-700/50"></div>
+          <div className="absolute left-1/2 -bottom-1.5 w-3 h-3 bg-[#1A1C20] rotate-45 transform -translate-x-1/2 border-r border-b border-zinc-700/50"></div>
         </div>
       )}
     </div>
@@ -966,22 +966,22 @@ const StackedSegment = ({ count, total, globalMax, gradient }: any) => {
 };
 
 const MetricBox = ({ label, value, unit, gradient, textGradient, icon }: any) => (
-  <div className={`flex flex-col items-center justify-center p-2.5 rounded-2xl bg-gradient-to-br ${gradient} border border-white shadow-sm transition-transform hover:scale-[1.05]`}>
-    <span className="text-[8px] font-bold text-slate-500 uppercase tracking-tighter mb-0.5 opacity-80">{label}</span>
-    <div className={`text-xl font-black leading-none tracking-tighter bg-clip-text text-transparent bg-gradient-to-br ${textGradient} flex items-center`}>
+  <div className={`flex flex-col items-center justify-center p-2.5 rounded-[20px] bg-gradient-to-br ${gradient} border border-white shadow-sm transition-transform hover:scale-[1.05]`}>
+    <span className="text-[8px] font-bold text-zinc-500 uppercase tracking-tight mb-0.5 opacity-80">{label}</span>
+    <div className={`text-xl font-bold leading-none tracking-tight bg-clip-text text-transparent bg-gradient-to-br ${textGradient} flex items-center`}>
       {value}
-      <span className="text-[10px] ml-0.5 opacity-60 font-black text-slate-400">{unit || icon}</span>
+      <span className="text-[10px] ml-0.5 opacity-60 font-bold text-zinc-400">{unit || icon}</span>
     </div>
   </div>
 );
 
 const StatBar = ({ label, value, max, gradient }: any) => (
   <div>
-    <div className="flex justify-between text-[9px] font-bold text-slate-500 uppercase mb-1 tracking-tight">
+    <div className="flex justify-between text-[9px] font-bold text-zinc-500 uppercase mb-1 tracking-tight">
       <span>{label} Production</span>
-      <span className="text-slate-900">{value}</span>
+      <span className="text-zinc-900">{value}</span>
     </div>
-    <div className="h-1.5 bg-slate-50 rounded-full overflow-hidden border border-slate-100 shadow-inner">
+    <div className="h-1.5 bg-[#FCFCFC] rounded-full overflow-hidden border border-zinc-100 shadow-inner">
       <div className={`h-full bg-gradient-to-r ${gradient} transition-all duration-1000`} style={{ width: `${(value / (max || 1)) * 100}%` }}></div>
     </div>
   </div>

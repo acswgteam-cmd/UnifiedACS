@@ -221,14 +221,14 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'DONE': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-      case 'CANCEL': return 'bg-slate-100 text-slate-600 border-slate-200';
+      case 'CANCEL': return 'bg-[#F8F9FA] text-zinc-600 border-[#EAEAEA]';
       default: return 'bg-blue-100 text-blue-700 border-blue-200';
     }
   };
 
   const getColorTheme = (lead: Lead) => {
     if (lead.status === 'DONE') {
-      return { bg: 'bg-slate-100', border: 'border-slate-300', text: 'text-slate-400', accent: 'text-emerald-600' };
+      return { bg: 'bg-[#F8F9FA]', border: 'border-zinc-300', text: 'text-zinc-400', accent: 'text-emerald-600' };
     }
     const themes = [
       { bg: 'bg-blue-50', border: 'border-blue-600', text: 'text-blue-900', accent: 'text-blue-700' },
@@ -272,7 +272,7 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
     const days = [];
 
     for (let i = 0; i < startDay; i++) {
-      days.push(<div key={`empty-${i}`} className="min-h-[160px] bg-slate-100/50 border-r border-b border-slate-200"></div>);
+      days.push(<div key={`empty-${i}`} className="min-h-[160px] bg-[#F8F9FA]/50 border-r border-b border-[#EAEAEA]"></div>);
     }
 
     for (let d = 1; d <= totalDays; d++) {
@@ -280,9 +280,9 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
       const isToday = dateStr === todayStr;
       
       days.push(
-        <div key={d} className={`min-h-[160px] h-full border-r border-b border-slate-200 p-0 flex flex-col relative ${isToday ? 'bg-indigo-50/30' : 'bg-white'}`}>
+        <div key={d} className={`min-h-[160px] h-full border-r border-b border-[#EAEAEA] p-0 flex flex-col relative ${isToday ? 'bg-zinc-100/30' : 'bg-white'}`}>
           <div className="p-2 flex-shrink-0">
-            <span className={`text-[10px] font-black inline-flex items-center justify-center w-6 h-6 rounded-full ${isToday ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-700'}`}>
+            <span className={`text-[10px] font-bold inline-flex items-center justify-center w-6 h-6 rounded-full ${isToday ? 'bg-zinc-900 text-white shadow-sm' : 'text-zinc-700'}`}>
               {String(d).padStart(2, '0')}
             </span>
           </div>
@@ -302,15 +302,15 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
                   className={`cursor-pointer min-h-[64px] py-1.5 flex flex-col justify-center px-2 overflow-hidden transition-all hover:brightness-95 ${theme.bg} ${theme.text} ${isStart ? `rounded-l-md ml-1 border-l-4 ${theme.border}` : ''} ${isEnd ? 'rounded-r-md mr-1' : ''}`}
                 >
                   <div className="flex flex-col min-w-0 leading-tight">
-                    <span className="text-[10px] font-black truncate uppercase tracking-tighter">{lead.lead_name}</span>
-                    <span className="text-[8px] font-black opacity-80 mt-0.5 truncate uppercase tracking-tighter">
+                    <span className="text-[10px] font-bold truncate uppercase tracking-tight">{lead.lead_name}</span>
+                    <span className="text-[8px] font-bold opacity-80 mt-0.5 truncate uppercase tracking-tight">
                       PIC: {lead.requester}
                     </span>
                     <div className="flex items-center justify-between gap-1 mt-1">
-                      <span className={`text-[7px] font-black px-1 rounded border border-slate-300 bg-white/50 uppercase ${lead.status === 'DONE' ? 'text-emerald-600' : ''}`}>
+                      <span className={`text-[7px] font-bold px-1 rounded border border-zinc-300 bg-white/50 uppercase ${lead.status === 'DONE' ? 'text-emerald-600' : ''}`}>
                         {lead.status}
                       </span>
-                      <span className="text-[7px] font-black px-1 rounded bg-indigo-600 text-white uppercase">
+                      <span className="text-[7px] font-bold px-1 rounded bg-zinc-900 text-white uppercase">
                         GR: {lead.lead_grade}
                       </span>
                     </div>
@@ -325,27 +325,27 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
     return days;
   };
 
-  const labelClass = "text-[11px] font-bold text-slate-900 uppercase mb-1.5 block tracking-wide";
-  const inputClass = "w-full rounded-lg border-slate-300 text-slate-900 text-sm p-3 border bg-white focus:ring-2 focus:ring-indigo-600 outline-none shadow-sm font-medium transition-all";
-  const filterSelectClass = "text-[10px] font-bold border-slate-200 rounded-lg p-2 bg-white outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm uppercase tracking-tighter cursor-pointer";
+  const labelClass = "text-[11px] font-bold text-zinc-900 uppercase mb-1.5 block tracking-wide";
+  const inputClass = "w-full rounded-lg border-zinc-300 text-zinc-900 text-sm p-3 border bg-white focus:ring-2 focus:ring-indigo-600 outline-none shadow-sm font-medium transition-all";
+  const filterSelectClass = "text-[10px] font-bold border-[#EAEAEA] rounded-lg p-2 bg-white outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm uppercase tracking-tight cursor-pointer";
 
   return (
     <div className="space-y-6 flex flex-col h-full relative">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 flex-shrink-0">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight uppercase">Lead Registry</h1>
-          <p className="text-slate-600 text-sm mt-1 font-semibold">Monitor and manage all design inquiries.</p>
+          <h1 className="text-2xl font-bold text-zinc-900 tracking-tight uppercase">Lead Registry</h1>
+          <p className="text-zinc-600 text-sm mt-1 font-semibold">Monitor and manage all design inquiries.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <button onClick={handleCopyLink} className={`px-4 py-2 rounded-lg text-xs font-bold uppercase transition-all flex items-center gap-2 border ${copySuccess ? 'bg-emerald-50 border-emerald-500 text-emerald-700' : 'bg-white border-slate-300 text-slate-700 hover:border-indigo-500'}`}>
+          <button onClick={handleCopyLink} className={`px-4 py-2 rounded-lg text-xs font-bold uppercase transition-all flex items-center gap-2 border ${copySuccess ? 'bg-emerald-50 border-emerald-500 text-emerald-700' : 'bg-white border-zinc-300 text-zinc-700 hover:border-zinc-900'}`}>
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
             {copySuccess ? 'Copied Link!' : 'Copy Secured Link'}
           </button>
-          <div className="flex bg-slate-200 p-1 rounded-lg">
-            <button onClick={() => setView('list')} className={`px-4 py-1 rounded-md text-xs font-bold ${view === 'list' ? 'bg-white shadow-sm text-indigo-700' : 'text-slate-600'}`}>List</button>
-            <button onClick={() => setView('calendar')} className={`px-4 py-1 rounded-md text-xs font-bold ${view === 'calendar' ? 'bg-white shadow-sm text-indigo-700' : 'text-slate-600'}`}>Calendar</button>
+          <div className="flex bg-[#FAFAFA]200 p-1 rounded-lg">
+            <button onClick={() => setView('list')} className={`px-4 py-1 rounded-md text-xs font-bold ${view === 'list' ? 'bg-white shadow-sm text-zinc-800' : 'text-zinc-600'}`}>List</button>
+            <button onClick={() => setView('calendar')} className={`px-4 py-1 rounded-md text-xs font-bold ${view === 'calendar' ? 'bg-white shadow-sm text-zinc-800' : 'text-zinc-600'}`}>Calendar</button>
           </div>
-          <button onClick={() => setIsAdding(true)} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold shadow-lg hover:bg-indigo-700 transition-all flex items-center gap-2">
+          <button onClick={() => setIsAdding(true)} className="px-4 py-2 bg-zinc-900 text-white rounded-lg text-sm font-bold shadow-sm border border-[#EAEAEA] hover:bg-black transition-all flex items-center gap-2">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4"/></svg>
             New Lead
           </button>
@@ -354,35 +354,35 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
 
       {/* LEAD MINI DASHBOARD */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col">
-          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Status Summary</span>
+        <div className="bg-white p-6 rounded-[20px] border border-[#EAEAEA] shadow-sm flex flex-col">
+          <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-4">Status Summary</span>
           <div className="grid grid-cols-3 gap-2">
             <StatusItem label="Progress" value={stats.progress} color="text-blue-600" />
             <StatusItem label="Done" value={stats.done} color="text-emerald-600" />
-            <StatusItem label="Cancel" value={stats.cancel} color="text-slate-400" />
+            <StatusItem label="Cancel" value={stats.cancel} color="text-zinc-400" />
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col">
-          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Grade Summary</span>
+        <div className="bg-white p-6 rounded-[20px] border border-[#EAEAEA] shadow-sm flex flex-col">
+          <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-4">Grade Summary</span>
           <div className="grid grid-cols-3 gap-2">
             <StatusItem label="Grade A" value={stats.gradeA} color="text-orange-600" />
-            <StatusItem label="Grade B" value={stats.gradeB} color="text-indigo-600" />
-            <StatusItem label="Grade C" value={stats.gradeC} color="text-slate-500" />
+            <StatusItem label="Grade B" value={stats.gradeB} color="text-zinc-900" />
+            <StatusItem label="Grade C" value={stats.gradeC} color="text-zinc-500" />
           </div>
         </div>
 
-        <div className={`p-6 rounded-2xl border flex flex-col justify-center transition-colors duration-300 ${stats.deadlinesToday > 0 ? 'bg-indigo-600 border-indigo-700 text-white shadow-lg' : 'bg-white border-slate-200 text-slate-900'}`}>
-          <span className={`text-[10px] font-black uppercase tracking-widest mb-1 ${stats.deadlinesToday > 0 ? 'text-indigo-100' : 'text-slate-400'}`}>Deadlines Today</span>
-          <div className="text-3xl font-black">{stats.deadlinesToday}</div>
-          <p className={`text-[9px] font-bold mt-2 uppercase ${stats.deadlinesToday > 0 ? 'text-indigo-100' : 'text-slate-400'}`}>
+        <div className={`p-6 rounded-[20px] border flex flex-col justify-center transition-colors duration-300 ${stats.deadlinesToday > 0 ? 'bg-zinc-900 border-indigo-700 text-white shadow-sm border border-[#EAEAEA]' : 'bg-white border-[#EAEAEA] text-zinc-900'}`}>
+          <span className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${stats.deadlinesToday > 0 ? 'text-indigo-100' : 'text-zinc-400'}`}>Deadlines Today</span>
+          <div className="text-3xl font-bold">{stats.deadlinesToday}</div>
+          <p className={`text-[9px] font-bold mt-2 uppercase ${stats.deadlinesToday > 0 ? 'text-indigo-100' : 'text-zinc-400'}`}>
             {stats.deadlinesToday > 0 ? 'Inquiry due today' : 'No deadlines today'}
           </p>
         </div>
 
-        <div className={`p-6 rounded-2xl border flex flex-col justify-center transition-colors duration-300 ${stats.overdue > 0 ? 'bg-red-50 border-red-300 text-red-600 shadow-sm' : 'bg-white border-slate-200 text-slate-900'}`}>
-          <span className="text-[10px] font-black uppercase tracking-widest mb-1 opacity-70">Overdue Leads</span>
-          <div className="text-3xl font-black">{stats.overdue}</div>
+        <div className={`p-6 rounded-[20px] border flex flex-col justify-center transition-colors duration-300 ${stats.overdue > 0 ? 'bg-red-50 border-red-300 text-red-600 shadow-sm' : 'bg-white border-[#EAEAEA] text-zinc-900'}`}>
+          <span className="text-[10px] font-bold uppercase tracking-wider mb-1 opacity-70">Overdue Leads</span>
+          <div className="text-3xl font-bold">{stats.overdue}</div>
           <p className="text-[9px] font-bold mt-2 uppercase opacity-60">
             {stats.overdue > 0 ? 'Past deadline items' : 'No overdue leads'}
           </p>
@@ -390,9 +390,9 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
       </div>
 
       {/* FILTER BAR */}
-      <div className="bg-slate-100 p-4 rounded-2xl flex flex-wrap items-center gap-4 border border-slate-200 shadow-inner">
+      <div className="bg-[#F8F9FA] p-4 rounded-[20px] flex flex-wrap items-center gap-4 border border-[#EAEAEA] shadow-inner">
         <div className="flex flex-col gap-1">
-          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Status</span>
+          <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider px-1">Status</span>
           <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className={filterSelectClass}>
             <option value="ALL">All Statuses</option>
             <option value="ON PROGRESS">ON PROGRESS</option>
@@ -401,7 +401,7 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
           </select>
         </div>
         <div className="flex flex-col gap-1">
-          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Grade</span>
+          <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider px-1">Grade</span>
           <select value={filterGrade} onChange={e => setFilterGrade(e.target.value)} className={filterSelectClass}>
             <option value="ALL">All Grades</option>
             <option value="A">Grade A</option>
@@ -410,7 +410,7 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
           </select>
         </div>
         <div className="flex flex-col gap-1">
-          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Requester</span>
+          <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider px-1">Requester</span>
           <select value={filterRequester} onChange={e => setFilterRequester(e.target.value)} className={filterSelectClass}>
             <option value="ALL">All Requesters</option>
             {uniqueRequesters.map(req => <option key={req} value={req}>{req}</option>)}
@@ -419,7 +419,7 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
       </div>
 
       {isAdding && (
-        <form onSubmit={handleSave} className="bg-white p-8 rounded-2xl border border-slate-200 shadow-xl animate-in zoom-in duration-200 flex-shrink-0">
+        <form onSubmit={handleSave} className="bg-white p-8 rounded-[20px] border border-[#EAEAEA] shadow-sm border border-[#EAEAEA] animate-in zoom-in duration-200 flex-shrink-0">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
             <div className="md:col-span-2">
               <label className={labelClass}>Lead Name</label>
@@ -455,8 +455,8 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
             </div>
           </div>
           <div className="flex justify-end gap-4">
-            <button type="button" onClick={resetForm} className="px-6 py-2.5 text-sm font-bold text-slate-500 uppercase">Cancel</button>
-            <button type="submit" className="px-8 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-bold shadow-md hover:bg-indigo-700 transition-all uppercase tracking-widest">
+            <button type="button" onClick={resetForm} className="px-6 py-2.5 text-sm font-bold text-zinc-500 uppercase">Cancel</button>
+            <button type="submit" className="px-8 py-2.5 bg-zinc-900 text-white rounded-lg text-sm font-bold shadow-md hover:bg-black transition-all uppercase tracking-wider">
               {editingId ? 'Update Lead' : 'Commit Lead'}
             </button>
           </div>
@@ -467,20 +467,20 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
         {view === 'list' ? (
           <div className="space-y-4">
             {filteredLeads.length === 0 ? (
-              <div className="p-20 text-center bg-white rounded-3xl border-2 border-dashed border-slate-200 text-slate-400 font-bold italic">No leads found.</div>
+              <div className="p-20 text-center bg-white rounded-[20px] border-2 border-dashed border-[#EAEAEA] text-zinc-400 font-bold italic">No leads found.</div>
             ) : filteredLeads.map(l => (
-              <div key={l.id} onClick={() => setSelectedLead(l)} className="bg-white p-6 rounded-2xl border border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 group cursor-pointer hover:shadow-md transition-all">
+              <div key={l.id} onClick={() => setSelectedLead(l)} className="bg-white p-6 rounded-[20px] border border-[#EAEAEA] flex flex-col md:flex-row justify-between items-start md:items-center gap-4 group cursor-pointer hover:shadow-md transition-all">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <span className={`px-2 py-0.5 rounded-full border text-[8px] font-black uppercase ${getStatusBadge(l.status)}`}>{l.status}</span>
-                    <h3 className="text-lg font-bold text-slate-900 truncate uppercase tracking-tighter">{l.lead_name}</h3>
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${l.lead_grade === 'A' ? 'bg-orange-100 text-orange-700' : 'bg-indigo-100 text-indigo-700'}`}>Grade {l.lead_grade}</span>
+                    <span className={`px-2 py-0.5 rounded-full border text-[8px] font-bold uppercase ${getStatusBadge(l.status)}`}>{l.status}</span>
+                    <h3 className="text-lg font-bold text-zinc-900 truncate uppercase tracking-tight">{l.lead_name}</h3>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${l.lead_grade === 'A' ? 'bg-orange-100 text-orange-700' : 'bg-indigo-100 text-zinc-800'}`}>Grade {l.lead_grade}</span>
                   </div>
-                  <p className="text-xs font-bold text-slate-500 uppercase">Req: <span className="text-slate-900">{l.requester}</span> &bull; Deadline: <span className={`${l.deadline < new Date().toISOString().split('T')[0] && l.status !== 'DONE' ? 'text-red-600' : 'text-slate-900'} font-black`}>{l.deadline}</span></p>
+                  <p className="text-xs font-bold text-zinc-500 uppercase">Req: <span className="text-zinc-900">{l.requester}</span> &bull; Deadline: <span className={`${l.deadline < new Date().toISOString().split('T')[0] && l.status !== 'DONE' ? 'text-red-600' : 'text-zinc-900'} font-bold`}>{l.deadline}</span></p>
                 </div>
                 <div className="flex gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button onClick={(e) => downloadPDF(e, l)} className="p-2 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 transition-colors" title="PDF"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></button>
-                  <button onClick={(e) => handleEdit(e, l)} className="p-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition-colors" title="Edit"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-5M16.5 3.5a2.121 2.121 0 113 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
+                  <button onClick={(e) => handleEdit(e, l)} className="p-2 bg-zinc-100 text-zinc-800 rounded-lg hover:bg-indigo-100 transition-colors" title="Edit"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-5M16.5 3.5a2.121 2.121 0 113 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
                   <button onClick={(e) => handleDelete(e, l.id)} className="p-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors" title="Delete"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>
                 </div>
               </div>
@@ -489,19 +489,19 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
         ) : (
           <div 
             onWheel={handleWheel}
-            className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden h-full flex flex-col animate-in fade-in duration-300"
+            className="bg-white rounded-[20px] border border-[#EAEAEA] shadow-sm overflow-hidden h-full flex flex-col animate-in fade-in duration-300"
           >
-            <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between flex-shrink-0">
-               <h3 className="font-black text-slate-900 text-sm uppercase tracking-widest">{monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</h3>
+            <div className="p-4 border-b border-[#EAEAEA] bg-[#FCFCFC] flex items-center justify-between flex-shrink-0">
+               <h3 className="font-bold text-zinc-900 text-sm uppercase tracking-wider">{monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</h3>
                <div className="flex gap-2">
-                 <button onClick={() => navigateMonth(-1)} className="p-1.5 hover:bg-slate-300 rounded-lg transition-colors"><svg className="w-5 h-5 text-slate-800" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7"/></svg></button>
-                 <button onClick={() => navigateMonth(1)} className="p-1.5 hover:bg-slate-300 rounded-lg transition-colors"><svg className="w-5 h-5 text-slate-800" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7"/></svg></button>
+                 <button onClick={() => navigateMonth(-1)} className="p-1.5 hover:bg-[#FAFAFA]300 rounded-lg transition-colors"><svg className="w-5 h-5 text-zinc-800" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7"/></svg></button>
+                 <button onClick={() => navigateMonth(1)} className="p-1.5 hover:bg-[#FAFAFA]300 rounded-lg transition-colors"><svg className="w-5 h-5 text-zinc-800" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7"/></svg></button>
                </div>
             </div>
             <div className="overflow-y-auto flex-1">
-               <div className="grid grid-cols-7 border-l border-slate-200">
+               <div className="grid grid-cols-7 border-l border-[#EAEAEA]">
                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-                   <div key={d} className="py-2 text-center text-[9px] font-black uppercase text-slate-400 bg-slate-50 border-b border-r border-slate-200">{d}</div>
+                   <div key={d} className="py-2 text-center text-[9px] font-bold uppercase text-zinc-400 bg-[#FCFCFC] border-b border-r border-[#EAEAEA]">{d}</div>
                  ))}
                  {renderCalendar()}
                </div>
@@ -511,28 +511,28 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
       </div>
 
       {selectedLead && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 backdrop-blur-sm bg-slate-900/40" onClick={() => setSelectedLead(null)}>
-          <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl p-8 animate-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 backdrop-blur-sm bg-[#1A1C20]/40" onClick={() => setSelectedLead(null)}>
+          <div className="bg-white w-full max-w-lg rounded-[20px] shadow-2xl p-8 animate-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-start mb-6">
               <div className="flex items-center gap-2">
-                <span className={`px-2 py-0.5 rounded-full border text-[9px] font-black uppercase ${getStatusBadge(selectedLead.status)}`}>{selectedLead.status}</span>
-                <h2 className="text-xl font-bold text-slate-900 uppercase tracking-tighter">{selectedLead.lead_name}</h2>
+                <span className={`px-2 py-0.5 rounded-full border text-[9px] font-bold uppercase ${getStatusBadge(selectedLead.status)}`}>{selectedLead.status}</span>
+                <h2 className="text-xl font-bold text-zinc-900 uppercase tracking-tight">{selectedLead.lead_name}</h2>
               </div>
-              <button onClick={() => setSelectedLead(null)} className="p-1 text-slate-400 hover:text-slate-900"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+              <button onClick={() => setSelectedLead(null)} className="p-1 text-zinc-400 hover:text-zinc-900"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
             </div>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <div><span className="text-[10px] font-bold text-slate-400 uppercase">Requester</span><p className="font-bold text-slate-800 uppercase text-xs">{selectedLead.requester}</p></div>
-                <div><span className="text-[10px] font-bold text-slate-400 uppercase">Deadline</span><p className="font-bold text-red-600">{selectedLead.deadline}</p></div>
-                <div><span className="text-[10px] font-bold text-slate-400 uppercase">Grade</span><p className="font-bold text-indigo-600 uppercase text-xs">Grade {selectedLead.lead_grade}</p></div>
-                <div><span className="text-[10px] font-bold text-slate-400 uppercase">Ordered On</span><p className="font-bold text-slate-800">{selectedLead.order_date}</p></div>
+                <div><span className="text-[10px] font-bold text-zinc-400 uppercase">Requester</span><p className="font-bold text-zinc-800 uppercase text-xs">{selectedLead.requester}</p></div>
+                <div><span className="text-[10px] font-bold text-zinc-400 uppercase">Deadline</span><p className="font-bold text-red-600">{selectedLead.deadline}</p></div>
+                <div><span className="text-[10px] font-bold text-zinc-400 uppercase">Grade</span><p className="font-bold text-zinc-900 uppercase text-xs">Grade {selectedLead.lead_grade}</p></div>
+                <div><span className="text-[10px] font-bold text-zinc-400 uppercase">Ordered On</span><p className="font-bold text-zinc-800">{selectedLead.order_date}</p></div>
               </div>
-              <div><span className="text-[10px] font-bold text-slate-400 uppercase">Brief</span><div className="p-4 bg-slate-50 rounded-xl text-sm italic text-slate-700 whitespace-pre-wrap border border-slate-100">{selectedLead.brief || 'No brief provided.'}</div></div>
+              <div><span className="text-[10px] font-bold text-zinc-400 uppercase">Brief</span><div className="p-4 bg-[#FCFCFC] rounded-xl text-sm italic text-zinc-700 whitespace-pre-wrap border border-zinc-100">{selectedLead.brief || 'No brief provided.'}</div></div>
               {selectedLead.drive_link && (
-                <div><span className="text-[10px] font-bold text-slate-400 uppercase">Reference Artworks</span><a href={selectedLead.drive_link} target="_blank" rel="noreferrer" className="block p-3 bg-indigo-50 text-indigo-700 rounded-xl text-xs font-bold truncate hover:bg-indigo-100 transition-colors">{selectedLead.drive_link}</a></div>
+                <div><span className="text-[10px] font-bold text-zinc-400 uppercase">Reference Artworks</span><a href={selectedLead.drive_link} target="_blank" rel="noreferrer" className="block p-3 bg-zinc-100 text-zinc-800 rounded-xl text-xs font-bold truncate hover:bg-indigo-100 transition-colors">{selectedLead.drive_link}</a></div>
               )}
             </div>
-            <button onClick={() => setSelectedLead(null)} className="w-full mt-8 py-3 bg-slate-900 text-white rounded-xl font-bold uppercase tracking-widest text-xs">Close Details</button>
+            <button onClick={() => setSelectedLead(null)} className="w-full mt-8 py-3 bg-[#1A1C20] text-white rounded-xl font-bold uppercase tracking-wider text-xs">Close Details</button>
           </div>
         </div>
       )}
@@ -542,7 +542,7 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
 
 const StatusItem = ({ label, value, color }: { label: string, value: number, color: string }) => (
   <div className="flex flex-col">
-    <span className="text-[8px] font-black uppercase text-slate-400 tracking-tighter mb-0.5">{label}</span>
+    <span className="text-[8px] font-bold uppercase text-zinc-400 tracking-tight mb-0.5">{label}</span>
     <span className={`text-sm font-bold ${color}`}>{value}</span>
   </div>
 );
