@@ -12,7 +12,8 @@ interface Props {
 const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
 const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, onUpdate }) => {
-  const [view, setView] = useState<'list' | 'calendar'>('list');
+  const [view, setView] = useState<'list' | 'calendar' | 'board'>('list');
+  const [boardGroup, setBoardGroup] = useState<'status' | 'dept' | 'overdue'>('status');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [filterDept, setFilterDept] = useState<string>('ALL');
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -54,6 +55,25 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
       return matchStatus && matchDept;
     });
   }, [internalDesigns, filterStatus, filterDept]);
+
+  const internalBoardGroups = useMemo(() => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const groups: Record<string, InternalDesign[]> = {};
+    filteredTasks.forEach(t => {
+      let key = 'UNASSIGNED';
+      if (boardGroup === 'status') key = t.status || 'UNASSIGNED';
+      else if (boardGroup === 'dept') key = getDeptName(t.department_id) || 'UNASSIGNED';
+      else if (boardGroup === 'overdue') {
+        if (t.status === 'DONE') key = 'DONE';
+        else if (t.deadline < todayStr) key = 'OVERDUE';
+        else if (t.deadline === todayStr) key = 'TODAY';
+        else key = 'UPCOMING';
+      }
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(t);
+    });
+    return groups;
+  }, [filteredTasks, boardGroup, departments]);
 
   const calendarLanes = useMemo(() => {
     const year = currentDate.getFullYear();
@@ -205,6 +225,7 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex bg-[#FAFAFA]200 p-1 rounded-xl">
             <button onClick={() => setView('list')} className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${view === 'list' ? 'bg-white text-purple-700 shadow-sm' : 'text-zinc-600'}`}>List</button>
+            <button onClick={() => setView('board')} className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${view === 'board' ? 'bg-white text-purple-700 shadow-sm' : 'text-zinc-600'}`}>Board</button>
             <button onClick={() => setView('calendar')} className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${view === 'calendar' ? 'bg-white text-purple-700 shadow-sm' : 'text-zinc-600'}`}>Calendar</button>
           </div>
           <button onClick={handleOpenAdd} className="px-4 py-2 bg-purple-600 text-white rounded-lg text-xs font-bold uppercase shadow-sm border border-[#EAEAEA] flex items-center gap-2 hover:bg-purple-700 transition-all">
@@ -283,49 +304,103 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredTasks.map(task => (
-                <tr key={task.id} onClick={() => setSelectedTask(task)} className="hover:bg-[#FCFCFC] transition-colors cursor-pointer group font-bold text-zinc-800 uppercase">
-                  <td className="px-6 py-4">
-                    <div className="flex flex-col gap-1.5">
-                      <div className="font-bold text-zinc-900">{task.task_name}</div>
-                      <div className="flex">
-                        <span className={`px-2 py-0.5 rounded-full border text-[8px] font-bold uppercase ${getStatusColor(task.status)}`}>{task.status}</span>
+              {filteredTasks.map(task => {
+                const todayStr = new Date().toISOString().split('T')[0];
+                const isOverdue = task.deadline < todayStr && task.status !== 'DONE';
+                const isToday = task.deadline === todayStr && task.status !== 'DONE';
+                return (
+                  <tr key={task.id} onClick={() => setSelectedTask(task)} className="hover:bg-[#FCFCFC] transition-colors cursor-pointer group font-bold text-zinc-800 uppercase">
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col gap-1.5">
+                        <div className="font-bold text-zinc-900">{task.task_name}</div>
+                        <div className="flex">
+                          <span className={`px-2 py-0.5 rounded-full border text-[8px] font-bold uppercase ${getStatusColor(task.status)}`}>{task.status}</span>
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-[11px] font-bold text-zinc-800 leading-tight">{getDeptName(task.department_id)}</div>
-                    <div className="text-[10px] text-zinc-400 font-medium mt-0.5 tracking-tight">By: {task.requester_name}</div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`text-xs font-bold ${task.deadline < new Date().toISOString().split('T')[0] && task.status !== 'DONE' ? 'text-red-600' : 'text-zinc-700'}`}>
-                      {task.deadline}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right" onClick={e => e.stopPropagation()}>
-                    <div className="flex items-center justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => handleOpenEdit(task)} className="text-purple-600 text-[10px] font-bold uppercase">Edit</button>
-                      <button onClick={() => handleDelete(task.id)} className="text-red-500 text-[10px] font-bold uppercase">Del</button>
-                      <select
-                        value={task.status}
-                        onChange={(e) => updateStatus(task.id, e.target.value as InternalStatus)}
-                        className="text-[9px] font-bold border-[#EAEAEA] rounded-lg p-1.5 bg-[#FCFCFC] outline-none focus:ring-2 focus:ring-purple-500 uppercase cursor-pointer"
-                      >
-                        <option value="NEW">NEW</option>
-                        <option value="ON PROGRESS">PROGRESS</option>
-                        <option value="ON REVIEW">REVIEW</option>
-                        <option value="ON HOLD">HOLD</option>
-                        <option value="DONE">DONE</option>
-                      </select>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-[11px] font-bold text-zinc-800 leading-tight">{getDeptName(task.department_id)}</div>
+                      <div className="text-[10px] text-zinc-400 font-medium mt-0.5 tracking-tight">By: {task.requester_name}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`text-xs font-bold leading-tight ${isOverdue ? 'text-red-700 bg-red-100 px-1.5 py-0.5 rounded border border-red-200' : isToday ? 'text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded border border-amber-200' : 'text-zinc-700'}`}>
+                        {task.deadline}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right" onClick={e => e.stopPropagation()}>
+                      <div className="flex items-center justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => handleOpenEdit(task)} className="text-purple-600 text-[10px] font-bold uppercase">Edit</button>
+                        <button onClick={() => handleDelete(task.id)} className="text-red-500 text-[10px] font-bold uppercase">Del</button>
+                        <select
+                          value={task.status}
+                          onChange={(e) => updateStatus(task.id, e.target.value as InternalStatus)}
+                          className="text-[9px] font-bold border-[#EAEAEA] rounded-lg p-1.5 bg-[#FCFCFC] outline-none focus:ring-2 focus:ring-purple-500 uppercase cursor-pointer"
+                        >
+                          <option value="NEW">NEW</option>
+                          <option value="ON PROGRESS">PROGRESS</option>
+                          <option value="ON REVIEW">REVIEW</option>
+                          <option value="ON HOLD">HOLD</option>
+                          <option value="DONE">DONE</option>
+                        </select>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
           {filteredTasks.length === 0 && (
             <div className="p-20 text-center text-zinc-400 font-bold italic">No requests matching filters.</div>
           )}
+        </div>
+      ) : view === 'board' ? (
+        <div className="h-[600px] flex flex-col border border-[#EAEAEA] bg-white rounded-[20px] shadow-sm p-4 overflow-hidden">
+          <div className="flex items-center gap-3 mb-4 shrink-0">
+            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Group By:</span>
+            <select value={boardGroup} onChange={e => setBoardGroup(e.target.value as any)} className="text-[10px] font-bold border border-[#EAEAEA] rounded-lg p-1.5 bg-white outline-none focus:ring-2 focus:ring-purple-500 uppercase cursor-pointer">
+              <option value="status">Status</option>
+              <option value="dept">Department</option>
+              <option value="overdue">Deadline Alert</option>
+            </select>
+          </div>
+          <div className="flex-1 overflow-x-auto flex gap-6 pb-2 items-start custom-scrollbar h-full">
+            {Object.keys(internalBoardGroups).sort().map(groupKey => (
+              <div key={groupKey} className="w-80 flex-shrink-0 bg-zinc-50/50 rounded-2xl flex flex-col max-h-full border border-zinc-100 shadow-sm h-full">
+                <div className="p-4 border-b border-zinc-100 uppercase tracking-tight font-bold text-sm text-zinc-800 flex justify-between items-center bg-white rounded-t-2xl shrink-0">
+                  <span className="truncate pr-2">{groupKey}</span>
+                  <span className="bg-zinc-100 text-zinc-500 text-[10px] px-2 py-0.5 rounded-full">{internalBoardGroups[groupKey].length}</span>
+                </div>
+                <div className="p-3 flex-1 overflow-y-auto space-y-3 custom-scrollbar min-h-0">
+                  {internalBoardGroups[groupKey].map(task => {
+                    const todayStr = new Date().toISOString().split('T')[0];
+                    const isOverdue = task.deadline < todayStr && task.status !== 'DONE';
+                    const isToday = task.deadline === todayStr && task.status !== 'DONE';
+                    return (
+                      <div key={task.id} onClick={() => setSelectedTask(task)} className="bg-white p-4 rounded-xl shadow-sm border border-[#EAEAEA] cursor-pointer hover:shadow-md transition-shadow group">
+                        <div className="flex justify-between items-start mb-2">
+                          <span className={`px-2 py-0.5 rounded-md border text-[8px] font-bold uppercase ${getStatusColor(task.status)}`}>{task.status}</span>
+                          <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onClick={(e) => { e.stopPropagation(); handleOpenEdit(task); }} className="text-zinc-400 hover:text-purple-600"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-5M16.5 3.5a2.121 2.121 0 113 3L7 19l-4 1 1-4L16.5 3.5z" /></svg></button>
+                          </div>
+                        </div>
+                        <h4 className="font-bold text-zinc-900 text-sm uppercase leading-tight mb-2 tracking-tight line-clamp-2" title={task.task_name}>{task.task_name}</h4>
+                        <div className="flex flex-col gap-1.5 mt-3 pt-3 border-t border-zinc-50">
+                          <div className="flex justify-between text-[10px] items-center">
+                            <span className="text-zinc-400 font-bold uppercase">Dept / Req</span>
+                            <span className="text-zinc-800 font-bold truncate max-w-[120px]" title={getDeptName(task.department_id)}>{getDeptName(task.department_id)}</span>
+                          </div>
+                          <div className="flex justify-between text-[10px] items-center">
+                            <span className="text-zinc-400 font-bold uppercase">Deadline</span>
+                            <span className={`font-bold tracking-tight ${isOverdue ? 'text-red-700 bg-red-100 px-1.5 py-0.5 rounded border border-red-200' : isToday ? 'text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded border border-amber-200' : 'text-zinc-800'}`}>{task.deadline}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       ) : (
         <div className="bg-white rounded-[20px] border border-[#EAEAEA] shadow-sm overflow-hidden h-full flex flex-col animate-in fade-in duration-300 min-h-[600px]">
