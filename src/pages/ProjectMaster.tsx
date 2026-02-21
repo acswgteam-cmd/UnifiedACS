@@ -167,19 +167,38 @@ export const ProjectMaster: React.FC<Props> = ({ projects, designers, artworkLog
 
     let totalScore = 0;
     let evalCount = 0;
+    const detailSums: Record<string, number> = {};
+    const detailCounts: Record<string, number> = {};
+    EVAL_CRITERIA.forEach(c => {
+      detailSums[c.key] = 0;
+      detailCounts[c.key] = 0;
+    });
+
     designerEvaluations.forEach(ev => {
       const scores = EVAL_CRITERIA.map(c => (ev as any)[c.key] || 0).filter((v: number) => v > 0);
       if (scores.length > 0) {
         totalScore += scores.reduce((a, b) => a + b, 0) / scores.length;
         evalCount++;
       }
+      EVAL_CRITERIA.forEach(c => {
+        const score = (ev as any)[c.key] || 0;
+        if (score > 0) {
+          detailSums[c.key] += score;
+          detailCounts[c.key]++;
+        }
+      });
     });
     const avgScore = evalCount > 0 ? (totalScore / evalCount).toFixed(1) : '0.0';
+
+    const detailAverages: Record<string, string> = {};
+    EVAL_CRITERIA.forEach(c => {
+      detailAverages[c.key] = detailCounts[c.key] > 0 ? (detailSums[c.key] / detailCounts[c.key]).toFixed(1) : '0.0';
+    });
 
     const totalTeamSize = projects.reduce((acc, p) => acc + 1 + (p.support_designer_ids?.length || 0), 0);
     const avgTeamSize = totalProjects > 0 ? (totalTeamSize / totalProjects).toFixed(1) : '0.0';
 
-    return { totalProjects, byStatus, evaluatedProjectsCount, doneCount: doneProjects.length, avgScore, avgTeamSize };
+    return { totalProjects, byStatus, evaluatedProjectsCount, doneCount: doneProjects.length, avgScore, avgTeamSize, detailAverages };
   }, [projects, designerEvaluations]);
 
   const handleCopyChecklistLink = () => { const publicUrl = `${window.location.origin}${window.location.pathname}#/portal/v1/survey/${SURVEY_FORM_SECRET}`; navigator.clipboard.writeText(publicUrl); setCopySuccess(true); setTimeout(() => setCopySuccess(false), 2000); };
@@ -789,8 +808,18 @@ IMPORTANT: Extract ALL rows. Return raw JSON only, no explanations.`;
           </div>
         </div>
         <div className="bg-white p-4 rounded-[20px] border border-[#EAEAEA] shadow-sm flex flex-col justify-center">
-          <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Avg Score</span>
-          <div className="text-2xl font-bold text-zinc-900">{dashboardStats.avgScore}</div>
+          <div className="flex justify-between items-start mb-1">
+            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Avg Score</span>
+            <div className="text-2xl font-bold text-zinc-900 leading-none">{dashboardStats.avgScore}</div>
+          </div>
+          <div className="grid grid-cols-2 gap-x-2 gap-y-1 mt-2">
+            {EVAL_CRITERIA.map(c => (
+              <div key={c.key} className="flex justify-between items-center text-[9px] border-b border-zinc-50 pb-0.5">
+                <span className="text-zinc-500 uppercase truncate pr-1" title={c.label}>{c.label}</span>
+                <span className="font-bold text-zinc-800">{dashboardStats.detailAverages[c.key]}/5.0</span>
+              </div>
+            ))}
+          </div>
         </div>
         <div className="bg-white p-4 rounded-[20px] border border-[#EAEAEA] shadow-sm flex flex-col justify-center">
           <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Avg Team Size</span>

@@ -18,7 +18,7 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [copySuccess, setCopySuccess] = useState(false);
   const lastScrollTime = useRef(0);
-  
+
   // States for Filtering
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [filterGrade, setFilterGrade] = useState('ALL');
@@ -72,7 +72,7 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
     const endOfMonth = new Date(year, month + 1, 0).toISOString().split('T')[0];
 
     const visibleLeads = filteredLeads.filter(l => l.order_date <= endOfMonth && l.deadline >= startOfMonth);
-    
+
     const sorted = [...visibleLeads].sort((a, b) => {
       if (a.order_date !== b.order_date) return a.order_date.localeCompare(b.order_date);
       return b.deadline.localeCompare(a.deadline);
@@ -170,7 +170,7 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
     doc.setFontSize(22);
     doc.text(lead.lead_name.toUpperCase(), 20, 28);
 
-    doc.setTextColor(100, 116, 139); 
+    doc.setTextColor(100, 116, 139);
     doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
     doc.text('REQUESTER / PIC', 20, 55);
@@ -178,7 +178,7 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
     doc.text('DEADLINE', 110, 55);
     doc.text('CURRENT STATUS', 110, 70);
 
-    doc.setTextColor(15, 23, 42); 
+    doc.setTextColor(15, 23, 42);
     doc.setFontSize(11);
     doc.setFont('helvetica', 'normal');
     doc.text(lead.requester, 20, 62);
@@ -186,13 +186,13 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
     doc.text(lead.deadline, 110, 62);
     doc.text(lead.status, 110, 77);
 
-    doc.setDrawColor(226, 232, 240); 
+    doc.setDrawColor(226, 232, 240);
     doc.line(20, 85, 190, 85);
-    doc.setTextColor(100, 116, 139); 
+    doc.setTextColor(100, 116, 139);
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
     doc.text('SCOPE OF WORK / BRIEF', 20, 95);
-    doc.setTextColor(51, 65, 85); 
+    doc.setTextColor(51, 65, 85);
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     const splitBrief = doc.splitTextToSize(lead.brief || 'No detailed brief provided for this request.', 170);
@@ -211,7 +211,7 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
       doc.setFont('helvetica', 'bold');
       doc.textWithLink(lead.drive_link, 20, briefBottom + 18, { url: lead.drive_link });
     }
-    doc.setTextColor(148, 163, 184); 
+    doc.setTextColor(148, 163, 184);
     doc.setFontSize(8);
     doc.setFont('helvetica', 'italic');
     doc.text(`Generated on ${new Date().toLocaleString()} - ACS Unified Studio Portal`, 20, 285);
@@ -244,7 +244,7 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
   const daysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
   const firstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
   const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-  
+
   const navigateMonth = (direction: number) => {
     setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() + direction, 1));
   };
@@ -278,7 +278,7 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
     for (let d = 1; d <= totalDays; d++) {
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
       const isToday = dateStr === todayStr;
-      
+
       days.push(
         <div key={d} className={`min-h-[160px] h-full border-r border-b border-[#EAEAEA] p-0 flex flex-col relative ${isToday ? 'bg-zinc-100/30' : 'bg-white'}`}>
           <div className="p-2 flex-shrink-0">
@@ -296,8 +296,8 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
               const isEnd = dateStr === lead.deadline;
 
               return (
-                <div 
-                  key={lead.id} 
+                <div
+                  key={lead.id}
                   onClick={() => setSelectedLead(lead)}
                   className={`cursor-pointer min-h-[64px] py-1.5 flex flex-col justify-center px-2 overflow-hidden transition-all hover:brightness-95 ${theme.bg} ${theme.text} ${isStart ? `rounded-l-md ml-1 border-l-4 ${theme.border}` : ''} ${isEnd ? 'rounded-r-md mr-1' : ''}`}
                 >
@@ -338,7 +338,7 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <button onClick={handleCopyLink} className={`px-4 py-2 rounded-lg text-xs font-bold uppercase transition-all flex items-center gap-2 border ${copySuccess ? 'bg-emerald-50 border-emerald-500 text-emerald-700' : 'bg-white border-zinc-300 text-zinc-700 hover:border-zinc-900'}`}>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
             {copySuccess ? 'Copied Link!' : 'Copy Secured Link'}
           </button>
           <div className="flex bg-[#FAFAFA]200 p-1 rounded-lg">
@@ -346,7 +346,7 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
             <button onClick={() => setView('calendar')} className={`px-4 py-1 rounded-md text-xs font-bold ${view === 'calendar' ? 'bg-white shadow-sm text-zinc-800' : 'text-zinc-600'}`}>Calendar</button>
           </div>
           <button onClick={() => setIsAdding(true)} className="px-4 py-2 bg-zinc-900 text-white rounded-lg text-sm font-bold shadow-sm border border-[#EAEAEA] hover:bg-black transition-all flex items-center gap-2">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4"/></svg>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" /></svg>
             New Lead
           </button>
         </div>
@@ -423,11 +423,11 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
             <div className="md:col-span-2">
               <label className={labelClass}>Lead Name</label>
-              <input type="text" required value={formData.lead_name} onChange={e => setFormData({...formData, lead_name: e.target.value})} className={inputClass} placeholder="Project title..." />
+              <input type="text" required value={formData.lead_name} onChange={e => setFormData({ ...formData, lead_name: e.target.value })} className={inputClass} placeholder="Project title..." />
             </div>
             <div>
               <label className={labelClass}>Status</label>
-              <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as any})} className={inputClass}>
+              <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value as any })} className={inputClass}>
                 <option value="ON PROGRESS">ON PROGRESS</option>
                 <option value="DONE">DONE</option>
                 <option value="CANCEL">CANCEL</option>
@@ -435,11 +435,11 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
             </div>
             <div>
               <label className={labelClass}>Requester</label>
-              <input type="text" required value={formData.requester} onChange={e => setFormData({...formData, requester: e.target.value})} className={inputClass} placeholder="Name/Dept" />
+              <input type="text" required value={formData.requester} onChange={e => setFormData({ ...formData, requester: e.target.value })} className={inputClass} placeholder="Name/Dept" />
             </div>
             <div>
               <label className={labelClass}>Grade</label>
-              <select value={formData.lead_grade} onChange={e => setFormData({...formData, lead_grade: e.target.value})} className={inputClass}>
+              <select value={formData.lead_grade} onChange={e => setFormData({ ...formData, lead_grade: e.target.value })} className={inputClass}>
                 <option value="A">Grade A (High)</option>
                 <option value="B">Grade B (Standard)</option>
                 <option value="C">Grade C (Low)</option>
@@ -447,11 +447,11 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
             </div>
             <div>
               <label className={labelClass}>Deadline</label>
-              <input type="date" required value={formData.deadline} onChange={e => setFormData({...formData, deadline: e.target.value})} className={inputClass} />
+              <input type="date" required value={formData.deadline} onChange={e => setFormData({ ...formData, deadline: e.target.value })} className={inputClass} />
             </div>
             <div className="md:col-span-3">
               <label className={labelClass}>Brief</label>
-              <textarea value={formData.brief} onChange={e => setFormData({...formData, brief: e.target.value})} className={inputClass} rows={3} placeholder="Production scope..." />
+              <textarea value={formData.brief} onChange={e => setFormData({ ...formData, brief: e.target.value })} className={inputClass} rows={3} placeholder="Production scope..." />
             </div>
           </div>
           <div className="flex justify-end gap-4">
@@ -465,74 +465,112 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
 
       <div className="flex-1 overflow-auto">
         {view === 'list' ? (
-          <div className="space-y-4">
-            {filteredLeads.length === 0 ? (
-              <div className="p-20 text-center bg-white rounded-[20px] border-2 border-dashed border-[#EAEAEA] text-zinc-400 font-bold italic">No leads found.</div>
-            ) : filteredLeads.map(l => (
-              <div key={l.id} onClick={() => setSelectedLead(l)} className="bg-white p-6 rounded-[20px] border border-[#EAEAEA] flex flex-col md:flex-row justify-between items-start md:items-center gap-4 group cursor-pointer hover:shadow-md transition-all">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <span className={`px-2 py-0.5 rounded-full border text-[8px] font-bold uppercase ${getStatusBadge(l.status)}`}>{l.status}</span>
-                    <h3 className="text-lg font-bold text-zinc-900 truncate uppercase tracking-tight">{l.lead_name}</h3>
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${l.lead_grade === 'A' ? 'bg-orange-100 text-orange-700' : 'bg-indigo-100 text-zinc-800'}`}>Grade {l.lead_grade}</span>
-                  </div>
-                  <p className="text-xs font-bold text-zinc-500 uppercase">Req: <span className="text-zinc-900">{l.requester}</span> &bull; Deadline: <span className={`${l.deadline < new Date().toISOString().split('T')[0] && l.status !== 'DONE' ? 'text-red-600' : 'text-zinc-900'} font-bold`}>{l.deadline}</span></p>
-                </div>
-                <div className="flex gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button onClick={(e) => downloadPDF(e, l)} className="p-2 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 transition-colors" title="PDF"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></button>
-                  <button onClick={(e) => handleEdit(e, l)} className="p-2 bg-zinc-100 text-zinc-800 rounded-lg hover:bg-indigo-100 transition-colors" title="Edit"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-5M16.5 3.5a2.121 2.121 0 113 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
-                  <button onClick={(e) => handleDelete(e, l.id)} className="p-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors" title="Delete"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>
-                </div>
-              </div>
-            ))}
+          <div className="bg-white rounded-[20px] border border-[#EAEAEA] shadow-sm overflow-hidden animate-in fade-in duration-300">
+            <table className="w-full text-left text-sm border-collapse">
+              <thead className="bg-[#F8F9FA] border-b border-[#EAEAEA] font-bold text-[10px] uppercase text-zinc-500 tracking-wider">
+                <tr>
+                  <th className="px-6 py-4">Status & Name</th>
+                  <th className="px-6 py-4">Timeline & Grade</th>
+                  <th className="px-6 py-4">Requester</th>
+                  <th className="px-6 py-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredLeads.map(l => (
+                  <tr key={l.id} onClick={() => setSelectedLead(l)} className="hover:bg-[#FCFCFC] transition-colors cursor-pointer group font-bold text-zinc-800 uppercase">
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col gap-1.5">
+                        <div className="font-bold text-zinc-900">{l.lead_name}</div>
+                        <div className="flex">
+                          <span className={`px-2 py-0.5 rounded-full border text-[8px] font-bold uppercase ${getStatusBadge(l.status)}`}>{l.status}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-[11px] font-bold text-zinc-800 leading-tight">{l.order_date} → <span className={`${l.deadline < new Date().toISOString().split('T')[0] && l.status !== 'DONE' ? 'text-red-600' : 'text-zinc-900'} font-bold`}>{l.deadline}</span></div>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase ${l.lead_grade === 'A' ? 'bg-orange-100 text-orange-700' : 'bg-indigo-100 text-zinc-800'}`}>Grade {l.lead_grade}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-1.5"><span className="w-2 h-2 bg-zinc-900 rounded-full"></span><span className="text-[11px] uppercase">{l.requester}</span></div>
+                    </td>
+                    <td className="px-6 py-4 text-right" onClick={e => e.stopPropagation()}>
+                      <div className="flex items-center justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={(e) => downloadPDF(e, l)} className="text-emerald-700 text-[10px] font-bold uppercase">PDF</button>
+                        <button onClick={(e) => handleEdit(e, l)} className="text-indigo-600 text-[10px] font-bold uppercase">Edit</button>
+                        <button onClick={(e) => handleDelete(e, l.id)} className="text-red-500 text-[10px] font-bold uppercase">Del</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {filteredLeads.length === 0 && (
+              <div className="p-20 text-center text-zinc-400 font-bold italic">No leads found.</div>
+            )}
           </div>
         ) : (
-          <div 
+          <div
             onWheel={handleWheel}
             className="bg-white rounded-[20px] border border-[#EAEAEA] shadow-sm overflow-hidden h-full flex flex-col animate-in fade-in duration-300"
           >
             <div className="p-4 border-b border-[#EAEAEA] bg-[#FCFCFC] flex items-center justify-between flex-shrink-0">
-               <h3 className="font-bold text-zinc-900 text-sm uppercase tracking-wider">{monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</h3>
-               <div className="flex gap-2">
-                 <button onClick={() => navigateMonth(-1)} className="p-1.5 hover:bg-[#FAFAFA]300 rounded-lg transition-colors"><svg className="w-5 h-5 text-zinc-800" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7"/></svg></button>
-                 <button onClick={() => navigateMonth(1)} className="p-1.5 hover:bg-[#FAFAFA]300 rounded-lg transition-colors"><svg className="w-5 h-5 text-zinc-800" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7"/></svg></button>
-               </div>
+              <h3 className="font-bold text-zinc-900 text-sm uppercase tracking-wider">{monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</h3>
+              <div className="flex gap-2">
+                <button onClick={() => navigateMonth(-1)} className="p-1.5 hover:bg-[#FAFAFA]300 rounded-lg transition-colors"><svg className="w-5 h-5 text-zinc-800" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" /></svg></button>
+                <button onClick={() => navigateMonth(1)} className="p-1.5 hover:bg-[#FAFAFA]300 rounded-lg transition-colors"><svg className="w-5 h-5 text-zinc-800" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" /></svg></button>
+              </div>
             </div>
             <div className="overflow-y-auto flex-1">
-               <div className="grid grid-cols-7 border-l border-[#EAEAEA]">
-                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-                   <div key={d} className="py-2 text-center text-[9px] font-bold uppercase text-zinc-400 bg-[#FCFCFC] border-b border-r border-[#EAEAEA]">{d}</div>
-                 ))}
-                 {renderCalendar()}
-               </div>
+              <div className="grid grid-cols-7 border-l border-[#EAEAEA]">
+                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+                  <div key={d} className="py-2 text-center text-[9px] font-bold uppercase text-zinc-400 bg-[#FCFCFC] border-b border-r border-[#EAEAEA]">{d}</div>
+                ))}
+                {renderCalendar()}
+              </div>
             </div>
           </div>
         )}
       </div>
 
       {selectedLead && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 backdrop-blur-sm bg-[#1A1C20]/40" onClick={() => setSelectedLead(null)}>
-          <div className="bg-white w-full max-w-lg rounded-[20px] shadow-2xl p-8 animate-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-start mb-6">
-              <div className="flex items-center gap-2">
-                <span className={`px-2 py-0.5 rounded-full border text-[9px] font-bold uppercase ${getStatusBadge(selectedLead.status)}`}>{selectedLead.status}</span>
-                <h2 className="text-xl font-bold text-zinc-900 uppercase tracking-tight">{selectedLead.lead_name}</h2>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 backdrop-blur-sm bg-[#1A1C20]/40" onClick={() => setSelectedLead(null)}>
+          <div className="bg-white w-full max-w-lg rounded-[24px] shadow-2xl overflow-hidden animate-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
+            <div className="p-6 md:p-8 border-b border-[#EAEAEA] bg-[#FCFCFC] flex justify-between items-start">
+              <div>
+                <span className={`px-2 py-0.5 rounded-full border text-[9px] font-bold uppercase mb-2 inline-block ${getStatusBadge(selectedLead.status)}`}>{selectedLead.status}</span>
+                <h2 className="text-xl md:text-2xl font-bold text-zinc-900 uppercase tracking-tight">{selectedLead.lead_name}</h2>
               </div>
-              <button onClick={() => setSelectedLead(null)} className="p-1 text-zinc-400 hover:text-zinc-900"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+              <button onClick={() => setSelectedLead(null)} className="p-2 bg-white border border-zinc-200 rounded-full hover:bg-zinc-100 transition-all text-zinc-500 hover:text-zinc-900 shadow-sm"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
             </div>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div><span className="text-[10px] font-bold text-zinc-400 uppercase">Requester</span><p className="font-bold text-zinc-800 uppercase text-xs">{selectedLead.requester}</p></div>
-                <div><span className="text-[10px] font-bold text-zinc-400 uppercase">Deadline</span><p className="font-bold text-red-600">{selectedLead.deadline}</p></div>
-                <div><span className="text-[10px] font-bold text-zinc-400 uppercase">Grade</span><p className="font-bold text-zinc-900 uppercase text-xs">Grade {selectedLead.lead_grade}</p></div>
-                <div><span className="text-[10px] font-bold text-zinc-400 uppercase">Ordered On</span><p className="font-bold text-zinc-800">{selectedLead.order_date}</p></div>
+            <div className="p-6 md:p-8 space-y-6">
+              <div className="grid grid-cols-2 gap-y-6 gap-x-4 flex-wrap">
+                <div className="bg-zinc-50 p-3 rounded-xl border border-zinc-100"><span className="text-[10px] font-bold text-zinc-400 uppercase block mb-1">Requester</span><p className="font-bold text-zinc-800 uppercase text-xs truncate" title={selectedLead.requester}>{selectedLead.requester}</p></div>
+                <div className="bg-zinc-50 p-3 rounded-xl border border-zinc-100"><span className="text-[10px] font-bold text-zinc-400 uppercase block mb-1">Deadline</span><p className="font-bold text-red-600 uppercase text-xs">{selectedLead.deadline}</p></div>
+                <div className="bg-zinc-50 p-3 rounded-xl border border-zinc-100"><span className="text-[10px] font-bold text-zinc-400 uppercase block mb-1">Grade</span><p className="font-bold text-zinc-900 uppercase text-xs">Grade {selectedLead.lead_grade}</p></div>
+                <div className="bg-zinc-50 p-3 rounded-xl border border-zinc-100"><span className="text-[10px] font-bold text-zinc-400 uppercase block mb-1">Ordered On</span><p className="font-bold text-zinc-800 uppercase text-xs">{selectedLead.order_date}</p></div>
               </div>
-              <div><span className="text-[10px] font-bold text-zinc-400 uppercase">Brief</span><div className="p-4 bg-[#FCFCFC] rounded-xl text-sm italic text-zinc-700 whitespace-pre-wrap border border-zinc-100">{selectedLead.brief || 'No brief provided.'}</div></div>
+              <div>
+                <span className="text-[10px] font-bold text-zinc-400 uppercase block mb-1.5 ml-1">Brief Description</span>
+                <div className="p-4 bg-[#FCFCFC] rounded-xl text-sm italic text-zinc-700 whitespace-pre-wrap border border-zinc-200/60 leading-relaxed max-h-[150px] overflow-y-auto custom-scrollbar">
+                  {selectedLead.brief || 'No brief provided for this request.'}
+                </div>
+              </div>
               {selectedLead.drive_link && (
-                <div><span className="text-[10px] font-bold text-zinc-400 uppercase">Reference Artworks</span><a href={selectedLead.drive_link} target="_blank" rel="noreferrer" className="block p-3 bg-zinc-100 text-zinc-800 rounded-xl text-xs font-bold truncate hover:bg-indigo-100 transition-colors">{selectedLead.drive_link}</a></div>
+                <div>
+                  <span className="text-[10px] font-bold text-zinc-400 uppercase block mb-1.5 ml-1">Reference Artworks</span>
+                  <a href={selectedLead.drive_link} target="_blank" rel="noreferrer" className="flex items-center gap-2 p-3 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-xl text-xs font-bold truncate hover:bg-indigo-100 hover:border-indigo-200 transition-all shadow-sm">
+                    <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                    {selectedLead.drive_link}
+                  </a>
+                </div>
               )}
             </div>
-            <button onClick={() => setSelectedLead(null)} className="w-full mt-8 py-3 bg-[#1A1C20] text-white rounded-xl font-bold uppercase tracking-wider text-xs">Close Details</button>
+            <div className="p-6 bg-[#F8F9FA] border-t border-[#EAEAEA] flex gap-4">
+              <button onClick={(e) => { setSelectedLead(null); handleEdit(e, selectedLead); }} className="flex-1 py-3 bg-zinc-900 text-white rounded-xl font-bold uppercase tracking-wider text-xs shadow-md border border-zinc-800 hover:bg-black transition-all">Edit Lead</button>
+              <button onClick={(e) => downloadPDF(e, selectedLead)} className="flex-1 py-3 bg-white text-zinc-800 rounded-xl font-bold uppercase tracking-wider text-xs shadow-sm border border-zinc-200 hover:bg-zinc-50 transition-all">Download PDF</button>
+            </div>
           </div>
         </div>
       )}
