@@ -355,51 +355,67 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
         </div>
       ) : view === 'board' ? (
         <div className="h-[600px] flex flex-col border border-[#EAEAEA] bg-white rounded-[20px] shadow-sm p-4 overflow-hidden">
-          <div className="flex items-center gap-3 mb-4 shrink-0">
+          <div className="flex items-center gap-3 mb-4 shrink-0 flex-wrap">
             <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Group By:</span>
-            <select value={boardGroup} onChange={e => setBoardGroup(e.target.value as any)} className="text-[10px] font-bold border border-[#EAEAEA] rounded-lg p-1.5 bg-white outline-none focus:ring-2 focus:ring-purple-500 uppercase cursor-pointer">
-              <option value="status">Status</option>
-              <option value="dept">Department</option>
-              <option value="overdue">Deadline Alert</option>
-            </select>
+            <div className="flex bg-[#FAFAFA]200 p-1 rounded-xl">
+              {[
+                { id: 'status', label: 'Status' },
+                { id: 'dept', label: 'Department' },
+                { id: 'overdue', label: 'Deadline Alert' }
+              ].map(opt => (
+                <button key={opt.id} onClick={() => setBoardGroup(opt.id as any)} className={`px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all ${boardGroup === opt.id ? 'bg-white text-purple-700 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}>{opt.label}</button>
+              ))}
+            </div>
           </div>
           <div className="flex-1 overflow-x-auto flex gap-6 pb-2 items-start custom-scrollbar h-full">
-            {Object.keys(internalBoardGroups).sort().map(groupKey => (
-              <div key={groupKey} className="w-80 flex-shrink-0 bg-zinc-50/50 rounded-2xl flex flex-col max-h-full border border-zinc-100 shadow-sm h-full">
-                <div className="p-4 border-b border-zinc-100 uppercase tracking-tight font-bold text-sm text-zinc-800 flex justify-between items-center bg-white rounded-t-2xl shrink-0">
-                  <span className="truncate pr-2">{groupKey}</span>
-                  <span className="bg-zinc-100 text-zinc-500 text-[10px] px-2 py-0.5 rounded-full">{internalBoardGroups[groupKey].length}</span>
-                </div>
-                <div className="p-3 flex-1 overflow-y-auto space-y-3 custom-scrollbar min-h-0">
-                  {internalBoardGroups[groupKey].map(task => {
-                    const todayStr = new Date().toISOString().split('T')[0];
-                    const isOverdue = task.deadline < todayStr && task.status !== 'DONE';
-                    const isToday = task.deadline === todayStr && task.status !== 'DONE';
-                    return (
-                      <div key={task.id} onClick={() => setSelectedTask(task)} className="bg-white p-4 rounded-xl shadow-sm border border-[#EAEAEA] cursor-pointer hover:shadow-md transition-shadow group">
-                        <div className="flex justify-between items-start mb-2">
-                          <span className={`px-2 py-0.5 rounded-md border text-[8px] font-bold uppercase ${getStatusColor(task.status)}`}>{task.status}</span>
-                          <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={(e) => { e.stopPropagation(); handleOpenEdit(task); }} className="text-zinc-400 hover:text-purple-600"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-5M16.5 3.5a2.121 2.121 0 113 3L7 19l-4 1 1-4L16.5 3.5z" /></svg></button>
+            {Object.keys(internalBoardGroups).sort().map((groupKey, idx) => {
+              const headerColors = [
+                'border-t-blue-500 bg-blue-50 text-blue-900',
+                'border-t-emerald-500 bg-emerald-50 text-emerald-900',
+                'border-t-purple-500 bg-purple-50 text-purple-900',
+                'border-t-amber-500 bg-amber-50 text-amber-900',
+                'border-t-rose-500 bg-rose-50 text-rose-900',
+                'border-t-cyan-500 bg-cyan-50 text-cyan-900',
+                'border-t-indigo-500 bg-indigo-50 text-indigo-900'
+              ];
+              const theme = headerColors[idx % headerColors.length];
+              return (
+                <div key={groupKey} className="w-80 flex-shrink-0 bg-zinc-50/50 rounded-2xl flex flex-col max-h-full border border-zinc-100 shadow-sm h-full">
+                  <div className={`p-4 border-b border-zinc-100 border-t-4 uppercase tracking-tight font-bold text-sm flex justify-between items-center rounded-t-2xl shrink-0 ${theme}`}>
+                    <span className="truncate pr-2">{groupKey}</span>
+                    <span className="bg-white/60 text-current text-[10px] px-2 py-0.5 rounded-full">{internalBoardGroups[groupKey].length}</span>
+                  </div>
+                  <div className="p-3 flex-1 overflow-y-auto space-y-3 custom-scrollbar min-h-0">
+                    {internalBoardGroups[groupKey].map(task => {
+                      const todayStr = new Date().toISOString().split('T')[0];
+                      const isOverdue = task.deadline < todayStr && task.status !== 'DONE';
+                      const isToday = task.deadline === todayStr && task.status !== 'DONE';
+                      return (
+                        <div key={task.id} onClick={() => setSelectedTask(task)} className="bg-white p-4 rounded-xl shadow-sm border border-[#EAEAEA] cursor-pointer hover:shadow-md transition-shadow group">
+                          <div className="flex justify-between items-start mb-2">
+                            <span className={`px-2 py-0.5 rounded-md border text-[8px] font-bold uppercase ${getStatusColor(task.status)}`}>{task.status}</span>
+                            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button onClick={(e) => { e.stopPropagation(); handleOpenEdit(task); }} className="text-zinc-400 hover:text-purple-600"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-5M16.5 3.5a2.121 2.121 0 113 3L7 19l-4 1 1-4L16.5 3.5z" /></svg></button>
+                            </div>
+                          </div>
+                          <h4 className="font-bold text-zinc-900 text-sm uppercase leading-tight mb-2 tracking-tight line-clamp-2" title={task.task_name}>{task.task_name}</h4>
+                          <div className="flex flex-col gap-1.5 mt-3 pt-3 border-t border-zinc-50">
+                            <div className="flex justify-between text-[10px] items-center">
+                              <span className="text-zinc-400 font-bold uppercase">Dept / Req</span>
+                              <span className="text-zinc-800 font-bold truncate max-w-[120px]" title={getDeptName(task.department_id)}>{getDeptName(task.department_id)}</span>
+                            </div>
+                            <div className="flex justify-between text-[10px] items-center">
+                              <span className="text-zinc-400 font-bold uppercase">Deadline</span>
+                              <span className={`font-bold tracking-tight ${isOverdue ? 'text-red-700 bg-red-100 px-1.5 py-0.5 rounded border border-red-200' : isToday ? 'text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded border border-amber-200' : 'text-zinc-800'}`}>{task.deadline}</span>
+                            </div>
                           </div>
                         </div>
-                        <h4 className="font-bold text-zinc-900 text-sm uppercase leading-tight mb-2 tracking-tight line-clamp-2" title={task.task_name}>{task.task_name}</h4>
-                        <div className="flex flex-col gap-1.5 mt-3 pt-3 border-t border-zinc-50">
-                          <div className="flex justify-between text-[10px] items-center">
-                            <span className="text-zinc-400 font-bold uppercase">Dept / Req</span>
-                            <span className="text-zinc-800 font-bold truncate max-w-[120px]" title={getDeptName(task.department_id)}>{getDeptName(task.department_id)}</span>
-                          </div>
-                          <div className="flex justify-between text-[10px] items-center">
-                            <span className="text-zinc-400 font-bold uppercase">Deadline</span>
-                            <span className={`font-bold tracking-tight ${isOverdue ? 'text-red-700 bg-red-100 px-1.5 py-0.5 rounded border border-red-200' : isToday ? 'text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded border border-amber-200' : 'text-zinc-800'}`}>{task.deadline}</span>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       ) : (
