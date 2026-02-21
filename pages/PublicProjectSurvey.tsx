@@ -685,7 +685,7 @@ IMPORTANT: Extract ALL rows. Return raw JSON only, no explanations.`;
           <div className="text-center mb-12">
             <div className="inline-block px-4 py-1.5 bg-[#1A1C20] text-white rounded-full text-[10px] font-bold uppercase tracking-wider mb-4">ACS Project Portal</div>
             <h1 className="text-3xl font-bold text-zinc-900 tracking-tight uppercase">Select Project</h1>
-            <p className="text-zinc-500 mt-2 font-medium">Choose a project to evaluate or manage design requests.</p>
+            <p className="text-zinc-500 mt-2 font-medium">Choose a project to manage design requests.</p>
           </div>
 
           {loading ? (

@@ -17,7 +17,7 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
   const [filterDept, setFilterDept] = useState<string>('ALL');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [copySuccess, setCopySuccess] = useState(false);
-  
+
   // CRUD States
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<InternalDesign | null>(null);
@@ -157,13 +157,13 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
     const startDay = new Date(year, month, 1).getDay();
     const todayStr = new Date().toISOString().split('T')[0];
     const days = [];
-    
+
     for (let i = 0; i < startDay; i++) days.push(<div key={`empty-${i}`} className="min-h-[140px] bg-[#FCFCFC]/50 border-r border-b border-[#EAEAEA]"></div>);
-    
+
     for (let d = 1; d <= totalDays; d++) {
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
       const isToday = dateStr === todayStr;
-      
+
       days.push(
         <div key={d} className={`min-h-[140px] h-full border-r border-b border-[#EAEAEA] p-0 flex flex-col relative ${isToday ? 'bg-purple-50/30' : 'bg-white'}`}>
           <div className="p-2 flex-shrink-0">
@@ -173,11 +173,11 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
             {calendarLanes.map((lane, laneIdx) => {
               const task = lane.find(t => dateStr === t.deadline);
               if (!task) return <div key={`spacer-${laneIdx}`} className="min-h-[40px] py-1"></div>;
-              
+
               return (
-                <div 
-                  key={task.id} 
-                  onClick={() => setSelectedTask(task)} 
+                <div
+                  key={task.id}
+                  onClick={() => setSelectedTask(task)}
                   className={`mx-1 cursor-pointer min-h-[40px] p-1.5 rounded-lg flex flex-col justify-center border transition-all hover:brightness-95 bg-white border-purple-200 shadow-sm`}
                 >
                   <span className="text-[9px] font-bold truncate uppercase text-zinc-900 leading-tight">{task.task_name}</span>
@@ -208,11 +208,11 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
             <button onClick={() => setView('calendar')} className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${view === 'calendar' ? 'bg-white text-purple-700 shadow-sm' : 'text-zinc-600'}`}>Calendar</button>
           </div>
           <button onClick={handleOpenAdd} className="px-4 py-2 bg-purple-600 text-white rounded-lg text-xs font-bold uppercase shadow-sm border border-[#EAEAEA] flex items-center gap-2 hover:bg-purple-700 transition-all">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4"/></svg>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4" /></svg>
             Add Task
           </button>
           <button onClick={handleCopyLink} className={`px-4 py-2 rounded-lg text-xs font-bold uppercase transition-all flex items-center gap-2 border ${copySuccess ? 'bg-emerald-50 border-emerald-500 text-emerald-700' : 'bg-white border-zinc-300 text-zinc-700 hover:border-purple-500'}`}>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
             {copySuccess ? 'Copied Link!' : 'Form Link'}
           </button>
         </div>
@@ -306,8 +306,8 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
                     <div className="flex items-center justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button onClick={() => handleOpenEdit(task)} className="text-purple-600 text-[10px] font-bold uppercase">Edit</button>
                       <button onClick={() => handleDelete(task.id)} className="text-red-500 text-[10px] font-bold uppercase">Del</button>
-                      <select 
-                        value={task.status} 
+                      <select
+                        value={task.status}
                         onChange={(e) => updateStatus(task.id, e.target.value as InternalStatus)}
                         className="text-[9px] font-bold border-[#EAEAEA] rounded-lg p-1.5 bg-[#FCFCFC] outline-none focus:ring-2 focus:ring-purple-500 uppercase cursor-pointer"
                       >
@@ -332,8 +332,8 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
           <div className="p-4 border-b border-[#EAEAEA] bg-[#FCFCFC] flex items-center justify-between">
             <h3 className="font-bold text-zinc-900 text-sm uppercase">{monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</h3>
             <div className="flex gap-2">
-              <button onClick={() => navigateMonth(-1)} className="p-1.5 hover:bg-[#FAFAFA]300 rounded-lg transition-colors"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7"/></svg></button>
-              <button onClick={() => navigateMonth(1)} className="p-1.5 hover:bg-[#FAFAFA]300 rounded-lg transition-colors"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7"/></svg></button>
+              <button onClick={() => navigateMonth(-1)} className="p-1.5 hover:bg-[#FAFAFA]300 rounded-lg transition-colors"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" /></svg></button>
+              <button onClick={() => navigateMonth(1)} className="p-1.5 hover:bg-[#FAFAFA]300 rounded-lg transition-colors"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" /></svg></button>
             </div>
           </div>
           <div className="overflow-y-auto flex-1">
@@ -349,32 +349,31 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
 
       {/* Modal & Detail components remain unchanged */}
       {selectedTask && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 backdrop-blur-sm bg-[#1A1C20]/40" onClick={() => setSelectedTask(null)}>
-          <div className="bg-white w-full max-w-lg rounded-[20px] shadow-2xl p-8 animate-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-start mb-6">
-              <div className="flex items-center gap-2">
-                <span className={`px-2 py-0.5 rounded-full border text-[9px] font-bold uppercase ${getStatusColor(selectedTask.status)}`}>{selectedTask.status}</span>
-                <h2 className="text-xl font-bold text-zinc-900 uppercase tracking-tight">{selectedTask.task_name}</h2>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 backdrop-blur-sm bg-[#1A1C20]/40" onClick={() => setSelectedTask(null)}>
+          <div className="bg-white w-full max-w-lg rounded-[24px] shadow-2xl overflow-hidden animate-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
+            <div className="p-6 md:p-8 border-b border-[#EAEAEA] bg-[#FCFCFC] flex justify-between items-start">
+              <div>
+                <span className={`px-2 py-0.5 rounded-full border text-[9px] font-bold uppercase mb-2 inline-block ${getStatusColor(selectedTask.status)}`}>{selectedTask.status}</span>
+                <h2 className="text-xl md:text-2xl font-bold text-zinc-900 uppercase tracking-tight">{selectedTask.task_name}</h2>
               </div>
-              <button onClick={() => setSelectedTask(null)} className="p-1 text-zinc-400 hover:text-zinc-900"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+              <button onClick={() => setSelectedTask(null)} className="p-2 bg-white border border-zinc-200 rounded-full hover:bg-zinc-100 transition-all text-zinc-500 hover:text-zinc-900 shadow-sm"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
             </div>
-            <div className="space-y-5">
-              <div className="grid grid-cols-2 gap-4">
-                <div><span className="text-[10px] font-bold text-zinc-400 uppercase">Dept</span><p className="font-bold text-zinc-800 text-xs">{getDeptName(selectedTask.department_id)}</p></div>
-                <div><span className="text-[10px] font-bold text-zinc-400 uppercase">Deadline</span><p className="font-bold text-red-600 text-xs">{selectedTask.deadline}</p></div>
-                <div><span className="text-[10px] font-bold text-zinc-400 uppercase">Requester</span><p className="font-bold text-zinc-800 text-xs">{selectedTask.requester_name}</p></div>
-                <div><span className="text-[10px] font-bold text-zinc-400 uppercase">ID Task</span><p className="font-bold text-zinc-400 text-[10px] font-mono">{selectedTask.id}</p></div>
+            <div className="p-6 md:p-8 space-y-6">
+              <div className="grid grid-cols-2 gap-y-6 gap-x-4">
+                <div className="bg-zinc-50 p-3 rounded-xl border border-zinc-100"><span className="text-[10px] font-bold text-zinc-400 uppercase block mb-1">Dept</span><p className="font-bold text-zinc-800 text-xs truncate" title={getDeptName(selectedTask.department_id)}>{getDeptName(selectedTask.department_id)}</p></div>
+                <div className="bg-zinc-50 p-3 rounded-xl border border-zinc-100"><span className="text-[10px] font-bold text-zinc-400 uppercase block mb-1">Deadline</span><p className="font-bold text-red-600 text-xs uppercase">{selectedTask.deadline}</p></div>
+                <div className="bg-zinc-50 p-3 rounded-xl border border-zinc-100"><span className="text-[10px] font-bold text-zinc-400 uppercase block mb-1">Requester</span><p className="font-bold text-zinc-800 text-xs uppercase truncate" title={selectedTask.requester_name}>{selectedTask.requester_name}</p></div>
+                <div className="bg-zinc-50 p-3 rounded-xl border border-zinc-100 flex flex-col justify-center items-center opacity-70"><span className="text-[9px] font-bold text-zinc-400 uppercase">ID Task</span><p className="font-bold text-zinc-500 text-[10px] font-mono leading-none mt-1">{selectedTask.id.split('-')[0]}</p></div>
               </div>
               <div>
-                <span className="text-[10px] font-bold text-zinc-400 uppercase block mb-1">Brief Description</span>
-                <div className="p-4 bg-[#FCFCFC] rounded-xl text-sm italic text-zinc-700 whitespace-pre-wrap border border-zinc-100 min-h-[100px]">
-                  {selectedTask.brief || 'No brief provided.'}
+                <span className="text-[10px] font-bold text-zinc-400 uppercase block mb-1.5 ml-1">Brief Description</span>
+                <div className="p-4 bg-[#FCFCFC] rounded-xl text-sm italic text-zinc-700 whitespace-pre-wrap border border-zinc-200/60 leading-relaxed max-h-[150px] overflow-y-auto custom-scrollbar">
+                  {selectedTask.brief || 'No brief provided for this task.'}
                 </div>
               </div>
             </div>
-            <div className="flex gap-4 mt-8">
-              <button onClick={() => handleOpenEdit(selectedTask)} className="flex-1 py-3 bg-zinc-900 text-white rounded-xl font-bold uppercase tracking-wider text-xs">Edit Task</button>
-              <button onClick={() => setSelectedTask(null)} className="flex-1 py-3 bg-[#F8F9FA] text-zinc-600 rounded-xl font-bold uppercase tracking-wider text-xs">Close</button>
+            <div className="p-6 bg-[#F8F9FA] border-t border-[#EAEAEA] flex gap-4">
+              <button onClick={() => { setSelectedTask(null); handleOpenEdit(selectedTask); }} className="flex-1 py-3 bg-zinc-900 text-white rounded-xl font-bold uppercase tracking-wider text-xs shadow-md border border-zinc-800 hover:bg-black transition-all">Edit Task</button>
             </div>
           </div>
         </div>
@@ -387,27 +386,27 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
             <div className="space-y-4">
               <div>
                 <label className="text-[10px] font-bold text-zinc-400 uppercase block mb-1">Task Name</label>
-                <input type="text" required value={formData.task_name} onChange={e => setFormData({...formData, task_name: e.target.value})} className="w-full p-3 rounded-xl border border-[#EAEAEA] text-sm font-bold outline-none focus:ring-2 focus:ring-purple-600 uppercase" />
+                <input type="text" required value={formData.task_name} onChange={e => setFormData({ ...formData, task_name: e.target.value })} className="w-full p-3 rounded-xl border border-[#EAEAEA] text-sm font-bold outline-none focus:ring-2 focus:ring-purple-600 uppercase" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-[10px] font-bold text-zinc-400 uppercase block mb-1">Requester Name</label>
-                  <input type="text" required value={formData.requester_name} onChange={e => setFormData({...formData, requester_name: e.target.value})} className="w-full p-3 rounded-xl border border-[#EAEAEA] text-sm font-bold outline-none focus:ring-2 focus:ring-purple-600 uppercase" />
+                  <input type="text" required value={formData.requester_name} onChange={e => setFormData({ ...formData, requester_name: e.target.value })} className="w-full p-3 rounded-xl border border-[#EAEAEA] text-sm font-bold outline-none focus:ring-2 focus:ring-purple-600 uppercase" />
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-zinc-400 uppercase block mb-1">Deadline</label>
-                  <input type="date" required value={formData.deadline} onChange={e => setFormData({...formData, deadline: e.target.value})} className="w-full p-3 rounded-xl border border-[#EAEAEA] text-sm font-bold outline-none focus:ring-2 focus:ring-purple-600" />
+                  <input type="date" required value={formData.deadline} onChange={e => setFormData({ ...formData, deadline: e.target.value })} className="w-full p-3 rounded-xl border border-[#EAEAEA] text-sm font-bold outline-none focus:ring-2 focus:ring-purple-600" />
                 </div>
               </div>
               <div>
                 <label className="text-[10px] font-bold text-zinc-400 uppercase block mb-1">Department</label>
-                <select required value={formData.department_id} onChange={e => setFormData({...formData, department_id: e.target.value})} className="w-full p-3 rounded-xl border border-[#EAEAEA] text-sm font-bold outline-none focus:ring-2 focus:ring-purple-600 uppercase">
+                <select required value={formData.department_id} onChange={e => setFormData({ ...formData, department_id: e.target.value })} className="w-full p-3 rounded-xl border border-[#EAEAEA] text-sm font-bold outline-none focus:ring-2 focus:ring-purple-600 uppercase">
                   {departments.map(d => <option key={d.id} value={d.id}>{d.department_name}</option>)}
                 </select>
               </div>
               <div>
                 <label className="text-[10px] font-bold text-zinc-400 uppercase block mb-1">Brief</label>
-                <textarea value={formData.brief} onChange={e => setFormData({...formData, brief: e.target.value})} className="w-full p-3 rounded-xl border border-[#EAEAEA] text-sm font-bold outline-none focus:ring-2 focus:ring-purple-600" rows={4} />
+                <textarea value={formData.brief} onChange={e => setFormData({ ...formData, brief: e.target.value })} className="w-full p-3 rounded-xl border border-[#EAEAEA] text-sm font-bold outline-none focus:ring-2 focus:ring-purple-600" rows={4} />
               </div>
             </div>
             <div className="flex gap-4 mt-8">
