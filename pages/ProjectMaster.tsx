@@ -807,49 +807,56 @@ IMPORTANT: Extract ALL rows. Return raw JSON only, no explanations.`;
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 flex-shrink-0"><div><h1 className="text-2xl font-bold text-zinc-900 tracking-tight uppercase">Project Master</h1><p className="text-zinc-600 text-sm mt-1 font-bold">Manage event project timelines.</p></div><div className="flex items-center gap-4">
         <button onClick={handleCopyChecklistLink} className={`px-4 py-2 rounded-lg text-xs font-bold uppercase transition-all flex items-center gap-2 border ${copySuccess ? 'bg-emerald-50 border-emerald-500 text-emerald-700' : 'bg-white border-zinc-300 text-zinc-700 hover:border-zinc-900'}`}><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>{copySuccess ? 'Checklist Link Copied!' : 'Checklist Link'}</button><div className="flex bg-[#FAFAFA]200 p-1 rounded-xl"><button onClick={() => setView('list')} className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${view === 'list' ? 'bg-white text-zinc-800 shadow-sm' : 'text-zinc-600'}`}>List</button><button onClick={() => setView('board')} className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${view === 'board' ? 'bg-white text-zinc-800 shadow-sm' : 'text-zinc-600'}`}>Board</button><button onClick={() => setView('calendar')} className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${view === 'calendar' ? 'bg-white text-zinc-800 shadow-sm' : 'text-zinc-600'}`}>Calendar</button></div>{!isAdding && view === 'list' && (<button onClick={() => setIsAdding(true)} className="px-4 py-2 bg-zinc-900 text-white rounded-lg text-sm font-bold shadow-sm border border-[#EAEAEA]">Add Project</button>)}</div></header>
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <div className="bg-white p-4 rounded-[20px] border border-[#EAEAEA] shadow-sm flex flex-col justify-center">
-          <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Total Projects</span>
-          <div className="text-2xl font-bold text-zinc-900">{dashboardStats.totalProjects}</div>
-        </div>
-        <div className="bg-white p-4 rounded-[20px] border border-[#EAEAEA] shadow-sm flex flex-col justify-center">
-          <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Status</span>
-          <div className="flex gap-2 text-[10px] font-bold mt-1 uppercase">
-            <span className="text-blue-600 border px-1.5 py-0.5 rounded bg-blue-50 border-blue-200" title="ON PROGRESS">{dashboardStats.byStatus['ON PROGRESS']} PROG</span>
-            <span className="text-amber-600 border px-1.5 py-0.5 rounded bg-amber-50 border-amber-200" title="ON HOLD">{dashboardStats.byStatus['ON HOLD']} HOLD</span>
-            <span className="text-emerald-600 border px-1.5 py-0.5 rounded bg-emerald-50 border-emerald-200" title="DONE">{dashboardStats.byStatus['DONE']} DONE</span>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Card 1: Project Overview */}
+        <div className="bg-white p-5 rounded-[20px] border border-[#EAEAEA] shadow-sm flex flex-col justify-between">
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Total Projects</span>
+              <div className="text-3xl font-bold text-zinc-900">{dashboardStats.totalProjects}</div>
+            </div>
+            <div className="text-right">
+              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Avg Team Size</span>
+              <div className="text-xl font-bold text-zinc-900">{dashboardStats.avgTeamSize} <span className="text-[10px] text-zinc-400 font-bold">Orang</span></div>
+            </div>
+          </div>
+          <div className="flex gap-2 text-[10px] font-bold mt-2 uppercase">
+            <span className="flex-1 text-center text-blue-600 border px-1.5 py-1.5 rounded-lg bg-blue-50 border-blue-200" title="ON PROGRESS">{dashboardStats.byStatus['ON PROGRESS']} PROG</span>
+            <span className="flex-1 text-center text-amber-600 border px-1.5 py-1.5 rounded-lg bg-amber-50 border-amber-200" title="ON HOLD">{dashboardStats.byStatus['ON HOLD']} HOLD</span>
+            <span className="flex-1 text-center text-emerald-600 border px-1.5 py-1.5 rounded-lg bg-emerald-50 border-emerald-200" title="DONE">{dashboardStats.byStatus['DONE']} DONE</span>
           </div>
         </div>
-        <div className="bg-white p-4 rounded-[20px] border border-[#EAEAEA] shadow-sm flex flex-col justify-center">
-          <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Evaluated (DONE)</span>
-          <div className="text-2xl font-bold text-zinc-900 flex items-baseline gap-2">
-            {dashboardStats.evaluatedProjectsCount}
-            <span className="text-[10px] font-bold text-zinc-400 uppercase">/ {dashboardStats.doneCount} DONE</span>
+
+        {/* Card 2: Evaluation Score */}
+        <div className="bg-white p-5 rounded-[20px] border border-[#EAEAEA] shadow-sm md:col-span-2">
+          <div className="flex flex-col md:flex-row gap-6 h-full items-center">
+            {/* Left side: Avg Score & Evaluated Count */}
+            <div className="flex flex-col justify-center min-w-[140px] pr-6 md:border-r border-[#EAEAEA]">
+              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2 text-center md:text-left">Avg Score</span>
+              <div className="text-4xl font-bold text-zinc-900 tracking-tight text-center md:text-left">{dashboardStats.avgScore} <span className="text-sm text-zinc-400 font-bold">/5</span></div>
+              <div className="text-[10px] font-bold text-zinc-500 uppercase mt-2 text-center md:text-left bg-[#F8F9FA] px-2 py-1.5 rounded-lg inline-block self-center md:self-start border border-[#EAEAEA]">
+                {dashboardStats.evaluatedProjectsCount} / {dashboardStats.doneCount} Evaluated
+              </div>
+            </div>
+
+            {/* Right side: Detailed scores */}
+            <div className="flex-1 w-full flex flex-col justify-center">
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 mt-2 md:mt-0">
+                {EVAL_CRITERIA.map(c => {
+                  const shortLabel = c.key === 'penyelesaian_tugas' ? 'Tugas' : c.key === 'respon_masukan' ? 'Feedback' : c.label;
+                  const score = parseFloat(dashboardStats.detailAverages[c.key]);
+                  const colorClass = score >= 4.5 ? 'text-emerald-700' : score >= 3.5 ? 'text-indigo-700' : score > 0 ? 'text-rose-700' : 'text-zinc-500';
+                  const bgClass = score >= 4.5 ? 'bg-emerald-50 border-emerald-100' : score >= 3.5 ? 'bg-indigo-50 border-indigo-100' : score > 0 ? 'bg-rose-50 border-rose-100' : 'bg-[#FCFCFC] border-[#EAEAEA]';
+                  return (
+                    <div key={c.key} className={`flex justify-between items-center text-[9px] rounded-lg px-2.5 py-2 border shadow-[0_1px_2px_rgba(0,0,0,0.02)] ${bgClass}`}>
+                      <span className="text-zinc-600 uppercase font-bold tracking-tight truncate pr-2" title={c.label}>{shortLabel}</span>
+                      <span className={`text-xs font-bold ${colorClass}`}>{dashboardStats.detailAverages[c.key]}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
-        </div>
-        <div className="bg-white p-4 rounded-[20px] border border-[#EAEAEA] shadow-sm flex flex-col justify-center">
-          <div className="flex justify-between items-start mb-2">
-            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Avg Score</span>
-            <div className="text-2xl font-bold text-zinc-900 leading-none">{dashboardStats.avgScore} <span className="text-xs text-zinc-400 font-bold">/5</span></div>
-          </div>
-          <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
-            {EVAL_CRITERIA.map(c => {
-              const shortLabel = c.key === 'penyelesaian_tugas' ? 'Tugas' : c.key === 'respon_masukan' ? 'Feedback' : c.label;
-              const score = parseFloat(dashboardStats.detailAverages[c.key]);
-              const colorClass = score >= 4.5 ? 'text-emerald-600' : score >= 3.5 ? 'text-indigo-600' : score > 0 ? 'text-rose-600' : 'text-zinc-400';
-              const bgClass = score >= 4.5 ? 'bg-emerald-50' : score >= 3.5 ? 'bg-indigo-50' : score > 0 ? 'bg-rose-50' : 'bg-zinc-50';
-              return (
-                <div key={c.key} className={`flex justify-between items-center text-[8px] rounded px-1.5 py-1 ${bgClass}`}>
-                  <span className="text-zinc-600 uppercase font-bold tracking-tight truncate pr-1" title={c.label}>{shortLabel}</span>
-                  <span className={`font-bold ${colorClass}`}>{dashboardStats.detailAverages[c.key]}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-        <div className="bg-white p-4 rounded-[20px] border border-[#EAEAEA] shadow-sm flex flex-col justify-center">
-          <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Avg Team Size</span>
-          <div className="text-2xl font-bold text-zinc-900">{dashboardStats.avgTeamSize} <span className="text-xs text-zinc-400 font-bold">Orang</span></div>
         </div>
       </div>
 
