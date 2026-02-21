@@ -26,6 +26,7 @@ const App: React.FC = () => {
     internalDesigns: [],
     artworkLogs: [],
     projectSurveys: [],
+    designerEvaluations: [],
     projectChecklists: [],
     checklistTemplates: [],
     checklistTemplateItems: []
@@ -46,6 +47,7 @@ const App: React.FC = () => {
         internalRes,
         logsRes,
         surveysRes,
+        designerEvalsRes,
         checklistsRes,
         templatesRes,
         templateItemsRes
@@ -57,6 +59,7 @@ const App: React.FC = () => {
         supabase.from('internal_designs').select('*').order('created_at', { ascending: false }).limit(MAX_ROWS),
         supabase.from('artwork_logs').select('*').order('created_at', { ascending: false }).limit(MAX_ROWS),
         supabase.from('project_surveys').select('*').limit(MAX_ROWS),
+        supabase.from('designer_evaluations').select('*').order('created_at', { ascending: false }).limit(MAX_ROWS),
         supabase.from('project_checklists').select('*').order('created_at', { ascending: true }).limit(MAX_ROWS),
         supabase.from('checklist_templates').select('*').order('name'),
         supabase.from('checklist_template_items').select('*').order('created_at')
@@ -70,6 +73,7 @@ const App: React.FC = () => {
         internalDesigns: internalRes.data || [],
         artworkLogs: logsRes.data || [],
         projectSurveys: surveysRes.data || [],
+        designerEvaluations: designerEvalsRes.data || [],
         projectChecklists: checklistsRes.data || [],
         checklistTemplates: templatesRes.data || [],
         checklistTemplateItems: templateItemsRes.data || []
@@ -212,6 +216,7 @@ const App: React.FC = () => {
                     projects={state.projects}
                     designers={state.designers}
                     artworkLogs={state.artworkLogs}
+                    designerEvaluations={state.designerEvaluations}
                     projectSurveys={state.projectSurveys}
                     projectChecklists={state.projectChecklists}
                     checklistTemplates={state.checklistTemplates}

@@ -1,83 +1,19 @@
 
-import React, { useState, useEffect, useMemo, ChangeEvent } from 'react';
+import React, { useState, useEffect, useMemo, useRef, ChangeEvent } from 'react';
 import { useParams } from 'react-router-dom';
-import { Project, ProjectChecklist, ChecklistTemplate, ChecklistTemplateItem, ProjectSurvey } from '../types';
+import { Project, ProjectChecklist, ChecklistTemplate, ChecklistTemplateItem, ProjectSurvey, Designer, DesignerEvaluation } from '../types';
 import { supabase } from '../lib/supabase';
 import { SURVEY_FORM_SECRET } from '../data/mockData';
 
-const SURVEY_QUESTIONS = [
-  {
-    id: 'rating_speed',
-    label: '1. Kecepatan Delivery Output',
-    options: [
-      { val: 1, text: 'Lambat' },
-      { val: 2, text: 'Sesuai Timeline' },
-      { val: 3, text: 'Lebih Cepat dari Timeline' }
-    ]
-  },
-  {
-    id: 'rating_quality',
-    label: '2. Kualitas Output Final',
-    options: [
-      { val: 1, text: 'Di bawah standar' },
-      { val: 2, text: 'Sesuai standar' },
-      { val: 3, text: 'Di atas standar' }
-    ]
-  },
-  {
-    id: 'rating_accuracy',
-    label: '3. Akurasi Implementasi Brief',
-    options: [
-      { val: 1, text: 'Banyak mismatch' },
-      { val: 2, text: 'Sesuai brief' },
-      { val: 3, text: 'Melebihi ekspektasi' }
-    ]
-  },
-  {
-    id: 'rating_coord_internal',
-    label: '4. Koordinasi Internal Tim',
-    options: [
-      { val: 1, text: 'Tidak efektif' },
-      { val: 2, text: 'Cukup efektif' },
-      { val: 3, text: 'Proaktif & terstruktur' }
-    ]
-  },
-  {
-    id: 'rating_coord_client',
-    label: '5. Koordinasi dengan Klien',
-    options: [
-      { val: 1, text: 'Tidak efektif' },
-      { val: 2, text: 'Cukup efektif' },
-      { val: 3, text: 'Proaktif & solutif' }
-    ]
-  },
-  {
-    id: 'rating_problem_solving',
-    label: '6. Problem Solving Capability',
-    options: [
-      { val: 1, text: 'Issue tidak terselesaikan' },
-      { val: 2, text: 'Terselesaikan standar' },
-      { val: 3, text: 'Solusi cepat & berdampak' }
-    ]
-  },
-  {
-    id: 'rating_agility',
-    label: '7. Agility terhadap Perubahan / Revisi',
-    options: [
-      { val: 1, text: 'Lambat beradaptasi' },
-      { val: 2, text: 'Adaptif standar' },
-      { val: 3, text: 'Cepat & fleksibel' }
-    ]
-  },
-  {
-    id: 'rating_impact',
-    label: '8. Impact terhadap value project',
-    options: [
-      { val: 1, text: 'Memenuhi kebutuhan project' },
-      { val: 2, text: 'Meningkatkan kualitas & value project' },
-      { val: 3, text: 'Memberi dampak signifikan pada hasil project' }
-    ]
-  }
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
+
+const EVAL_CRITERIA = [
+  { key: 'inisiatif', label: 'Inisiatif' },
+  { key: 'disiplin', label: 'Disiplin' },
+  { key: 'penyelesaian_tugas', label: 'Penyelesaian Tugas' },
+  { key: 'attitude', label: 'Attitude' },
+  { key: 'komunikasi', label: 'Komunikasi' },
+  { key: 'respon_masukan', label: 'Respon Terhadap Masukan' },
 ];
 
 interface TableRowProps {
@@ -236,18 +172,24 @@ const PublicProjectSurvey: React.FC = () => {
 
   // Data State
   const [projects, setProjects] = useState<Project[]>([]);
+  const [designersData, setDesignersData] = useState<Designer[]>([]);
   // Store full survey objects mapped by project_id
   const [projectSurveysMap, setProjectSurveysMap] = useState<Record<string, ProjectSurvey>>({});
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
 
-  // Evaluation State
+  // Designer Evaluation State
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [ratings, setRatings] = useState<Record<string, number>>({});
-  const [notes, setNotes] = useState('');
-  const [evaluatorName, setEvaluatorName] = useState(''); // NEW STATE
+  const [evaluatorName, setEvaluatorName] = useState('');
+  // Per-designer eval data: { [designer_id]: { kategori, job_title, inisiatif, ... } }
+  const [designerEvalsForm, setDesignerEvalsForm] = useState<Record<string, Partial<DesignerEvaluation>>>({});
 
-  // Clarification State
+  // AI Scan State
+  const [aiProcessing, setAiProcessing] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Clarification State (This state is no longer used for designer evaluations, but kept for project surveys if needed elsewhere)
   const [clarificationRequested, setClarificationRequested] = useState(false);
   const [clarificationMessage, setClarificationMessage] = useState('');
 
@@ -277,16 +219,18 @@ const PublicProjectSurvey: React.FC = () => {
         }
 
         const MAX_ROWS = 1000000;
-        const [projRes, survRes, tplRes, tplItemsRes] = await Promise.all([
+        const [projRes, survRes, tplRes, tplItemsRes, designersRes] = await Promise.all([
           supabase.from('projects').select('*').in('status', ['DONE', 'ON PROGRESS', 'ON HOLD']).order('end_date', { ascending: false }).limit(MAX_ROWS),
           supabase.from('project_surveys').select('*').limit(MAX_ROWS),
           supabase.from('checklist_templates').select('*').order('name').limit(MAX_ROWS),
-          supabase.from('checklist_template_items').select('*').limit(MAX_ROWS)
+          supabase.from('checklist_template_items').select('*').limit(MAX_ROWS),
+          supabase.from('designers').select('*').order('name')
         ]);
 
         if (projRes.error) throw projRes.error;
 
         setProjects(projRes.data || []);
+        setDesignersData(designersRes.data || []);
 
         const surveyMap: Record<string, ProjectSurvey> = {};
         survRes.data?.forEach(s => {
@@ -306,49 +250,44 @@ const PublicProjectSurvey: React.FC = () => {
     loadData();
   }, [isAuthorized]);
 
-  // 2. Fetch Checklists & Specific Survey Data when a project is selected
+  // 2. Fetch Checklists & existing evaluations when a project is selected
   useEffect(() => {
     if (!selectedProject || !supabase) return;
 
     // Reset States
     setSubmitted(false);
-    setRatings({});
-    setNotes('');
-    setEvaluatorName(''); // Reset Name
-    setClarificationRequested(false);
+    setEvaluatorName('');
+    setDesignerEvalsForm({});
+    setClarificationRequested(false); // Reset clarification state
     setClarificationMessage('');
 
     const initProjectData = async () => {
-      // Check for existing survey data to handle clarification state
-      const { data: surveyData } = await supabase
-        .from('project_surveys')
+      // Fetch existing designer evaluations for this project
+      const { data: existingEvals } = await supabase
+        .from('designer_evaluations')
         .select('*')
-        .eq('project_id', selectedProject.id)
-        .single();
+        .eq('project_id', selectedProject.id);
 
-      if (surveyData) {
-        // If status column exists and is populated
-        if (surveyData.status === 'CLARIFICATION_REQUESTED') {
-          // If clarification is requested, populate form and show edit mode
-          setClarificationRequested(true);
-          setClarificationMessage(surveyData.clarification_notes || 'Please review your evaluation.');
-          setRatings({
-            rating_speed: surveyData.rating_speed,
-            rating_quality: surveyData.rating_quality,
-            rating_accuracy: surveyData.rating_accuracy,
-            rating_coord_internal: surveyData.rating_coord_internal,
-            rating_coord_client: surveyData.rating_coord_client,
-            rating_problem_solving: surveyData.rating_problem_solving,
-            rating_agility: surveyData.rating_agility,
-            rating_impact: surveyData.rating_impact || 0
-          });
-          setEvaluatorName(surveyData.evaluator_name || ''); // Populate Name
-          setNotes(surveyData.notes || '');
-          setSubmitted(false); // Ensure form is visible
-        } else {
-          // Normal submitted state
-          setSubmitted(true);
-        }
+      if (existingEvals && existingEvals.length > 0) {
+        // Populate form with existing data
+        setSubmitted(true);
+        setEvaluatorName(existingEvals[0].evaluator_name || '');
+        const formMap: Record<string, Partial<DesignerEvaluation>> = {};
+        existingEvals.forEach(ev => {
+          formMap[ev.designer_id] = ev;
+        });
+        setDesignerEvalsForm(formMap);
+      } else {
+        // Initialize empty form for each designer involved in the project
+        const allDesignerIds = new Set<string>();
+        if (selectedProject.pic_designer_id) allDesignerIds.add(selectedProject.pic_designer_id);
+        (selectedProject.support_designer_ids || []).forEach(did => allDesignerIds.add(did));
+
+        const formMap: Record<string, Partial<DesignerEvaluation>> = {};
+        allDesignerIds.forEach(did => {
+          formMap[did] = { designer_id: did, project_id: selectedProject.id };
+        });
+        setDesignerEvalsForm(formMap);
       }
 
       fetchChecklists();
@@ -405,62 +344,217 @@ const PublicProjectSurvey: React.FC = () => {
     return templateIds;
   }, [checklists]);
 
-  // --- SURVEY HANDLERS ---
-  const handleRatingChange = (questionId: string, val: number) => {
-    setRatings(prev => ({ ...prev, [questionId]: val }));
+  // --- DESIGNER EVALUATION HANDLERS ---
+  const handleEvalFieldChange = (designerId: string, field: string, value: any) => {
+    setDesignerEvalsForm(prev => ({
+      ...prev,
+      [designerId]: {
+        ...(prev[designerId] || {}),
+        [field]: value
+      }
+    }));
   };
 
-  const handleSubmitSurvey = async (e: React.FormEvent) => {
+  // --- AI SCREENSHOT SCAN ---
+  const fuzzyMatchDesigner = (name: string, designers: Designer[]): string | null => {
+    const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const normalizedName = normalize(name);
+
+    // Exact match first
+    for (const d of designers) {
+      if (normalize(d.name) === normalizedName) return d.id;
+    }
+    // Partial match (name contains or is contained)
+    for (const d of designers) {
+      const dn = normalize(d.name);
+      if (dn.includes(normalizedName) || normalizedName.includes(dn)) return d.id;
+    }
+    // Word-level match (any word in name matches)
+    const nameWords = normalizedName.split(/\s+/).filter(w => w.length > 2);
+    for (const d of designers) {
+      const dWords = normalize(d.name).split(/\s+/);
+      if (nameWords.some(nw => dWords.some(dw => dw.includes(nw) || nw.includes(dw)))) return d.id;
+    }
+    return null;
+  };
+
+  const handleAIScan = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!GEMINI_API_KEY) {
+      setAiError('Gemini API Key belum diset. Tambahkan VITE_GEMINI_API_KEY di file .env');
+      return;
+    }
+
+    setAiProcessing(true);
+    setAiError(null);
+
+    try {
+      // Read file as base64
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          resolve(result.split(',')[1]); // Remove data:image/...;base64, prefix
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const mimeType = file.type || 'image/png';
+
+      // Build list of designers in this project for context
+      const projectDesignerNames = Object.keys(designerEvalsForm).map(did => {
+        const d = designersData.find(x => x.id === did);
+        return d?.name || 'Unknown';
+      });
+
+      const prompt = `Analyze this Excel screenshot of a designer performance evaluation table.
+Extract ALL rows of evaluation data.
+
+The table columns may include: NO, Nama, Kategori, Job Title, Inisiatif, Disiplin, Penyelesaian Tugas, Attitude, Komunikasi, Respon Terhadap Masukan, Average, and Masukan untuk Pengembangan Diri.
+
+Known designer names in this project: ${projectDesignerNames.join(', ')}
+
+Return ONLY valid JSON array with this exact structure (no markdown, no code blocks, just raw JSON):
+[
+  {
+    "nama": "designer full name as shown",
+    "kategori": "category text or null",
+    "job_title": "job title text or null",
+    "inisiatif": number_1_to_5_or_null,
+    "disiplin": number_1_to_5_or_null,
+    "penyelesaian_tugas": number_1_to_5_or_null,
+    "attitude": number_1_to_5_or_null,
+    "komunikasi": number_1_to_5_or_null,
+    "respon_masukan": number_1_to_5_or_null,
+    "masukan_pengembangan": "feedback text or null"
+  }
+]
+
+IMPORTANT: Extract ALL rows. Return raw JSON only, no explanations.`;
+
+      // Call Gemini API
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{
+              parts: [
+                { text: prompt },
+                { inlineData: { mimeType, data: base64 } }
+              ]
+            }],
+            generationConfig: {
+              temperature: 0.1,
+              maxOutputTokens: 4096
+            }
+          })
+        }
+      );
+
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Gemini API error: ${response.status} - ${errText}`);
+      }
+
+      const data = await response.json();
+      const textContent = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+      if (!textContent) throw new Error('No response from Gemini API');
+
+      // Parse JSON (handle markdown code blocks)
+      let jsonStr = textContent.trim();
+      if (jsonStr.startsWith('```')) {
+        jsonStr = jsonStr.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      }
+
+      const extracted: any[] = JSON.parse(jsonStr);
+
+      if (!Array.isArray(extracted) || extracted.length === 0) {
+        throw new Error('Tidak ada data yang terdeteksi dari screenshot.');
+      }
+
+      // Match extracted names to designer IDs and fill form
+      let matchCount = 0;
+      const updatedForm = { ...designerEvalsForm };
+      const projectDesigners = Object.keys(designerEvalsForm).map(did => designersData.find(x => x.id === did)).filter(Boolean) as Designer[];
+
+      for (const row of extracted) {
+        const matchedId = fuzzyMatchDesigner(row.nama, projectDesigners);
+        if (matchedId && updatedForm[matchedId]) {
+          updatedForm[matchedId] = {
+            ...updatedForm[matchedId],
+            kategori: row.kategori || updatedForm[matchedId].kategori,
+            job_title: row.job_title || updatedForm[matchedId].job_title,
+            inisiatif: row.inisiatif || updatedForm[matchedId].inisiatif,
+            disiplin: row.disiplin || updatedForm[matchedId].disiplin,
+            penyelesaian_tugas: row.penyelesaian_tugas || updatedForm[matchedId].penyelesaian_tugas,
+            attitude: row.attitude || updatedForm[matchedId].attitude,
+            komunikasi: row.komunikasi || updatedForm[matchedId].komunikasi,
+            respon_masukan: row.respon_masukan || updatedForm[matchedId].respon_masukan,
+            masukan_pengembangan: row.masukan_pengembangan || updatedForm[matchedId].masukan_pengembangan,
+          };
+          matchCount++;
+        }
+      }
+
+      setDesignerEvalsForm(updatedForm);
+
+      if (matchCount === 0) {
+        setAiError(`⚠️ ${extracted.length} baris terdeteksi, tapi tidak ada nama yang cocok dengan designer project ini. Nama yang terdeteksi: ${extracted.map(r => r.nama).join(', ')}`);
+      } else {
+        setAiError(null);
+        alert(`✅ Berhasil! ${matchCount} dari ${extracted.length} designer berhasil diisi otomatis.`);
+      }
+    } catch (err: any) {
+      console.error('AI Scan error:', err);
+      setAiError(`❌ Error: ${err.message}`);
+    } finally {
+      setAiProcessing(false);
+      // Reset file input
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleSubmitDesignerEvals = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedProject || !supabase) return;
 
     setSubmitting(true);
     try {
-      const payload = {
+      const entries = Object.entries(designerEvalsForm);
+      const payloads = entries.map(([designerId, ev]) => ({
         project_id: selectedProject.id,
-        rating_speed: ratings['rating_speed'],
-        rating_quality: ratings['rating_quality'],
-        rating_accuracy: ratings['rating_accuracy'],
-        rating_coord_internal: ratings['rating_coord_internal'],
-        rating_coord_client: ratings['rating_coord_client'],
-        rating_problem_solving: ratings['rating_problem_solving'],
-        rating_agility: ratings['rating_agility'],
-        rating_impact: ratings['rating_impact'],
-        evaluator_name: evaluatorName, // SAVE NAME
-        notes: notes,
-        status: 'SUBMITTED', // Reset status to submitted on update
-        clarification_notes: null // Clear the clarification flag notes on resolve
-      };
+        designer_id: designerId,
+        evaluator_name: evaluatorName,
+        kategori: ev.kategori || null,
+        job_title: ev.job_title || null,
+        inisiatif: ev.inisiatif || null,
+        disiplin: ev.disiplin || null,
+        penyelesaian_tugas: ev.penyelesaian_tugas || null,
+        attitude: ev.attitude || null,
+        komunikasi: ev.komunikasi || null,
+        respon_masukan: ev.respon_masukan || null,
+        masukan_pengembangan: ev.masukan_pengembangan || null,
+      }));
 
-      // Upsert: Updates if exists, Inserts if new
-      const { data, error } = await supabase.from('project_surveys').upsert(payload, { onConflict: 'project_id' }).select();
+      const { error } = await supabase.from('designer_evaluations').upsert(payloads, { onConflict: 'project_id,designer_id' });
 
-      if (error) {
-        throw error;
-      } else {
-        setSubmitted(true);
-        // Reset states to transition to Thank You view
-        setClarificationRequested(false);
-        setClarificationMessage('');
-
-        // Update local cache with full data so the score appears on the list view immediately after returning
-        if (data && data.length > 0) {
-          setProjectSurveysMap(prev => ({ ...prev, [selectedProject.id]: data[0] as ProjectSurvey }));
-        }
-      }
+      if (error) throw error;
+      setSubmitted(true);
     } catch (err: any) {
-      if (err.message && (
-        err.message.includes('clarification_notes') ||
-        err.message.includes('status') ||
-        err.message.includes('evaluator_name')
-      )) {
-        alert("DATABASE UPDATE REQUIRED: Database Anda belum memiliki kolom 'evaluator_name' atau 'clarification_notes'. Silakan minta Admin untuk menjalankan perintah SQL update yang ada di README.md bagian 'Troubleshooting / Update Schema'.");
-      } else {
-        alert(`Error submitting survey: ${err.message}`);
-      }
+      alert(`Error: ${err.message}`);
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const calcDesignerAvg = (ev: Partial<DesignerEvaluation>) => {
+    const scores = EVAL_CRITERIA.map(c => (ev as any)[c.key] || 0).filter((v: number) => v > 0);
+    return scores.length > 0 ? (scores.reduce((a: number, b: number) => a + b, 0) / scores.length).toFixed(1) : '-';
   };
 
   // --- CHECKLIST HANDLERS ---
@@ -568,7 +662,7 @@ const PublicProjectSurvey: React.FC = () => {
     </div>
   );
 
-  if (submitted && !clarificationRequested) {
+  if (submitted && activeTab === 'evaluation' && !selectedProject) {
     return (
       <div className="min-h-screen bg-indigo-50 flex items-center justify-center p-6">
         <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl p-10 text-center animate-in zoom-in duration-300 border-t-8 border-indigo-600">
@@ -576,8 +670,8 @@ const PublicProjectSurvey: React.FC = () => {
             <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
           </div>
           <h1 className="text-2xl font-bold text-slate-900 mb-2">Thank You!</h1>
-          <p className="text-slate-700 mb-8 font-medium">Your evaluation has been recorded.</p>
-          <button onClick={() => { setSubmitted(false); setSelectedProject(null); setRatings({}); setNotes(''); setEvaluatorName(''); window.location.reload(); }} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg">Back to Projects</button>
+          <p className="text-slate-700 mb-8 font-medium">Evaluasi Anda telah disimpan.</p>
+          <button onClick={() => { setSubmitted(false); setSelectedProject(null); setEvaluatorName(''); window.location.reload(); }} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg">Back to Projects</button>
         </div>
       </div>
     );
@@ -688,25 +782,9 @@ const PublicProjectSurvey: React.FC = () => {
           </div>
 
           <div className="flex bg-slate-100 p-1 rounded-xl gap-1">
-            <button
-              onClick={() => setActiveTab('checklist')}
-              className={`px-6 py-2 rounded-lg text-xs font-black uppercase tracking-wide transition-all ${activeTab === 'checklist' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-            >
+            <span className="px-6 py-2 rounded-lg text-xs font-black uppercase tracking-wide bg-white text-indigo-700 shadow-sm">
               Design Checklist
-            </button>
-            <button
-              onClick={() => !surveyDisabled && setActiveTab('evaluation')}
-              disabled={surveyDisabled}
-              className={`px-6 py-2 rounded-lg text-xs font-black uppercase tracking-wide transition-all flex items-center gap-1.5 ${surveyDisabled
-                ? 'text-slate-300 cursor-not-allowed'
-                : activeTab === 'evaluation'
-                  ? 'bg-amber-400 text-amber-900 shadow-md ring-1 ring-amber-500/20'
-                  : 'text-slate-500 hover:text-amber-700 hover:bg-amber-50'
-                }`}
-            >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363 1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" /></svg>
-              {surveyDisabled ? '🔒 Evaluation Off' : (clarificationRequested ? '⚠️ Action Required' : 'Evaluation Survey')}
-            </button>
+            </span>
           </div>
         </div>
       </div>
@@ -714,132 +792,80 @@ const PublicProjectSurvey: React.FC = () => {
       <div className="flex-1 overflow-y-auto px-6 py-8">
         <div className="max-w-5xl mx-auto">
 
-          {activeTab === 'checklist' && (
-            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
-              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-3">Quick Add from Templates</span>
-                {isEditable ? (
-                  <div className="flex flex-wrap gap-2">
-                    {templates.map(t => {
-                      const isActive = activeTemplatesInProject.has(t.id);
-                      return (
-                        <button key={t.id} onClick={() => handleToggleTemplate(t.id)} className={`px-4 py-2 rounded-lg text-xs font-black uppercase border transition-all ${isActive ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-600'}`}>{isActive ? '✓ ' : '+ '} {t.name}</button>
-                      );
-                    })}
-                    {templates.length === 0 && <span className="text-xs text-slate-400 italic">No templates available.</span>}
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2 text-xs font-bold text-amber-600 bg-amber-50 p-3 rounded-xl border border-amber-100">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                    Project Status is {selectedProject.status}. Checklist modification is locked.
-                  </div>
-                )}
-              </div>
-
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                <div className="p-6 border-b border-slate-100">
-                  <h2 className="text-lg font-bold text-slate-900 uppercase tracking-wide">Design Request List</h2>
-                  <p className="text-xs text-slate-500 mt-1">List all design assets needed for this project.</p>
+          {/* Design Checklist - always shown */}
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-3">Quick Add from Templates</span>
+              {isEditable ? (
+                <div className="flex flex-wrap gap-2">
+                  {templates.map(t => {
+                    const isActive = activeTemplatesInProject.has(t.id);
+                    return (
+                      <button key={t.id} onClick={() => handleToggleTemplate(t.id)} className={`px-4 py-2 rounded-lg text-xs font-black uppercase border transition-all ${isActive ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-600'}`}>{isActive ? '✓ ' : '+ '} {t.name}</button>
+                    );
+                  })}
+                  {templates.length === 0 && <span className="text-xs text-slate-400 italic">No templates available.</span>}
                 </div>
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-200">
-                    <tr>
-                      <th className="px-6 py-4 text-center w-12">#</th>
-                      <th className="px-6 py-4">Design Item</th>
-                      <th className="px-6 py-4 w-32">Size</th>
-                      <th className="px-6 py-4 text-center w-20">Qty</th>
-                      <th className="px-6 py-4">Notes</th>
-                      <th className="px-6 py-4 w-32">Status</th>
-                      <th className="px-6 py-4 text-right w-16"></th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
-                    {Array.from(activeTemplatesInProject).map(templateId => {
-                      const items = groupedChecklists.groups[templateId] || [];
-                      const templateName = templates.find(t => t.id === templateId)?.name || 'Unknown Template';
-                      const newItemState = newItemsMap[templateId] || { task_name: '', size: '', quantity: 1, notes: '' };
-                      return (
-                        <React.Fragment key={templateId}>
-                          <tr className="bg-indigo-50 border-y border-indigo-100">
-                            <td colSpan={7} className="px-6 py-2">
-                              <span className="text-[10px] font-black text-indigo-800 uppercase tracking-widest flex items-center gap-2">
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg> {templateName}
-                              </span>
-                            </td>
-                          </tr>
-                          {items.map((cl, idx) => (<TableRow key={cl.id} cl={cl} idx={idx} isEditable={isEditable} cellInputClass={cellInputClass} handleLocalChange={handleLocalChange} handleSaveItem={handleSaveItem} handleDeleteItem={handleDeleteItem} />))}
-                          {isEditable && <AddRow newItem={newItemState} updateNewItem={(field: string, val: any) => updateNewItemState(templateId, field, val)} onAdd={() => handleAddItem(templateId)} newRowInputClass={newRowInputClass} />}
-                        </React.Fragment>
-                      );
-                    })}
-                    <React.Fragment key="manual">
-                      <tr className="bg-slate-100 border-y border-slate-200">
-                        <td colSpan={7} className="px-6 py-2">
-                          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> Additional / Manual Items
-                          </span>
-                        </td>
-                      </tr>
-                      {groupedChecklists.manualItems.map((cl, idx) => (<TableRow key={cl.id} cl={cl} idx={idx} isEditable={isEditable} cellInputClass={cellInputClass} handleLocalChange={handleLocalChange} handleSaveItem={handleSaveItem} handleDeleteItem={handleDeleteItem} />))}
-                      {isEditable && <AddRow newItem={newItemsMap['manual'] || { task_name: '', size: '', quantity: 1, notes: '' }} updateNewItem={(field: string, val: any) => updateNewItemState(null, field, val)} onAdd={() => handleAddItem(null)} newRowInputClass={newRowInputClass} />}
-                    </React.Fragment>
-                  </tbody>
-                </table>
-                {checklists.length === 0 && <div className="p-8 text-center text-xs text-slate-400 font-bold italic">No items yet. Add manually or pick a template above.</div>}
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'evaluation' && !surveyDisabled && (
-            <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
-              {clarificationRequested && (
-                <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-xl shadow-sm mb-6 flex items-start gap-4">
-                  <div className="p-2 bg-white rounded-full text-amber-500 shadow-sm"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg></div>
-                  <div><h3 className="text-sm font-black text-amber-800 uppercase tracking-wide">Clarification Requested</h3><p className="text-xs text-amber-700 font-bold mt-1">From Design Team: "{clarificationMessage}"</p><p className="text-[10px] text-amber-600 mt-2">Please update your evaluation below and resubmit.</p></div>
-                </div>
-              )}
-
-              {submitted && !clarificationRequested ? (
-                <div className="p-10 bg-white rounded-3xl border border-slate-200 text-center shadow-sm"><div className="text-4xl mb-4">✅</div><h2 className="text-xl font-bold text-slate-900">Evaluation Completed</h2><p className="text-slate-500 text-sm mt-2">Thank you for submitting your feedback for this project.</p></div>
               ) : (
-                <form onSubmit={handleSubmitSurvey} className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
-                  <div className="p-8 border-b border-slate-100 bg-amber-50">
-                    <h2 className="text-lg font-bold text-slate-900 uppercase tracking-wide flex items-center gap-2"><span className="text-amber-500 text-xl">★</span> PM Performance Survey</h2>
-                    <p className="text-xs text-slate-500 mt-1">Rate the design team's performance for this specific project.</p>
-                  </div>
-                  <div className="p-8 space-y-8">
-                    <div className="bg-slate-50 p-6 rounded-xl border border-slate-100">
-                      <label className="text-xs font-black text-slate-900 uppercase tracking-wide mb-2 block">Nama Pemberi Evaluasi <span className="text-red-500">*</span></label>
-                      <input type="text" required placeholder="Tulis nama lengkap Anda..." value={evaluatorName} onChange={(e) => setEvaluatorName(e.target.value)} className="w-full p-3 rounded-lg border border-slate-300 text-sm font-bold outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-200 transition-all" />
-                    </div>
-
-                    {SURVEY_QUESTIONS.map((q) => (
-                      <div key={q.id}>
-                        <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide mb-3">{q.label}</h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                          {q.options.map((opt) => {
-                            const isSelected = ratings[q.id] === opt.val;
-                            return (
-                              <button key={opt.val} type="button" onClick={() => handleRatingChange(q.id, opt.val)} className={`p-4 rounded-xl border text-left transition-all duration-200 flex flex-col gap-1 ${isSelected ? 'border-amber-500 bg-amber-50 text-amber-900 shadow-inner ring-1 ring-amber-500' : 'border-slate-200 bg-white text-slate-500 hover:border-amber-300'}`}>
-                                <span className="text-xs font-bold uppercase leading-tight">{opt.text}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ))}
-                    <div>
-                      <label className="text-sm font-bold text-slate-900 uppercase tracking-wide mb-3 block">Project Manager Notes</label>
-                      <textarea rows={3} maxLength={200} placeholder="Any specific feedback..." value={notes} onChange={e => setNotes(e.target.value)} className="w-full p-4 rounded-xl border border-slate-200 text-sm font-medium outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors" />
-                    </div>
-                    <button type="submit" disabled={submitting || !SURVEY_QUESTIONS.every(q => ratings[q.id] !== undefined) || !evaluatorName.trim()} className="w-full py-4 rounded-xl font-bold text-sm shadow-lg uppercase tracking-widest bg-amber-500 text-white hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
-                      {submitting ? 'Submitting...' : (clarificationRequested ? 'Update Evaluation' : 'Submit Evaluation')}
-                    </button>
-                  </div>
-                </form>
+                <div className="flex items-center gap-2 text-xs font-bold text-amber-600 bg-amber-50 p-3 rounded-xl border border-amber-100">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                  Project Status is {selectedProject.status}. Checklist modification is locked.
+                </div>
               )}
             </div>
-          )}
+
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+              <div className="p-6 border-b border-slate-100">
+                <h2 className="text-lg font-bold text-slate-900 uppercase tracking-wide">Design Request List</h2>
+                <p className="text-xs text-slate-500 mt-1">List all design assets needed for this project.</p>
+              </div>
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-200">
+                  <tr>
+                    <th className="px-6 py-4 text-center w-12">#</th>
+                    <th className="px-6 py-4">Design Item</th>
+                    <th className="px-6 py-4 w-32">Size</th>
+                    <th className="px-6 py-4 text-center w-20">Qty</th>
+                    <th className="px-6 py-4">Notes</th>
+                    <th className="px-6 py-4 w-32">Status</th>
+                    <th className="px-6 py-4 text-right w-16"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
+                  {Array.from(activeTemplatesInProject).map(templateId => {
+                    const items = groupedChecklists.groups[templateId] || [];
+                    const templateName = templates.find(t => t.id === templateId)?.name || 'Unknown Template';
+                    const newItemState = newItemsMap[templateId] || { task_name: '', size: '', quantity: 1, notes: '' };
+                    return (
+                      <React.Fragment key={templateId}>
+                        <tr className="bg-indigo-50 border-y border-indigo-100">
+                          <td colSpan={7} className="px-6 py-2">
+                            <span className="text-[10px] font-black text-indigo-800 uppercase tracking-widest flex items-center gap-2">
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg> {templateName}
+                            </span>
+                          </td>
+                        </tr>
+                        {items.map((cl, idx) => (<TableRow key={cl.id} cl={cl} idx={idx} isEditable={isEditable} cellInputClass={cellInputClass} handleLocalChange={handleLocalChange} handleSaveItem={handleSaveItem} handleDeleteItem={handleDeleteItem} />))}
+                        {isEditable && <AddRow newItem={newItemState} updateNewItem={(field: string, val: any) => updateNewItemState(templateId, field, val)} onAdd={() => handleAddItem(templateId)} newRowInputClass={newRowInputClass} />}
+                      </React.Fragment>
+                    );
+                  })}
+                  <React.Fragment key="manual">
+                    <tr className="bg-slate-100 border-y border-slate-200">
+                      <td colSpan={7} className="px-6 py-2">
+                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> Additional / Manual Items
+                        </span>
+                      </td>
+                    </tr>
+                    {groupedChecklists.manualItems.map((cl, idx) => (<TableRow key={cl.id} cl={cl} idx={idx} isEditable={isEditable} cellInputClass={cellInputClass} handleLocalChange={handleLocalChange} handleSaveItem={handleSaveItem} handleDeleteItem={handleDeleteItem} />))}
+                    {isEditable && <AddRow newItem={newItemsMap['manual'] || { task_name: '', size: '', quantity: 1, notes: '' }} updateNewItem={(field: string, val: any) => updateNewItemState(null, field, val)} onAdd={() => handleAddItem(null)} newRowInputClass={newRowInputClass} />}
+                  </React.Fragment>
+                </tbody>
+              </table>
+              {checklists.length === 0 && <div className="p-8 text-center text-xs text-slate-400 font-bold italic">No items yet. Add manually or pick a template above.</div>}
+            </div>
+          </div>
         </div>
       </div>
     </div>

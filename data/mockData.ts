@@ -59,7 +59,7 @@ const artworkLogs: ArtworkLog[] = Array.from({ length: 50 }, (_, i) => {
   const designerId = designers[randomDesignerIdx].id;
   const contexts = [WorkContext.PROJECT, WorkContext.LEAD, WorkContext.INTERNAL];
   const context = contexts[Math.floor(Math.random() * contexts.length)];
-  
+
   return {
     id: `log-${i + 1}`,
     work_context: context,
@@ -86,6 +86,7 @@ export const INITIAL_STATE: AppState = {
   internalDesigns,
   artworkLogs,
   projectSurveys: [],
+  designerEvaluations: [],
   projectChecklists: [],
   checklistTemplates: [],
   checklistTemplateItems: []

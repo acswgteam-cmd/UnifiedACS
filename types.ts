@@ -108,11 +108,29 @@ export interface ProjectSurvey {
   rating_coord_client: number;
   rating_problem_solving: number;
   rating_agility: number;
-  rating_impact: number; // New Field
+  rating_impact: number;
+  evaluator_name?: string;
   notes?: string;
   created_at: string;
   status?: 'SUBMITTED' | 'CLARIFICATION_REQUESTED';
   clarification_notes?: string;
+}
+
+export interface DesignerEvaluation {
+  id: string;
+  project_id: string;
+  designer_id: string;
+  evaluator_name?: string;
+  kategori?: string;
+  job_title?: string;
+  inisiatif?: number;
+  disiplin?: number;
+  penyelesaian_tugas?: number;
+  attitude?: number;
+  komunikasi?: number;
+  respon_masukan?: number;
+  masukan_pengembangan?: string;
+  created_at?: string;
 }
 
 export interface AppState {
@@ -123,6 +141,7 @@ export interface AppState {
   internalDesigns: InternalDesign[];
   artworkLogs: ArtworkLog[];
   projectSurveys: ProjectSurvey[];
+  designerEvaluations: DesignerEvaluation[];
   projectChecklists: ProjectChecklist[];
   checklistTemplates: ChecklistTemplate[];
   checklistTemplateItems: ChecklistTemplateItem[];
