@@ -808,22 +808,28 @@ IMPORTANT: Extract ALL rows. Return raw JSON only, no explanations.`;
           </div>
         </div>
         <div className="bg-white p-4 rounded-[20px] border border-[#EAEAEA] shadow-sm flex flex-col justify-center">
-          <div className="flex justify-between items-start mb-1">
+          <div className="flex justify-between items-start mb-2">
             <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Avg Score</span>
-            <div className="text-2xl font-bold text-zinc-900 leading-none">{dashboardStats.avgScore}</div>
+            <div className="text-2xl font-bold text-zinc-900 leading-none">{dashboardStats.avgScore} <span className="text-xs text-zinc-400 font-bold">/5</span></div>
           </div>
-          <div className="grid grid-cols-2 gap-x-2 gap-y-1 mt-2">
-            {EVAL_CRITERIA.map(c => (
-              <div key={c.key} className="flex justify-between items-center text-[9px] border-b border-zinc-50 pb-0.5">
-                <span className="text-zinc-500 uppercase truncate pr-1" title={c.label}>{c.label}</span>
-                <span className="font-bold text-zinc-800">{dashboardStats.detailAverages[c.key]}/5.0</span>
-              </div>
-            ))}
+          <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
+            {EVAL_CRITERIA.map(c => {
+              const shortLabel = c.key === 'penyelesaian_tugas' ? 'Tugas' : c.key === 'respon_masukan' ? 'Feedback' : c.label;
+              const score = parseFloat(dashboardStats.detailAverages[c.key]);
+              const colorClass = score >= 4.5 ? 'text-emerald-600' : score >= 3.5 ? 'text-indigo-600' : score > 0 ? 'text-rose-600' : 'text-zinc-400';
+              const bgClass = score >= 4.5 ? 'bg-emerald-50' : score >= 3.5 ? 'bg-indigo-50' : score > 0 ? 'bg-rose-50' : 'bg-zinc-50';
+              return (
+                <div key={c.key} className={`flex justify-between items-center text-[8px] rounded px-1.5 py-1 ${bgClass}`}>
+                  <span className="text-zinc-600 uppercase font-bold tracking-tight truncate pr-1" title={c.label}>{shortLabel}</span>
+                  <span className={`font-bold ${colorClass}`}>{dashboardStats.detailAverages[c.key]}</span>
+                </div>
+              );
+            })}
           </div>
         </div>
         <div className="bg-white p-4 rounded-[20px] border border-[#EAEAEA] shadow-sm flex flex-col justify-center">
           <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Avg Team Size</span>
-          <div className="text-2xl font-bold text-zinc-900">{dashboardStats.avgTeamSize}</div>
+          <div className="text-2xl font-bold text-zinc-900">{dashboardStats.avgTeamSize} <span className="text-xs text-zinc-400 font-bold">Orang</span></div>
         </div>
       </div>
 
