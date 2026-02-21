@@ -261,6 +261,7 @@ IMPORTANT: Extract ALL rows. Return raw JSON only, no explanations.`;
   const handleDelete = async (e: React.MouseEvent, id: string) => { e.stopPropagation(); if (!supabase || !confirm('Hapus project ini?')) return; const { error } = await supabase.from('projects').delete().eq('id', id); if (error) alert(error.message); else onUpdate(); };
   const getStatusBadge = (status: string) => { switch (status) { case 'ON HOLD': return 'bg-amber-100 text-amber-700 border-amber-200'; case 'DONE': return 'bg-emerald-100 text-emerald-700 border-emerald-200'; default: return 'bg-blue-100 text-blue-700 border-blue-200'; } };
   const handleDeleteSurvey = async (id: string) => { if (!supabase || !confirm("Are you sure you want to delete this evaluation result? This cannot be undone.")) return; const { error } = await supabase.from('project_surveys').delete().eq('id', id); if (error) alert(error.message); else onUpdate(); };
+  const handleDeleteEvaluation = async (projectId: string) => { if (!supabase || !confirm("Hapus semua evaluasi untuk project ini?")) return; const { error } = await supabase.from('designer_evaluations').delete().eq('project_id', projectId); if (error) alert("Failed to delete: " + error.message); else onUpdate(); };
 
   const handleStatusUpdate = async (newStatus: string) => { if (!selectedProject || !supabase) return; setSelectedProject({ ...selectedProject, status: newStatus as any }); const { error } = await supabase.from('projects').update({ status: newStatus }).eq('id', selectedProject.id); if (error) { alert("Failed to update status: " + error.message); onUpdate(); } else { onUpdate(); } };
   const handleNotesUpdate = async (newNotes: string) => { if (!selectedProject || !supabase) return; const { error } = await supabase.from('projects').update({ notes: newNotes }).eq('id', selectedProject.id); if (error) { console.error("Failed to save notes:", error.message); } else { setSelectedProject(prev => prev ? { ...prev, notes: newNotes } : null); onUpdate(); } };
@@ -447,24 +448,29 @@ IMPORTANT: Extract ALL rows. Return raw JSON only, no explanations.`;
                   <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest">Designer Evaluation</h3>
                   <div className="flex items-center gap-2">
                     {!evalEditing ? (
-                      <button onClick={() => {
-                        // Initialize form with existing data or empty entries for each designer
-                        const projectDesignerIds = [selectedProject.pic_designer_id, ...(selectedProject.support_designer_ids || [])].filter(Boolean) as string[];
-                        const existingEvals = designerEvaluations.filter(e => e.project_id === selectedProject.id);
-                        const form: Record<string, Partial<DesignerEvaluation>> = {};
-                        projectDesignerIds.forEach(did => {
-                          const existing = existingEvals.find(e => e.designer_id === did);
-                          if (existing) {
-                            form[did] = { ...existing };
-                          } else {
-                            form[did] = { kategori: '', job_title: '', inisiatif: undefined, disiplin: undefined, penyelesaian_tugas: undefined, attitude: undefined, komunikasi: undefined, respon_masukan: undefined, masukan_pengembangan: '' };
-                          }
-                        });
-                        setEvalForm(form);
-                        setEvalEvaluatorName(existingEvals[0]?.evaluator_name || '');
-                        setEvalEditing(true);
-                        setAiError(null);
-                      }} className="text-[10px] font-black text-white uppercase bg-indigo-600 hover:bg-indigo-700 px-3 py-1.5 rounded-lg transition-colors">✏️ Edit Evaluasi</button>
+                      <div className="flex gap-2">
+                        {designerEvaluations.some(e => e.project_id === selectedProject.id) && (
+                          <button onClick={() => handleDeleteEvaluation(selectedProject.id)} className="text-[10px] font-black text-white uppercase bg-red-500 hover:bg-red-600 px-3 py-1.5 rounded-lg transition-colors">🗑️ Hapus Evaluasi</button>
+                        )}
+                        <button onClick={() => {
+                          // Initialize form with existing data or empty entries for each designer
+                          const projectDesignerIds = [selectedProject.pic_designer_id, ...(selectedProject.support_designer_ids || [])].filter(Boolean) as string[];
+                          const existingEvals = designerEvaluations.filter(e => e.project_id === selectedProject.id);
+                          const form: Record<string, Partial<DesignerEvaluation>> = {};
+                          projectDesignerIds.forEach(did => {
+                            const existing = existingEvals.find(e => e.designer_id === did);
+                            if (existing) {
+                              form[did] = { ...existing };
+                            } else {
+                              form[did] = { kategori: '', job_title: '', inisiatif: undefined, disiplin: undefined, penyelesaian_tugas: undefined, attitude: undefined, komunikasi: undefined, respon_masukan: undefined, masukan_pengembangan: '' };
+                            }
+                          });
+                          setEvalForm(form);
+                          setEvalEvaluatorName(existingEvals[0]?.evaluator_name || '');
+                          setEvalEditing(true);
+                          setAiError(null);
+                        }} className="text-[10px] font-black text-white uppercase bg-indigo-600 hover:bg-indigo-700 px-3 py-1.5 rounded-lg transition-colors">✏️ Edit Evaluasi</button>
+                      </div>
                     ) : (
                       <button onClick={() => setEvalEditing(false)} className="text-[10px] font-black text-slate-500 uppercase hover:text-slate-700 px-3 py-1.5 rounded-lg border border-slate-200 transition-colors">Batal</button>
                     )}

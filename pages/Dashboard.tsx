@@ -165,7 +165,13 @@ const Dashboard: React.FC<Props> = ({ state }) => {
       }
 
       // Designer Evaluation Score Logic (from designer_evaluations table)
-      const myEvals = designerEvaluations.filter(ev => ev.designer_id === d.id);
+      const myEvals = designerEvaluations.filter(ev => {
+        if (ev.designer_id !== d.id) return false;
+        const proj = projects.find(p => p.id === ev.project_id);
+        if (!proj) return false;
+        const projectDesignerIds = new Set([proj.pic_designer_id, ...(proj.support_designer_ids || [])].filter(Boolean));
+        return projectDesignerIds.has(d.id);
+      });
 
       let avgRatingStr = null;
       let detailedScores: any = null;
