@@ -60,9 +60,10 @@ const Dashboard: React.FC<Props> = ({ state }) => {
     const wordCounts: Record<string, number> = {};
     filteredLogs.forEach(log => {
       if (!log.artwork_name) return;
-      const firstWord = log.artwork_name.trim().split(/[\s-]+/)[0].toUpperCase();
-      if (firstWord.length > 1) {
-        wordCounts[firstWord] = (wordCounts[firstWord] || 0) + 1;
+      const words = log.artwork_name.trim().split(/[\s-]+/);
+      const topWords = words.slice(0, 2).join(' ').toUpperCase();
+      if (topWords.trim().length > 1) {
+        wordCounts[topWords] = (wordCounts[topWords] || 0) + 1;
       }
     });
 
