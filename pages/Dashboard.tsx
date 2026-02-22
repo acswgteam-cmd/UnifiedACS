@@ -170,6 +170,11 @@ const Dashboard: React.FC<Props> = ({ state }) => {
         if (ev.designer_id !== d.id) return false;
         const proj = projects.find(p => p.id === ev.project_id);
         if (!proj) return false;
+
+        const startMatch = !filterStart || proj.start_date >= filterStart;
+        const endMatch = !filterEnd || proj.start_date <= filterEnd;
+        if (!startMatch || !endMatch) return false;
+
         const projectDesignerIds = new Set([proj.pic_designer_id, ...(proj.support_designer_ids || [])].filter(Boolean));
         return projectDesignerIds.has(d.id);
       });
@@ -251,7 +256,6 @@ const Dashboard: React.FC<Props> = ({ state }) => {
       };
     }).sort((a, b) => b.totalArtworks - a.totalArtworks);
 
-    // --- EVALUATION SUMMARY LOGIC ---
     const projectScoresMap: Record<string, { sum: number; count: number }> = {};
     const categoryScoresMap: Record<string, { sum: number; count: number }> = {};
     EVAL_CRITERIA_KEYS.forEach(k => categoryScoresMap[k] = { sum: 0, count: 0 });
@@ -260,7 +264,16 @@ const Dashboard: React.FC<Props> = ({ state }) => {
     let globalEvalSum = 0;
     let globalEvalCount = 0;
 
-    designerEvaluations.forEach(ev => {
+    const filteredEvaluations = designerEvaluations.filter(ev => {
+      if (!ev.project_id) return true;
+      const proj = projects.find(p => p.id === ev.project_id);
+      if (!proj) return false;
+      const startMatch = !filterStart || proj.start_date >= filterStart;
+      const endMatch = !filterEnd || proj.start_date <= filterEnd;
+      return startMatch && endMatch;
+    });
+
+    filteredEvaluations.forEach(ev => {
       const scores = EVAL_CRITERIA_KEYS.map(k => (ev as any)[k] || 0).filter((v: number) => v > 0);
       if (scores.length > 0) {
         const evAvg = scores.reduce((a, b) => a + b, 0) / scores.length;
@@ -649,15 +662,15 @@ const Dashboard: React.FC<Props> = ({ state }) => {
                 <span className="text-xs font-bold text-zinc-400">/ 5.0</span>
               </div>
             </div>
-            <h3 className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mb-3">Rata-Rata Nilai Per Project (Top 5)</h3>
-            <div className="space-y-2.5 mt-auto">
+            <h3 className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mb-2.5">Rata-Rata Nilai Per Project (Top 5)</h3>
+            <div className="mt-auto flex flex-col border border-zinc-200 rounded-lg overflow-hidden bg-white shadow-sm">
               {analytics.evalProjectSummary.slice(0, 5).map((p: any, idx: number) => (
-                <div key={idx} className="flex justify-between items-center text-xs animate-fade-in" style={{ animationDelay: `${idx * 50}ms` }}>
+                <div key={idx} className={`flex justify-between items-center text-xs p-2.5 animate-fade-in ${idx !== Math.min(analytics.evalProjectSummary.length, 5) - 1 ? 'border-b border-zinc-100' : ''}`} style={{ animationDelay: `${idx * 50}ms` }}>
                   <span className="font-bold text-zinc-800 truncate max-w-[70%]">{p.projectName}</span>
                   <span className="font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-200">{p.avgScore}</span>
                 </div>
               ))}
-              {analytics.evalProjectSummary.length === 0 && <span className="text-xs text-zinc-400 italic">No project stats</span>}
+              {analytics.evalProjectSummary.length === 0 && <span className="text-xs text-zinc-400 italic p-2.5">No project stats</span>}
             </div>
           </div>
           <div className="bg-[#FCFCFC] p-4 rounded-xl border border-[#EAEAEA] flex flex-col h-full hover:shadow-sm transition-all">
