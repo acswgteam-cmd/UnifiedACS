@@ -362,10 +362,10 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
             {copySuccess ? 'Copied Link!' : 'Copy Secured Link'}
           </button>
-          <div className="flex bg-[#FAFAFA]200 p-1 rounded-lg">
-            <button onClick={() => setView('list')} className={`px-4 py-1 rounded-md text-xs font-bold ${view === 'list' ? 'bg-white shadow-sm text-zinc-800' : 'text-zinc-600'}`}>List</button>
-            <button onClick={() => setView('board')} className={`px-4 py-1 rounded-md text-xs font-bold ${view === 'board' ? 'bg-white shadow-sm text-zinc-800' : 'text-zinc-600'}`}>Board</button>
-            <button onClick={() => setView('calendar')} className={`px-4 py-1 rounded-md text-xs font-bold ${view === 'calendar' ? 'bg-white shadow-sm text-zinc-800' : 'text-zinc-600'}`}>Calendar</button>
+          <div className="flex bg-[#FAFAFA] p-1 rounded-lg">
+            <button onClick={() => setView('list')} className={`p-2 rounded-md transition-all ${view === 'list' ? 'bg-white shadow-sm text-zinc-800' : 'text-zinc-400 hover:text-zinc-600'}`} title="List View"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" /></svg></button>
+            <button onClick={() => setView('board')} className={`p-2 rounded-md transition-all ${view === 'board' ? 'bg-white shadow-sm text-zinc-800' : 'text-zinc-400 hover:text-zinc-600'}`} title="Board View"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" strokeWidth="2" /><path d="M9 3v18M15 3v18" strokeWidth="2" /></svg></button>
+            <button onClick={() => setView('calendar')} className={`p-2 rounded-md transition-all ${view === 'calendar' ? 'bg-white shadow-sm text-zinc-800' : 'text-zinc-400 hover:text-zinc-600'}`} title="Calendar View"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" strokeWidth="2" /><path d="M16 2v4M8 2v4M3 10h18" strokeWidth="2" /></svg></button>
           </div>
           <button onClick={() => setIsAdding(true)} className="px-4 py-2 bg-zinc-900 text-white rounded-lg text-sm font-bold shadow-sm border border-[#EAEAEA] hover:bg-black transition-all flex items-center gap-2">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" /></svg>

@@ -223,10 +223,10 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
           <p className="text-zinc-600 text-sm mt-1 font-semibold">Manage inter-department creative requests.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex bg-[#FAFAFA]200 p-1 rounded-xl">
-            <button onClick={() => setView('list')} className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${view === 'list' ? 'bg-white text-purple-700 shadow-sm' : 'text-zinc-600'}`}>List</button>
-            <button onClick={() => setView('board')} className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${view === 'board' ? 'bg-white text-purple-700 shadow-sm' : 'text-zinc-600'}`}>Board</button>
-            <button onClick={() => setView('calendar')} className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${view === 'calendar' ? 'bg-white text-purple-700 shadow-sm' : 'text-zinc-600'}`}>Calendar</button>
+          <div className="flex bg-[#FAFAFA] p-1 rounded-xl">
+            <button onClick={() => setView('list')} className={`p-2 rounded-lg transition-all ${view === 'list' ? 'bg-white text-purple-700 shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`} title="List View"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" /></svg></button>
+            <button onClick={() => setView('board')} className={`p-2 rounded-lg transition-all ${view === 'board' ? 'bg-white text-purple-700 shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`} title="Board View"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" strokeWidth="2" /><path d="M9 3v18M15 3v18" strokeWidth="2" /></svg></button>
+            <button onClick={() => setView('calendar')} className={`p-2 rounded-lg transition-all ${view === 'calendar' ? 'bg-white text-purple-700 shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`} title="Calendar View"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" strokeWidth="2" /><path d="M16 2v4M8 2v4M3 10h18" strokeWidth="2" /></svg></button>
           </div>
           <button onClick={handleOpenAdd} className="px-4 py-2 bg-purple-600 text-white rounded-lg text-xs font-bold uppercase shadow-sm border border-[#EAEAEA] flex items-center gap-2 hover:bg-purple-700 transition-all">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4" /></svg>

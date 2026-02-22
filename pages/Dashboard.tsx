@@ -251,13 +251,63 @@ const Dashboard: React.FC<Props> = ({ state }) => {
       };
     }).sort((a, b) => b.totalArtworks - a.totalArtworks);
 
+    // --- EVALUATION SUMMARY LOGIC ---
+    const projectScoresMap: Record<string, { sum: number; count: number }> = {};
+    const categoryScoresMap: Record<string, { sum: number; count: number }> = {};
+    EVAL_CRITERIA_KEYS.forEach(k => categoryScoresMap[k] = { sum: 0, count: 0 });
+    const devNotesCounts: Record<string, number> = {};
+
+    designerEvaluations.forEach(ev => {
+      const scores = EVAL_CRITERIA_KEYS.map(k => (ev as any)[k] || 0).filter((v: number) => v > 0);
+      if (scores.length > 0) {
+        const evAvg = scores.reduce((a, b) => a + b, 0) / scores.length;
+        if (ev.project_id) {
+          if (!projectScoresMap[ev.project_id]) projectScoresMap[ev.project_id] = { sum: 0, count: 0 };
+          projectScoresMap[ev.project_id].sum += evAvg;
+          projectScoresMap[ev.project_id].count++;
+        }
+        EVAL_CRITERIA_KEYS.forEach(k => {
+          if ((ev as any)[k]) {
+            categoryScoresMap[k].sum += (ev as any)[k];
+            categoryScoresMap[k].count++;
+          }
+        });
+      }
+      if (ev.masukan_pengembangan) {
+        const words = ev.masukan_pengembangan.trim().toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/).filter((w: string) => w.length > 2);
+        const addToken = (token: string) => {
+          if (token.length > 3) devNotesCounts[token] = (devNotesCounts[token] || 0) + 1;
+        };
+        for (let i = 0; i < words.length; i++) {
+          addToken(words[i]);
+          if (i < words.length - 1) addToken(`${words[i]} ${words[i + 1]}`);
+          if (i < words.length - 2) addToken(`${words[i]} ${words[i + 1]} ${words[i + 2]}`);
+        }
+      }
+    });
+
+    const evalProjectSummary = Object.entries(projectScoresMap).map(([pid, data]) => ({
+      projectName: projects.find(p => p.id === pid)?.project_name || 'Unknown',
+      avgScore: (data.sum / data.count).toFixed(2),
+    })).sort((a, b) => parseFloat(b.avgScore) - parseFloat(a.avgScore));
+
+    const evalCategorySummary = EVAL_CRITERIA_KEYS.map(k => ({
+      category: k.replace('_', ' '),
+      avgScore: categoryScoresMap[k].count > 0 ? (categoryScoresMap[k].sum / categoryScoresMap[k].count).toFixed(2) : '0.00'
+    })).sort((a, b) => parseFloat(b.avgScore) - parseFloat(a.avgScore));
+
+    const topDevKeywords = Object.entries(devNotesCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([word, count]) => ({ word, count }));
+
     return {
       totalArtworks,
       totalProjectsCount: allProjects.length,
       totalLeadsCount: allLeads.length,
       totalInternalCount: allInternal.length,
       artworksProject, artworksLead, artworksInternal,
-      teamStats, departmentStats, topKeywords,
+      teamStats, departmentStats, topKeywords, evalProjectSummary, evalCategorySummary, topDevKeywords,
       globalTypeSplit, globalContextSplit,
       monthlyTrends: getMonthlyTrends(),
       avgDurProj: calcAvgDuration(WorkContext.PROJECT),
@@ -566,6 +616,52 @@ const Dashboard: React.FC<Props> = ({ state }) => {
                 </div>
               );
             })}
+          </div>
+        </div>
+      </section>
+
+      {/* EVALUATION SUMMARY */}
+      <section className={cardClass + " animate-slide-up"}>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col">
+            <h2 className="text-sm font-bold text-zinc-900 uppercase tracking-tight">Evaluation Summary</h2>
+            <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wide">Overall Performance Insights</span>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="bg-[#FCFCFC] p-4 rounded-xl border border-[#EAEAEA] flex flex-col h-full hover:shadow-sm transition-all">
+            <h3 className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mb-3">Rata-Rata Nilai Per Project (Top 5)</h3>
+            <div className="space-y-2 mt-auto">
+              {analytics.evalProjectSummary.slice(0, 5).map((p: any, idx: number) => (
+                <div key={idx} className="flex justify-between items-center text-xs animate-fade-in" style={{ animationDelay: `${idx * 50}ms` }}>
+                  <span className="font-bold text-zinc-800 truncate max-w-[70%]">{p.projectName}</span>
+                  <span className="font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">{p.avgScore}</span>
+                </div>
+              ))}
+              {analytics.evalProjectSummary.length === 0 && <span className="text-xs text-zinc-400 italic">No project stats</span>}
+            </div>
+          </div>
+          <div className="bg-[#FCFCFC] p-4 rounded-xl border border-[#EAEAEA] flex flex-col h-full hover:shadow-sm transition-all">
+            <h3 className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mb-3">Rata-Rata Nilai Kategori</h3>
+            <div className="space-y-2 mt-auto">
+              {analytics.evalCategorySummary.map((c: any, idx: number) => (
+                <div key={idx} className="flex justify-between items-center text-xs animate-fade-in" style={{ animationDelay: `${idx * 50}ms` }}>
+                  <span className="font-bold text-zinc-800 uppercase tracking-tight">{c.category}</span>
+                  <span className="font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">{c.avgScore}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="bg-[#FCFCFC] p-4 rounded-xl border border-[#EAEAEA] flex flex-col h-full hover:shadow-sm transition-all overflow-hidden">
+            <h3 className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mb-3">Top 10 Keywords (Pengembangan Diri)</h3>
+            <div className="flex flex-wrap gap-1.5 mt-auto">
+              {analytics.topDevKeywords.map((k: any, idx: number) => (
+                <span key={idx} className="px-2 py-1 bg-white text-zinc-700 rounded-lg text-[10px] font-bold border border-[#EAEAEA] shadow-sm animate-slide-up" style={{ animationDelay: `${idx * 50}ms` }}>
+                  {k.word} <span className="text-[8px] text-zinc-400 font-medium">({k.count})</span>
+                </span>
+              ))}
+              {analytics.topDevKeywords.length === 0 && <span className="text-xs text-zinc-400 italic">No keywords found</span>}
+            </div>
           </div>
         </div>
       </section>
