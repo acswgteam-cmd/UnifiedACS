@@ -642,27 +642,31 @@ const Dashboard: React.FC<Props> = ({ state }) => {
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="bg-[#FCFCFC] p-4 rounded-xl border border-[#EAEAEA] flex flex-col h-full hover:shadow-sm transition-all">
-            <div className="flex justify-between items-center mb-3">
-              <h3 className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Rata-Rata Nilai Per Project (Top 5)</h3>
-              <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded font-bold border border-indigo-200">Overall: {analytics.globalEvalAverage}</span>
+            <div className="mb-5">
+              <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider block mb-1">Nilai Overall Review</span>
+              <div className="flex items-baseline gap-1">
+                <span className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 tracking-tight">{analytics.globalEvalAverage}</span>
+                <span className="text-xs font-bold text-zinc-400">/ 5.0</span>
+              </div>
             </div>
-            <div className="space-y-2 mt-auto">
+            <h3 className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mb-3">Rata-Rata Nilai Per Project (Top 5)</h3>
+            <div className="space-y-2.5 mt-auto">
               {analytics.evalProjectSummary.slice(0, 5).map((p: any, idx: number) => (
                 <div key={idx} className="flex justify-between items-center text-xs animate-fade-in" style={{ animationDelay: `${idx * 50}ms` }}>
                   <span className="font-bold text-zinc-800 truncate max-w-[70%]">{p.projectName}</span>
-                  <span className="font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">{p.avgScore}</span>
+                  <span className="font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-200">{p.avgScore}</span>
                 </div>
               ))}
               {analytics.evalProjectSummary.length === 0 && <span className="text-xs text-zinc-400 italic">No project stats</span>}
             </div>
           </div>
           <div className="bg-[#FCFCFC] p-4 rounded-xl border border-[#EAEAEA] flex flex-col h-full hover:shadow-sm transition-all">
-            <h3 className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mb-3">Rata-Rata Nilai Kategori</h3>
-            <div className="space-y-2 mt-auto">
+            <h3 className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mb-2.5">Rata-Rata Nilai Kategori</h3>
+            <div className="mt-auto flex flex-col border border-zinc-200 rounded-lg overflow-hidden bg-white shadow-sm">
               {analytics.evalCategorySummary.map((c: any, idx: number) => (
-                <div key={idx} className="flex justify-between items-center text-xs animate-fade-in" style={{ animationDelay: `${idx * 50}ms` }}>
+                <div key={idx} className={`flex justify-between items-center text-xs p-2.5 animate-fade-in ${idx !== analytics.evalCategorySummary.length - 1 ? 'border-b border-zinc-100' : ''}`} style={{ animationDelay: `${idx * 50}ms` }}>
                   <span className="font-bold text-zinc-800 uppercase tracking-tight">{c.category}</span>
-                  <span className="font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">{c.avgScore}</span>
+                  <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">{c.avgScore}</span>
                 </div>
               ))}
             </div>
