@@ -440,7 +440,7 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
 
       {/* Modal & Detail components remain unchanged */}
       {selectedTask && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 backdrop-blur-sm bg-[#1A1C20]/40" onClick={() => setSelectedTask(null)}>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 backdrop-blur-sm bg-[#1A1C20]/40 animate-in fade-in duration-200" onClick={() => setSelectedTask(null)}>
           <div className="bg-white w-full max-w-lg rounded-[24px] shadow-2xl overflow-hidden animate-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
             <div className="p-6 md:p-8 border-b border-[#EAEAEA] bg-[#FCFCFC] flex justify-between items-start">
               <div>
@@ -471,7 +471,7 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
       )}
 
       {isFormOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 backdrop-blur-sm bg-[#1A1C20]/40">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 backdrop-blur-sm bg-[#1A1C20]/40 animate-in fade-in duration-200">
           <form onSubmit={handleSave} className="bg-white w-full max-w-lg rounded-[20px] shadow-2xl p-8 animate-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
             <h2 className="text-xl font-bold text-zinc-900 uppercase mb-6">{editingTask ? 'Edit Internal Task' : 'New Internal Task'}</h2>
             <div className="space-y-4">

@@ -628,7 +628,7 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
       </div>
 
       {selectedLead && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 backdrop-blur-sm bg-[#1A1C20]/40" onClick={() => setSelectedLead(null)}>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 backdrop-blur-sm bg-[#1A1C20]/40 animate-in fade-in duration-200" onClick={() => setSelectedLead(null)}>
           <div className="bg-white w-full max-w-lg rounded-[24px] shadow-2xl overflow-hidden animate-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
             <div className="p-6 md:p-8 border-b border-[#EAEAEA] bg-[#FCFCFC] flex justify-between items-start">
               <div>

@@ -374,7 +374,7 @@ IMPORTANT: Extract ALL rows. Return raw JSON only, no explanations.`;
       <div className="flex flex-col h-full animate-in slide-in-from-right duration-300 relative">
         {/* MODAL START */}
         {isManageTemplatesOpen && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-[#1A1C20]/60 backdrop-blur-sm" onClick={() => setIsManageTemplatesOpen(false)}>
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-[#1A1C20]/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setIsManageTemplatesOpen(false)}>
             <div className="bg-white w-full max-w-6xl h-[85vh] rounded-[20px] shadow-2xl overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
               {/* Modal Header */}
               <div className="p-6 border-b border-[#EAEAEA] bg-[#FCFCFC] flex justify-between items-center">
