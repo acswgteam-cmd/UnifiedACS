@@ -154,14 +154,14 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({ pr
 
         setIsGeneratingAi(prev => ({ ...prev, [teamId]: true }));
         try {
-            const prompt = `Berikut adalah daftar masukan evaluasi pengembangan diri untuk seorang designer:\n${feedbacks.map((f, i) => `${i + 1}. ${f}`).join('\n')}\n\nBuatkan rangkuman komprehensif (maksimal 3 paragraf singkat) tentang apa saja perbaikan atau pengembangan utama yang harus dilakukan oleh desainer ini. Gunakan bahasa Indonesia profesional dan konstruktif.`;
+            const prompt = `Berikut adalah daftar masukan evaluasi pengembangan diri untuk seorang designer:\n${feedbacks.map((f, i) => `${i + 1}. ${f}`).join('\n')}\n\nBuatkan rangkuman komprehensif tentang apa saja perbaikan atau pengembangan utama yang harus dilakukan oleh desainer ini. Tidak ada batasan panjang teks. Gunakan bahasa Indonesia profesional dan konstruktif.`;
 
             const response = await fetch(
                 `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
                 {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.3, maxOutputTokens: 1024 } })
+                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.3 } })
                 }
             );
             if (!response.ok) throw new Error('API Error');
@@ -308,7 +308,7 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({ pr
                         </div>
 
                         {/* Visual Radar Cards */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                             {teamStats.map(t => {
                                 const radarData = EVAL_CRITERIA.map(c => ({
                                     subject: c.key.substring(0, 5).toUpperCase(),
@@ -316,15 +316,15 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({ pr
                                     fullMark: 5,
                                 }));
                                 return (
-                                    <div key={t.id} className="bg-white p-6 rounded-[24px] border border-[#EAEAEA] shadow-sm flex flex-col items-center hover:border-emerald-200 transition-colors">
-                                        <div className="text-center mb-2">
-                                            <h4 className="text-base font-black text-zinc-900 uppercase tracking-tight">{t.name}</h4>
-                                            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{t.role}</p>
+                                    <div key={t.id} className="bg-white p-3 rounded-2xl border border-[#EAEAEA] shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col items-center hover:border-emerald-300 transition-colors">
+                                        <div className="text-center mb-1.5 line-clamp-1 w-full px-1">
+                                            <h4 className="text-sm font-black text-zinc-900 uppercase tracking-tight truncate">{t.name}</h4>
+                                            <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest truncate">{t.role}</p>
                                         </div>
-                                        <div className={`text-lg font-black px-4 py-1 rounded-xl mb-4 ${getScoreColor(t.avgScore)}`}>{t.avgScore.toFixed(2)} Score</div>
-                                        <div className="w-full h-[180px]">
+                                        <div className={`text-xs font-black px-2.5 py-0.5 rounded-lg mb-2 ${getScoreColor(t.avgScore)}`}>{t.avgScore.toFixed(2)} Score</div>
+                                        <div className="w-full h-[120px]">
                                             <ResponsiveContainer width="100%" height="100%">
-                                                <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
+                                                <RadarChart cx="50%" cy="50%" outerRadius="65%" data={radarData}>
                                                     <PolarGrid stroke="#EAEAEA" />
                                                     <PolarAngleAxis dataKey="subject" tick={{ fontSize: 9, fill: '#A1A1AA', fontWeight: 700 }} />
                                                     <PolarRadiusAxis angle={30} domain={[0, 5]} tick={false} axisLine={false} />
