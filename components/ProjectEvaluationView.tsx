@@ -30,13 +30,25 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({ pr
     const toggleProject = (id: string) => setExpandedProjects(prev => ({ ...prev, [id]: !prev[id] }));
     const toggleTeam = (id: string) => setExpandedTeams(prev => ({ ...prev, [id]: !prev[id] }));
 
+    // --- Data Filtering ---
+    const validEvaluations = useMemo(() => {
+        return designerEvaluations.filter(ev => {
+            const proj = projects.find(p => p.id === ev.project_id);
+            if (!proj) return false;
+            const validIds = new Set(
+                [proj.pic_designer_id, ...(proj.support_designer_ids || [])].filter(Boolean)
+            );
+            return validIds.has(ev.designer_id);
+        });
+    }, [designerEvaluations, projects]);
+
     // --- Aggregate Stats ---
-    const evaluatedProjectIds = Array.from(new Set(designerEvaluations.map(e => e.project_id)));
-    const evaluatedDesignerIds = Array.from(new Set(designerEvaluations.map(e => e.designer_id)));
+    const evaluatedProjectIds = Array.from(new Set(validEvaluations.map(e => e.project_id)));
+    const evaluatedDesignerIds = Array.from(new Set(validEvaluations.map(e => e.designer_id)));
 
     let overallScoreSum = 0;
     let overallScoreCount = 0;
-    designerEvaluations.forEach(ev => {
+    validEvaluations.forEach(ev => {
         const scores = EVAL_CRITERIA.map(c => (ev as any)[c.key] || 0).filter((v: number) => v > 0);
         if (scores.length > 0) {
             overallScoreSum += scores.reduce((a, b) => a + b, 0) / scores.length;
@@ -48,7 +60,7 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({ pr
     // --- View By Project Data ---
     const projectStats = useMemo(() => {
         return evaluatedProjectIds.map(pid => {
-            const projEvals = designerEvaluations.filter(e => e.project_id === pid);
+            const projEvals = validEvaluations.filter(e => e.project_id === pid);
             const proj = projects.find(p => p.id === pid);
             let pSum = 0;
             let pCount = 0;
@@ -71,7 +83,7 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({ pr
                 evals: projEvals
             };
         }).sort((a, b) => a.date.localeCompare(b.date));
-    }, [evaluatedProjectIds, designerEvaluations, projects, getDesignerName]);
+    }, [evaluatedProjectIds, validEvaluations, projects, getDesignerName]);
 
     const pChartData = projectStats.map(p => ({
         name: p.name.length > 15 ? p.name.substring(0, 15) + '...' : p.name,
@@ -81,7 +93,7 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({ pr
     // --- View By Team Data ---
     const teamStats = useMemo(() => {
         return evaluatedDesignerIds.map(did => {
-            const dEvals = designerEvaluations.filter(e => e.designer_id === did);
+            const dEvals = validEvaluations.filter(e => e.designer_id === did);
             const designer = designers.find(d => d.id === did);
             let tSum = 0;
             let tCount = 0;
@@ -119,7 +131,7 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({ pr
                 catAvgs
             };
         });
-    }, [evaluatedDesignerIds, designerEvaluations, designers]);
+    }, [evaluatedDesignerIds, validEvaluations, designers]);
 
     const tChartData = teamStats.map(t => ({
         name: t.name,
