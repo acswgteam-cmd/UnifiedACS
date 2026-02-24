@@ -3,6 +3,7 @@ import React, { useState, useMemo, useRef, useEffect, ChangeEvent } from 'react'
 import { Project, Designer, ProjectSurvey, ProjectChecklist, ChecklistTemplate, ChecklistTemplateItem, ArtworkLog, WorkContext, DesignerEvaluation } from '../types';
 import { supabase } from '../lib/supabase';
 import { SURVEY_FORM_SECRET } from '../data/mockData';
+import { ProjectEvaluationView } from '../components/ProjectEvaluationView';
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 
@@ -103,7 +104,7 @@ interface Props {
 }
 
 export const ProjectMaster: React.FC<Props> = ({ projects, designers, artworkLogs = [], designerEvaluations = [], projectSurveys = [], projectChecklists = [], checklistTemplates = [], checklistTemplateItems = [], onUpdate }) => {
-  const [view, setView] = useState<'list' | 'calendar' | 'board'>('list');
+  const [view, setView] = useState<'list' | 'calendar' | 'board' | 'evaluation'>('list');
   const [boardGroup, setBoardGroup] = useState<'status' | 'type' | 'pic' | 'location'>('status');
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -746,12 +747,12 @@ IMPORTANT: Extract ALL rows. Return raw JSON only, no explanations.`;
                                   </td>
                                   {EVAL_CRITERIA.map(c => (
                                     <td key={c.key} className="px-1 py-2 text-center">
-                                      <input 
+                                      <input
                                         type="number"
                                         min="1" max="5" step="0.5"
                                         placeholder="-"
-                                        value={(ev as any)[c.key] || ''} 
-                                        onChange={e => handleEvalFieldChange(designerId, c.key, parseFloat(e.target.value) || undefined)} 
+                                        value={(ev as any)[c.key] || ''}
+                                        onChange={e => handleEvalFieldChange(designerId, c.key, parseFloat(e.target.value) || undefined)}
                                         onWheel={e => (e.target as HTMLInputElement).blur()}
                                         className="w-[50px] px-1 py-1.5 rounded border border-[#EAEAEA] text-[11px] font-bold text-center outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200 bg-white"
                                       />
@@ -806,132 +807,145 @@ IMPORTANT: Extract ALL rows. Return raw JSON only, no explanations.`;
   return (
     <div className="space-y-6 flex flex-col h-full relative">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 flex-shrink-0"><div><h1 className="text-2xl font-bold text-zinc-900 tracking-tight uppercase">Project Master</h1><p className="text-zinc-600 text-sm mt-1 font-bold">Manage event project timelines.</p></div><div className="flex items-center gap-4">
-        <button onClick={handleCopyChecklistLink} className={`px-4 py-2 rounded-lg text-xs font-bold uppercase transition-all flex items-center gap-2 border ${copySuccess ? 'bg-emerald-50 border-emerald-500 text-emerald-700' : 'bg-white border-zinc-300 text-zinc-700 hover:border-zinc-900'}`}><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>{copySuccess ? 'Checklist Link Copied!' : 'Checklist Link'}</button><div className="flex bg-[#FAFAFA] p-1 rounded-xl"><button onClick={() => setView('list')} className={`p-2 rounded-lg transition-all ${view === 'list' ? 'bg-white text-zinc-800 shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`} title="List View"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" /></svg></button><button onClick={() => setView('board')} className={`p-2 rounded-lg transition-all ${view === 'board' ? 'bg-white text-zinc-800 shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`} title="Board View"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" strokeWidth="2" /><path d="M9 3v18M15 3v18" strokeWidth="2" /></svg></button><button onClick={() => setView('calendar')} className={`p-2 rounded-lg transition-all ${view === 'calendar' ? 'bg-white text-zinc-800 shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`} title="Calendar View"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" strokeWidth="2" /><path d="M16 2v4M8 2v4M3 10h18" strokeWidth="2" /></svg></button></div>{!isAdding && (<button onClick={() => setIsAdding(true)} className="px-4 py-2 bg-zinc-900 text-white rounded-lg text-sm font-bold shadow-sm border border-[#EAEAEA]">Add Project</button>)}</div></header>
+        <button onClick={handleCopyChecklistLink} className={`px-4 py-2 rounded-lg text-xs font-bold uppercase transition-all flex items-center gap-2 border ${copySuccess ? 'bg-emerald-50 border-emerald-500 text-emerald-700' : 'bg-white border-zinc-300 text-zinc-700 hover:border-zinc-900'}`}><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>{copySuccess ? 'Checklist Link Copied!' : 'Checklist Link'}</button><div className="flex bg-[#FAFAFA] p-1 rounded-xl"><button onClick={() => setView('list')} className={`p-2 rounded-lg transition-all ${view === 'list' ? 'bg-white text-zinc-800 shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`} title="List View"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" /></svg></button><button onClick={() => setView('board')} className={`p-2 rounded-lg transition-all ${view === 'board' ? 'bg-white text-zinc-800 shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`} title="Board View"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" strokeWidth="2" /><path d="M9 3v18M15 3v18" strokeWidth="2" /></svg></button><button onClick={() => setView('calendar')} className={`p-2 rounded-lg transition-all ${view === 'calendar' ? 'bg-white text-zinc-800 shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`} title="Calendar View"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" strokeWidth="2" /><path d="M16 2v4M8 2v4M3 10h18" strokeWidth="2" /></svg></button><button onClick={() => setView('evaluation')} className={`p-2 rounded-lg transition-all ${view === 'evaluation' ? 'bg-white text-zinc-800 shadow-sm text-indigo-600' : 'text-zinc-400 hover:text-indigo-500'}`} title="Evaluation View"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg></button></div>{!isAdding && (<button onClick={() => setIsAdding(true)} className="px-4 py-2 bg-zinc-900 text-white rounded-lg text-sm font-bold shadow-sm border border-[#EAEAEA]">Add Project</button>)}</div></header>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Card 1: Project Overview */}
-        <div className="bg-white p-5 rounded-[20px] border border-[#EAEAEA] shadow-sm flex flex-col justify-between">
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Total Projects</span>
-              <div className="text-3xl font-bold text-zinc-900">{dashboardStats.totalProjects}</div>
-            </div>
-            <div className="text-right">
-              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Avg Team Size</span>
-              <div className="text-xl font-bold text-zinc-900">{dashboardStats.avgTeamSize} <span className="text-[10px] text-zinc-400 font-bold">Orang</span></div>
-            </div>
-          </div>
-          <div className="flex gap-2 text-[10px] font-bold mt-2 uppercase">
-            <span className="flex-1 text-center text-blue-600 border px-1.5 py-1.5 rounded-lg bg-blue-50 border-blue-200" title="ON PROGRESS">{dashboardStats.byStatus['ON PROGRESS']} PROG</span>
-            <span className="flex-1 text-center text-amber-600 border px-1.5 py-1.5 rounded-lg bg-amber-50 border-amber-200" title="ON HOLD">{dashboardStats.byStatus['ON HOLD']} HOLD</span>
-            <span className="flex-1 text-center text-emerald-600 border px-1.5 py-1.5 rounded-lg bg-emerald-50 border-emerald-200" title="DONE">{dashboardStats.byStatus['DONE']} DONE</span>
-          </div>
+      {view === 'evaluation' ? (
+        <div className="flex-1 bg-white rounded-[24px] border border-[#EAEAEA] shadow-sm overflow-hidden p-6 animate-in slide-in-from-bottom-2 duration-300">
+          <ProjectEvaluationView
+            projects={projects}
+            designers={designers}
+            designerEvaluations={designerEvaluations || []}
+            getDesignerName={getDesignerName}
+          />
         </div>
-
-        {/* Card 2: Evaluation Score */}
-        <div className="bg-white p-5 rounded-[20px] border border-[#EAEAEA] shadow-sm md:col-span-2">
-          <div className="flex flex-col md:flex-row gap-6 h-full items-center">
-            {/* Left side: Avg Score & Evaluated Count */}
-            <div className="flex flex-col justify-center min-w-[140px] pr-6 md:border-r border-[#EAEAEA]">
-              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2 text-center md:text-left">Avg Score</span>
-              <div className="text-4xl font-bold text-zinc-900 tracking-tight text-center md:text-left">{dashboardStats.avgScore} <span className="text-sm text-zinc-400 font-bold">/5</span></div>
-              <div className="text-[10px] font-bold text-zinc-500 uppercase mt-2 text-center md:text-left bg-[#F8F9FA] px-2 py-1.5 rounded-lg inline-block self-center md:self-start border border-[#EAEAEA]">
-                {dashboardStats.evaluatedProjectsCount} / {dashboardStats.doneCount} Evaluated
+      ) : (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Card 1: Project Overview */}
+            <div className="bg-white p-5 rounded-[20px] border border-[#EAEAEA] shadow-sm flex flex-col justify-between">
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Total Projects</span>
+                  <div className="text-3xl font-bold text-zinc-900">{dashboardStats.totalProjects}</div>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Avg Team Size</span>
+                  <div className="text-xl font-bold text-zinc-900">{dashboardStats.avgTeamSize} <span className="text-[10px] text-zinc-400 font-bold">Orang</span></div>
+                </div>
+              </div>
+              <div className="flex gap-2 text-[10px] font-bold mt-2 uppercase">
+                <span className="flex-1 text-center text-blue-600 border px-1.5 py-1.5 rounded-lg bg-blue-50 border-blue-200" title="ON PROGRESS">{dashboardStats.byStatus['ON PROGRESS']} PROG</span>
+                <span className="flex-1 text-center text-amber-600 border px-1.5 py-1.5 rounded-lg bg-amber-50 border-amber-200" title="ON HOLD">{dashboardStats.byStatus['ON HOLD']} HOLD</span>
+                <span className="flex-1 text-center text-emerald-600 border px-1.5 py-1.5 rounded-lg bg-emerald-50 border-emerald-200" title="DONE">{dashboardStats.byStatus['DONE']} DONE</span>
               </div>
             </div>
 
-            {/* Right side: Detailed scores */}
-            <div className="flex-1 w-full flex flex-col justify-center">
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 mt-2 md:mt-0">
-                {EVAL_CRITERIA.map(c => {
-                  const shortLabel = c.key === 'penyelesaian_tugas' ? 'Tugas' : c.key === 'respon_masukan' ? 'Feedback' : c.label;
-                  const score = parseFloat(dashboardStats.detailAverages[c.key]);
-                  const colorClass = score >= 4.5 ? 'text-emerald-700' : score >= 3.5 ? 'text-indigo-700' : score > 0 ? 'text-rose-700' : 'text-zinc-500';
-                  const bgClass = score >= 4.5 ? 'bg-emerald-50 border-emerald-100' : score >= 3.5 ? 'bg-indigo-50 border-indigo-100' : score > 0 ? 'bg-rose-50 border-rose-100' : 'bg-[#FCFCFC] border-[#EAEAEA]';
-                  return (
-                    <div key={c.key} className={`flex justify-between items-center text-[9px] rounded-lg px-2.5 py-2 border shadow-[0_1px_2px_rgba(0,0,0,0.02)] ${bgClass}`}>
-                      <span className="text-zinc-600 uppercase font-bold tracking-tight truncate pr-2" title={c.label}>{shortLabel}</span>
-                      <span className={`text-xs font-bold ${colorClass}`}>{dashboardStats.detailAverages[c.key]}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-[#F8F9FA] p-4 rounded-[20px] flex flex-wrap items-center gap-4 border border-[#EAEAEA]">{[['Status', filterStatus, setFilterStatus, ['ALL', 'ON PROGRESS', 'ON HOLD', 'DONE']], ['Type', filterType, setFilterType, ['ALL', 'EVENT', 'TRAVEL', 'WELLNESS', 'CREATIVE', 'TRAINING']], ['PIC', filterPIC, setFilterPIC, ['ALL', ...designers.map(d => d.id)]], ['Location', filterLocation, setFilterLocation, ['ALL', ...uniqueLocations]]].map(([lbl, val, set, opts]: any) => (<div key={lbl as string} className="flex flex-col gap-1"><span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider px-1">{lbl as string}</span><select value={val as string} onChange={e => (set as any)(e.target.value)} className="text-[10px] font-bold border-[#EAEAEA] rounded-lg p-2 bg-white outline-none focus:ring-2 focus:ring-indigo-500 uppercase tracking-tight cursor-pointer">{opts.map((o: any) => <option key={o} value={o}>{o === 'ALL' ? `All ${lbl}` : (lbl === 'PIC' ? getDesignerName(o) : o)}</option>)}</select></div>))}</div>
-      {isAdding && (<form onSubmit={handleSave} className="bg-white p-8 rounded-[20px] border border-[#EAEAEA] shadow-sm border border-[#EAEAEA] animate-in zoom-in duration-200 flex-shrink-0 mb-6"><h2 className="font-bold text-zinc-900 mb-8 uppercase tracking-tight flex items-center gap-2"><span className="w-2 h-2 bg-zinc-900 rounded-full"></span>{editingId ? 'Edit Project' : 'New Project'}</h2><div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8"><div className="md:col-span-2"><label className={labelClass}>Project Name</label><input type="text" required value={formData.project_name} onChange={e => setFormData({ ...formData, project_name: e.target.value })} className={inputClass} placeholder="Annual Event 2024" /></div><div><label className={labelClass}>Status</label><select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value as any })} className={inputClass}><option value="ON PROGRESS">ON PROGRESS</option><option value="ON HOLD">ON HOLD</option><option value="DONE">DONE</option></select></div><div><label className={labelClass}>Project Type</label><select value={formData.project_type} onChange={e => setFormData({ ...formData, project_type: e.target.value })} className={inputClass}><option value="EVENT">EVENT</option><option value="TRAVEL">TRAVEL</option><option value="WELLNESS">WELLNESS</option><option value="CREATIVE">CREATIVE</option><option value="TRAINING">TRAINING</option></select></div><div><label className={labelClass}>Start Date</label><input type="date" required value={formData.start_date} onChange={e => setFormData({ ...formData, start_date: e.target.value })} className={inputClass} /></div><div><label className={labelClass}>End Date</label><input type="date" required value={formData.end_date} onChange={e => setFormData({ ...formData, end_date: e.target.value })} className={inputClass} /></div><div className="md:col-span-1"><label className={labelClass}>Locations</label><div className="flex gap-2 mb-2"><input type="text" list="loc-suggestions" placeholder="Pilih/Ketik..." value={newLocInput} onChange={e => setNewLocInput(e.target.value)} className={inputClass} onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addLocation())} /><button type="button" onClick={addLocation} className="px-5 bg-[#1A1C20] text-white rounded-lg text-sm font-bold uppercase tracking-wider">ADD</button></div><div className="flex flex-wrap gap-2 p-3 bg-[#FCFCFC] border border-[#EAEAEA] rounded-xl min-h-[58px] items-center">{formData.locations?.map(loc => (<span key={loc} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-zinc-300 text-zinc-800 rounded-lg text-[10px] font-bold uppercase shadow-sm">{loc}<button type="button" onClick={() => removeLocation(loc)} className="text-red-500"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg></button></span>))}</div><datalist id="loc-suggestions">{uniqueLocations.map(loc => <option key={loc} value={loc} />)}</datalist></div><div><label className={labelClass}>PIC Designer</label><select value={formData.pic_designer_id} onChange={e => setFormData({ ...formData, pic_designer_id: e.target.value })} className={inputClass}>{designers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select></div><div className="md:col-span-1"><label className={labelClass}>Support Designers</label><div className="flex flex-wrap gap-2 p-3 bg-[#FCFCFC] border border-[#EAEAEA] rounded-xl min-h-[58px]">{designers.map(d => { if (d.id === formData.pic_designer_id) return null; const isSelected = formData.support_designer_ids?.includes(d.id); return (<button key={d.id} type="button" onClick={() => toggleSupportDesigner(d.id)} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase border transition-all ${isSelected ? 'bg-zinc-900 border-indigo-600 text-white shadow-md' : 'bg-white border-zinc-300 text-zinc-500 hover:border-indigo-400'}`}>{d.name}</button>); })}</div></div><div className="md:col-span-3"><label className={labelClass}>Notes / Keterangan</label><SimpleRichTextEditor initialValue={formData.notes || ''} onSave={(val) => setFormData({ ...formData, notes: val })} placeholder="Catatan project (bisa format list, bold, dll)..." /></div></div><div className="flex justify-end gap-4 pt-6 border-t border-zinc-100"><button type="button" onClick={resetForm} className="px-6 py-2.5 text-sm font-bold text-zinc-700 uppercase">Cancel</button><button type="submit" className="px-8 py-2.5 bg-zinc-900 text-white rounded-lg text-sm font-bold shadow-sm border border-[#EAEAEA] uppercase tracking-wider">{editingId ? 'Update' : 'Save'}</button></div></form>)}
-      <div className="flex-1 min-h-0">{view === 'list' ? (<div className="bg-white rounded-[20px] border border-[#EAEAEA] shadow-sm overflow-hidden flex flex-col h-full"><div className="overflow-y-auto max-h-full"><table className="w-full text-left text-sm border-collapse"><thead className="sticky top-0 z-10 bg-[#F8F9FA] font-bold uppercase text-[10px] tracking-wider border-b border-[#EAEAEA]"><tr><th className="px-6 py-4">Status & Name</th><th className="px-6 py-4">Timeline & Loc</th><th className="px-6 py-4">Lead & Team</th><th className="px-6 py-4 text-right">Actions</th></tr></thead><tbody className="divide-y divide-slate-200 font-bold text-zinc-900">{filteredProjects.map(p => { const locs = (p as any).locations || (p as any).location || []; const normalizedLocs = Array.isArray(locs) ? locs : [locs]; return (<tr key={p.id} onClick={() => { setSelectedProject(p); setActiveTab('details'); }} className="hover:bg-[#FCFCFC] transition-colors cursor-pointer"><td className="px-6 py-4"><div className="flex flex-col gap-2"><span className={`px-2 py-0.5 rounded-full border text-[8px] font-bold uppercase self-start ${getStatusBadge(p.status)}`}>{p.status}</span><span className="font-bold uppercase">{p.project_name}</span></div></td><td className="px-6 py-4"><div className="flex flex-col"><span className="text-[11px] font-bold">{p.start_date} → {p.end_date}</span><div className="flex flex-wrap gap-1 mt-1">{normalizedLocs.map(l => <span key={l} className="text-[8px] bg-[#F8F9FA] px-1.5 py-0.5 rounded border uppercase">{l}</span>)}</div></div></td><td className="px-6 py-4"><div className="flex flex-col gap-1.5"><div className="flex items-center gap-1.5"><span className="w-2 h-2 bg-zinc-900 rounded-full"></span><span className="text-xs uppercase">{getDesignerName(p.pic_designer_id)}</span></div><div className="flex flex-wrap gap-1">{p.support_designer_ids?.map(sid => (<span key={sid} className="px-1.5 py-0.5 bg-[#FCFCFC] border border-[#EAEAEA] text-[8px] rounded uppercase font-bold text-zinc-400">{getDesignerName(sid)}</span>))}</div></div></td><td className="px-6 py-4 text-right"><div className="flex justify-end gap-4"><button onClick={(e) => { e.stopPropagation(); handleEdit(p); }} className="text-zinc-800 text-[10px] font-bold uppercase">Edit</button><button onClick={(e) => { e.stopPropagation(); handleDelete(e, p.id); }} className="text-red-500 text-[10px] font-bold uppercase">Delete</button></div></td></tr>); })}</tbody></table></div></div>) : view === 'board' ? (
-        <div className="h-full flex flex-col pt-2 border-t border-[#EAEAEA] overflow-hidden">
-          <div className="flex items-center gap-3 mb-4 shrink-0 flex-wrap">
-            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Group By:</span>
-            <div className="flex bg-[#FAFAFA]200 p-1 rounded-xl">
-              {[
-                { id: 'status', label: 'Status' },
-                { id: 'type', label: 'Type' },
-                { id: 'pic', label: 'PIC Designer' },
-                { id: 'location', label: 'Location' }
-              ].map(opt => (
-                <button key={opt.id} onClick={() => setBoardGroup(opt.id as any)} className={`px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all ${boardGroup === opt.id ? 'bg-white text-indigo-700 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}>{opt.label}</button>
-              ))}
-            </div>
-          </div>
-          <div className="flex-1 overflow-x-auto flex gap-6 pb-4 items-start custom-scrollbar">
-            {Object.keys(projectBoardGroups).sort().map((groupKey, idx) => {
-              const headerColors = [
-                'border-t-blue-500 bg-blue-50 text-blue-900',
-                'border-t-emerald-500 bg-emerald-50 text-emerald-900',
-                'border-t-purple-500 bg-purple-50 text-purple-900',
-                'border-t-amber-500 bg-amber-50 text-amber-900',
-                'border-t-rose-500 bg-rose-50 text-rose-900',
-                'border-t-cyan-500 bg-cyan-50 text-cyan-900',
-                'border-t-indigo-500 bg-indigo-50 text-indigo-900'
-              ];
-              const theme = headerColors[idx % headerColors.length];
-              return (
-                <div key={groupKey} className="w-80 flex-shrink-0 bg-zinc-50/50 rounded-2xl flex flex-col max-h-full border border-zinc-100 shadow-sm">
-                  <div className={`p-4 border-b border-zinc-100 border-t-4 uppercase tracking-tight font-bold text-sm flex justify-between items-center rounded-t-2xl shrink-0 ${theme}`}>
-                    <span className="truncate pr-2">{groupKey}</span>
-                    <span className="bg-white/60 text-current text-[10px] px-2 py-0.5 rounded-full">{projectBoardGroups[groupKey].length}</span>
+            {/* Card 2: Evaluation Score */}
+            <div className="bg-white p-5 rounded-[20px] border border-[#EAEAEA] shadow-sm md:col-span-2">
+              <div className="flex flex-col md:flex-row gap-6 h-full items-center">
+                {/* Left side: Avg Score & Evaluated Count */}
+                <div className="flex flex-col justify-center min-w-[140px] pr-6 md:border-r border-[#EAEAEA]">
+                  <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2 text-center md:text-left">Avg Score</span>
+                  <div className="text-4xl font-bold text-zinc-900 tracking-tight text-center md:text-left">{dashboardStats.avgScore} <span className="text-sm text-zinc-400 font-bold">/5</span></div>
+                  <div className="text-[10px] font-bold text-zinc-500 uppercase mt-2 text-center md:text-left bg-[#F8F9FA] px-2 py-1.5 rounded-lg inline-block self-center md:self-start border border-[#EAEAEA]">
+                    {dashboardStats.evaluatedProjectsCount} / {dashboardStats.doneCount} Evaluated
                   </div>
-                  <div className="p-3 flex-1 overflow-y-auto space-y-3 custom-scrollbar">
-                    {projectBoardGroups[groupKey].map(p => {
-                      const locs = (p as any).locations || (p as any).location || [];
-                      const normalizedLocs = Array.isArray(locs) ? locs : [locs];
+                </div>
+
+                {/* Right side: Detailed scores */}
+                <div className="flex-1 w-full flex flex-col justify-center">
+                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 mt-2 md:mt-0">
+                    {EVAL_CRITERIA.map(c => {
+                      const shortLabel = c.key === 'penyelesaian_tugas' ? 'Tugas' : c.key === 'respon_masukan' ? 'Feedback' : c.label;
+                      const score = parseFloat(dashboardStats.detailAverages[c.key]);
+                      const colorClass = score >= 4.5 ? 'text-emerald-700' : score >= 3.5 ? 'text-indigo-700' : score > 0 ? 'text-rose-700' : 'text-zinc-500';
+                      const bgClass = score >= 4.5 ? 'bg-emerald-50 border-emerald-100' : score >= 3.5 ? 'bg-indigo-50 border-indigo-100' : score > 0 ? 'bg-rose-50 border-rose-100' : 'bg-[#FCFCFC] border-[#EAEAEA]';
                       return (
-                        <div key={p.id} onClick={() => { setSelectedProject(p); setActiveTab('details'); }} className="bg-white p-4 rounded-xl shadow-sm border border-[#EAEAEA] cursor-pointer hover:shadow-md transition-shadow group">
-                          <div className="flex justify-between items-start mb-2">
-                            <span className={`px-2 py-0.5 rounded-md border text-[8px] font-bold uppercase ${getStatusBadge(p.status)}`}>{p.status}</span>
-                            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button onClick={(e) => { e.stopPropagation(); handleEdit(p); }} className="text-zinc-400 hover:text-indigo-600"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-5M16.5 3.5a2.121 2.121 0 113 3L7 19l-4 1 1-4L16.5 3.5z" /></svg></button>
-                            </div>
-                          </div>
-                          <h4 className="font-bold text-zinc-900 text-sm uppercase leading-tight mb-2 tracking-tight line-clamp-2" title={p.project_name}>{p.project_name}</h4>
-                          <div className="flex flex-col gap-1.5 mt-3 pt-3 border-t border-zinc-50">
-                            <div className="flex justify-between text-[10px]">
-                              <span className="text-zinc-400 font-bold uppercase">Timeline</span>
-                              <span className="text-zinc-800 font-bold tracking-tight">{p.start_date.slice(5)} to {p.end_date.slice(5)}</span>
-                            </div>
-                            <div className="flex justify-between text-[10px] items-center">
-                              <span className="text-zinc-400 font-bold uppercase">PIC Lead</span>
-                              <div className="flex items-center gap-1">
-                                <span className="w-1.5 h-1.5 bg-zinc-800 rounded-full"></span>
-                                <span className="text-zinc-800 font-bold uppercase truncate max-w-[100px]">{getDesignerName(p.pic_designer_id)}</span>
-                              </div>
-                            </div>
-                          </div>
+                        <div key={c.key} className={`flex justify-between items-center text-[9px] rounded-lg px-2.5 py-2 border shadow-[0_1px_2px_rgba(0,0,0,0.02)] ${bgClass}`}>
+                          <span className="text-zinc-600 uppercase font-bold tracking-tight truncate pr-2" title={c.label}>{shortLabel}</span>
+                          <span className={`text-xs font-bold ${colorClass}`}>{dashboardStats.detailAverages[c.key]}</span>
                         </div>
                       );
                     })}
                   </div>
                 </div>
-              )
-            })}
+              </div>
+            </div>
           </div>
-        </div>
-      ) : (<div className="bg-white rounded-[20px] border border-[#EAEAEA] shadow-sm overflow-hidden h-full flex flex-col"><div className="p-4 border-b border-[#EAEAEA] bg-[#FCFCFC] flex items-center justify-between"><h3 className="font-bold text-zinc-900 text-sm uppercase">{monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</h3><div className="flex gap-2"><button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))} className="p-1.5 hover:bg-[#FAFAFA]300 rounded-lg"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" /></svg></button><button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))} className="p-1.5 hover:bg-[#FAFAFA]300 rounded-lg"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" /></svg></button></div></div><div className="overflow-y-auto flex-1"><div className="grid grid-cols-7 border-l border-[#EAEAEA]">{renderCalendar()}</div></div></div>)}</div>
+
+          <div className="bg-[#F8F9FA] p-4 rounded-[20px] flex flex-wrap items-center gap-4 border border-[#EAEAEA]">{[['Status', filterStatus, setFilterStatus, ['ALL', 'ON PROGRESS', 'ON HOLD', 'DONE']], ['Type', filterType, setFilterType, ['ALL', 'EVENT', 'TRAVEL', 'WELLNESS', 'CREATIVE', 'TRAINING']], ['PIC', filterPIC, setFilterPIC, ['ALL', ...designers.map(d => d.id)]], ['Location', filterLocation, setFilterLocation, ['ALL', ...uniqueLocations]]].map(([lbl, val, set, opts]: any) => (<div key={lbl as string} className="flex flex-col gap-1"><span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider px-1">{lbl as string}</span><select value={val as string} onChange={e => (set as any)(e.target.value)} className="text-[10px] font-bold border-[#EAEAEA] rounded-lg p-2 bg-white outline-none focus:ring-2 focus:ring-indigo-500 uppercase tracking-tight cursor-pointer">{opts.map((o: any) => <option key={o} value={o}>{o === 'ALL' ? `All ${lbl}` : (lbl === 'PIC' ? getDesignerName(o) : o)}</option>)}</select></div>))}</div>
+          {isAdding && (<form onSubmit={handleSave} className="bg-white p-8 rounded-[20px] border border-[#EAEAEA] shadow-sm border border-[#EAEAEA] animate-in zoom-in duration-200 flex-shrink-0 mb-6"><h2 className="font-bold text-zinc-900 mb-8 uppercase tracking-tight flex items-center gap-2"><span className="w-2 h-2 bg-zinc-900 rounded-full"></span>{editingId ? 'Edit Project' : 'New Project'}</h2><div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8"><div className="md:col-span-2"><label className={labelClass}>Project Name</label><input type="text" required value={formData.project_name} onChange={e => setFormData({ ...formData, project_name: e.target.value })} className={inputClass} placeholder="Annual Event 2024" /></div><div><label className={labelClass}>Status</label><select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value as any })} className={inputClass}><option value="ON PROGRESS">ON PROGRESS</option><option value="ON HOLD">ON HOLD</option><option value="DONE">DONE</option></select></div><div><label className={labelClass}>Project Type</label><select value={formData.project_type} onChange={e => setFormData({ ...formData, project_type: e.target.value })} className={inputClass}><option value="EVENT">EVENT</option><option value="TRAVEL">TRAVEL</option><option value="WELLNESS">WELLNESS</option><option value="CREATIVE">CREATIVE</option><option value="TRAINING">TRAINING</option></select></div><div><label className={labelClass}>Start Date</label><input type="date" required value={formData.start_date} onChange={e => setFormData({ ...formData, start_date: e.target.value })} className={inputClass} /></div><div><label className={labelClass}>End Date</label><input type="date" required value={formData.end_date} onChange={e => setFormData({ ...formData, end_date: e.target.value })} className={inputClass} /></div><div className="md:col-span-1"><label className={labelClass}>Locations</label><div className="flex gap-2 mb-2"><input type="text" list="loc-suggestions" placeholder="Pilih/Ketik..." value={newLocInput} onChange={e => setNewLocInput(e.target.value)} className={inputClass} onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addLocation())} /><button type="button" onClick={addLocation} className="px-5 bg-[#1A1C20] text-white rounded-lg text-sm font-bold uppercase tracking-wider">ADD</button></div><div className="flex flex-wrap gap-2 p-3 bg-[#FCFCFC] border border-[#EAEAEA] rounded-xl min-h-[58px] items-center">{formData.locations?.map(loc => (<span key={loc} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-zinc-300 text-zinc-800 rounded-lg text-[10px] font-bold uppercase shadow-sm">{loc}<button type="button" onClick={() => removeLocation(loc)} className="text-red-500"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg></button></span>))}</div><datalist id="loc-suggestions">{uniqueLocations.map(loc => <option key={loc} value={loc} />)}</datalist></div><div><label className={labelClass}>PIC Designer</label><select value={formData.pic_designer_id} onChange={e => setFormData({ ...formData, pic_designer_id: e.target.value })} className={inputClass}>{designers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select></div><div className="md:col-span-1"><label className={labelClass}>Support Designers</label><div className="flex flex-wrap gap-2 p-3 bg-[#FCFCFC] border border-[#EAEAEA] rounded-xl min-h-[58px]">{designers.map(d => { if (d.id === formData.pic_designer_id) return null; const isSelected = formData.support_designer_ids?.includes(d.id); return (<button key={d.id} type="button" onClick={() => toggleSupportDesigner(d.id)} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase border transition-all ${isSelected ? 'bg-zinc-900 border-indigo-600 text-white shadow-md' : 'bg-white border-zinc-300 text-zinc-500 hover:border-indigo-400'}`}>{d.name}</button>); })}</div></div><div className="md:col-span-3"><label className={labelClass}>Notes / Keterangan</label><SimpleRichTextEditor initialValue={formData.notes || ''} onSave={(val) => setFormData({ ...formData, notes: val })} placeholder="Catatan project (bisa format list, bold, dll)..." /></div></div><div className="flex justify-end gap-4 pt-6 border-t border-zinc-100"><button type="button" onClick={resetForm} className="px-6 py-2.5 text-sm font-bold text-zinc-700 uppercase">Cancel</button><button type="submit" className="px-8 py-2.5 bg-zinc-900 text-white rounded-lg text-sm font-bold shadow-sm border border-[#EAEAEA] uppercase tracking-wider">{editingId ? 'Update' : 'Save'}</button></div></form>)}
+          <div className="flex-1 min-h-0">{view === 'list' ? (<div className="bg-white rounded-[20px] border border-[#EAEAEA] shadow-sm overflow-hidden flex flex-col h-full"><div className="overflow-y-auto max-h-full"><table className="w-full text-left text-sm border-collapse"><thead className="sticky top-0 z-10 bg-[#F8F9FA] font-bold uppercase text-[10px] tracking-wider border-b border-[#EAEAEA]"><tr><th className="px-6 py-4">Status & Name</th><th className="px-6 py-4">Timeline & Loc</th><th className="px-6 py-4">Lead & Team</th><th className="px-6 py-4 text-right">Actions</th></tr></thead><tbody className="divide-y divide-slate-200 font-bold text-zinc-900">{filteredProjects.map(p => { const locs = (p as any).locations || (p as any).location || []; const normalizedLocs = Array.isArray(locs) ? locs : [locs]; return (<tr key={p.id} onClick={() => { setSelectedProject(p); setActiveTab('details'); }} className="hover:bg-[#FCFCFC] transition-colors cursor-pointer"><td className="px-6 py-4"><div className="flex flex-col gap-2"><span className={`px-2 py-0.5 rounded-full border text-[8px] font-bold uppercase self-start ${getStatusBadge(p.status)}`}>{p.status}</span><span className="font-bold uppercase">{p.project_name}</span></div></td><td className="px-6 py-4"><div className="flex flex-col"><span className="text-[11px] font-bold">{p.start_date} → {p.end_date}</span><div className="flex flex-wrap gap-1 mt-1">{normalizedLocs.map(l => <span key={l} className="text-[8px] bg-[#F8F9FA] px-1.5 py-0.5 rounded border uppercase">{l}</span>)}</div></div></td><td className="px-6 py-4"><div className="flex flex-col gap-1.5"><div className="flex items-center gap-1.5"><span className="w-2 h-2 bg-zinc-900 rounded-full"></span><span className="text-xs uppercase">{getDesignerName(p.pic_designer_id)}</span></div><div className="flex flex-wrap gap-1">{p.support_designer_ids?.map(sid => (<span key={sid} className="px-1.5 py-0.5 bg-[#FCFCFC] border border-[#EAEAEA] text-[8px] rounded uppercase font-bold text-zinc-400">{getDesignerName(sid)}</span>))}</div></div></td><td className="px-6 py-4 text-right"><div className="flex justify-end gap-4"><button onClick={(e) => { e.stopPropagation(); handleEdit(p); }} className="text-zinc-800 text-[10px] font-bold uppercase">Edit</button><button onClick={(e) => { e.stopPropagation(); handleDelete(e, p.id); }} className="text-red-500 text-[10px] font-bold uppercase">Delete</button></div></td></tr>); })}</tbody></table></div></div>) : view === 'board' ? (
+            <div className="h-full flex flex-col pt-2 border-t border-[#EAEAEA] overflow-hidden">
+              <div className="flex items-center gap-3 mb-4 shrink-0 flex-wrap">
+                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Group By:</span>
+                <div className="flex bg-[#FAFAFA]200 p-1 rounded-xl">
+                  {[
+                    { id: 'status', label: 'Status' },
+                    { id: 'type', label: 'Type' },
+                    { id: 'pic', label: 'PIC Designer' },
+                    { id: 'location', label: 'Location' }
+                  ].map(opt => (
+                    <button key={opt.id} onClick={() => setBoardGroup(opt.id as any)} className={`px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all ${boardGroup === opt.id ? 'bg-white text-indigo-700 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}>{opt.label}</button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex-1 overflow-x-auto flex gap-6 pb-4 items-start custom-scrollbar">
+                {Object.keys(projectBoardGroups).sort().map((groupKey, idx) => {
+                  const headerColors = [
+                    'border-t-blue-500 bg-blue-50 text-blue-900',
+                    'border-t-emerald-500 bg-emerald-50 text-emerald-900',
+                    'border-t-purple-500 bg-purple-50 text-purple-900',
+                    'border-t-amber-500 bg-amber-50 text-amber-900',
+                    'border-t-rose-500 bg-rose-50 text-rose-900',
+                    'border-t-cyan-500 bg-cyan-50 text-cyan-900',
+                    'border-t-indigo-500 bg-indigo-50 text-indigo-900'
+                  ];
+                  const theme = headerColors[idx % headerColors.length];
+                  return (
+                    <div key={groupKey} className="w-80 flex-shrink-0 bg-zinc-50/50 rounded-2xl flex flex-col max-h-full border border-zinc-100 shadow-sm">
+                      <div className={`p-4 border-b border-zinc-100 border-t-4 uppercase tracking-tight font-bold text-sm flex justify-between items-center rounded-t-2xl shrink-0 ${theme}`}>
+                        <span className="truncate pr-2">{groupKey}</span>
+                        <span className="bg-white/60 text-current text-[10px] px-2 py-0.5 rounded-full">{projectBoardGroups[groupKey].length}</span>
+                      </div>
+                      <div className="p-3 flex-1 overflow-y-auto space-y-3 custom-scrollbar">
+                        {projectBoardGroups[groupKey].map(p => {
+                          const locs = (p as any).locations || (p as any).location || [];
+                          const normalizedLocs = Array.isArray(locs) ? locs : [locs];
+                          return (
+                            <div key={p.id} onClick={() => { setSelectedProject(p); setActiveTab('details'); }} className="bg-white p-4 rounded-xl shadow-sm border border-[#EAEAEA] cursor-pointer hover:shadow-md transition-shadow group">
+                              <div className="flex justify-between items-start mb-2">
+                                <span className={`px-2 py-0.5 rounded-md border text-[8px] font-bold uppercase ${getStatusBadge(p.status)}`}>{p.status}</span>
+                                <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <button onClick={(e) => { e.stopPropagation(); handleEdit(p); }} className="text-zinc-400 hover:text-indigo-600"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-5M16.5 3.5a2.121 2.121 0 113 3L7 19l-4 1 1-4L16.5 3.5z" /></svg></button>
+                                </div>
+                              </div>
+                              <h4 className="font-bold text-zinc-900 text-sm uppercase leading-tight mb-2 tracking-tight line-clamp-2" title={p.project_name}>{p.project_name}</h4>
+                              <div className="flex flex-col gap-1.5 mt-3 pt-3 border-t border-zinc-50">
+                                <div className="flex justify-between text-[10px]">
+                                  <span className="text-zinc-400 font-bold uppercase">Timeline</span>
+                                  <span className="text-zinc-800 font-bold tracking-tight">{p.start_date.slice(5)} to {p.end_date.slice(5)}</span>
+                                </div>
+                                <div className="flex justify-between text-[10px] items-center">
+                                  <span className="text-zinc-400 font-bold uppercase">PIC Lead</span>
+                                  <div className="flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 bg-zinc-800 rounded-full"></span>
+                                    <span className="text-zinc-800 font-bold uppercase truncate max-w-[100px]">{getDesignerName(p.pic_designer_id)}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          ) : (<div className="bg-white rounded-[20px] border border-[#EAEAEA] shadow-sm overflow-hidden h-full flex flex-col"><div className="p-4 border-b border-[#EAEAEA] bg-[#FCFCFC] flex items-center justify-between"><h3 className="font-bold text-zinc-900 text-sm uppercase">{monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</h3><div className="flex gap-2"><button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))} className="p-1.5 hover:bg-[#FAFAFA]300 rounded-lg"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" /></svg></button><button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))} className="p-1.5 hover:bg-[#FAFAFA]300 rounded-lg"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" /></svg></button></div></div><div className="overflow-y-auto flex-1"><div className="grid grid-cols-7 border-l border-[#EAEAEA]">{renderCalendar()}</div></div></div>)}</div>
+        </>
+      )}
     </div>
   );
 };
