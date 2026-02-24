@@ -746,14 +746,15 @@ IMPORTANT: Extract ALL rows. Return raw JSON only, no explanations.`;
                                   </td>
                                   {EVAL_CRITERIA.map(c => (
                                     <td key={c.key} className="px-1 py-2 text-center">
-                                      <select value={(ev as any)[c.key] || ''} onChange={e => handleEvalFieldChange(designerId, c.key, parseInt(e.target.value) || undefined)} className="w-full px-1 py-1.5 rounded border border-[#EAEAEA] text-[11px] font-bold text-center outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200 cursor-pointer bg-white">
-                                        <option value="">-</option>
-                                        <option value="1">1</option>
-                                        <option value="2">2</option>
-                                        <option value="3">3</option>
-                                        <option value="4">4</option>
-                                        <option value="5">5</option>
-                                      </select>
+                                      <input 
+                                        type="number"
+                                        min="1" max="5" step="0.5"
+                                        placeholder="-"
+                                        value={(ev as any)[c.key] || ''} 
+                                        onChange={e => handleEvalFieldChange(designerId, c.key, parseFloat(e.target.value) || undefined)} 
+                                        onWheel={e => (e.target as HTMLInputElement).blur()}
+                                        className="w-[50px] px-1 py-1.5 rounded border border-[#EAEAEA] text-[11px] font-bold text-center outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200 bg-white"
+                                      />
                                     </td>
                                   ))}
                                   <td className="px-3 py-2 text-center">
