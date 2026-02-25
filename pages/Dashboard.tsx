@@ -609,8 +609,8 @@ const Dashboard: React.FC<Props> = ({ state }) => {
               <LegendDot color="bg-orange-500" label="Video" />
             </div>
           </div>
-          <div className="flex flex-col h-full overflow-hidden">
-            <div className="overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-200">
+          <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+            <div className="flex-1 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-200">
               <div className="space-y-6">
                 {analytics.departmentStats.length === 0 ? (
                   <div className="text-center py-8 text-xs font-bold text-zinc-400 italic border border-dashed border-[#EAEAEA] rounded-xl">
