@@ -609,44 +609,46 @@ const Dashboard: React.FC<Props> = ({ state }) => {
               <LegendDot color="bg-orange-500" label="Video" />
             </div>
           </div>
-          <div className="max-h-[300px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-200">
-            <div className="space-y-6">
-              {analytics.departmentStats.length === 0 ? (
-                <div className="text-center py-8 text-xs font-bold text-zinc-400 italic border border-dashed border-[#EAEAEA] rounded-xl">
-                  No internal department activity found in this period.
-                </div>
-              ) : analytics.departmentStats.map(dept => {
-                const deptTotal = dept.counts.total || 0;
-                const globalMax = Math.max(...analytics.departmentStats.map(d => d.counts.total)) || 1;
-                const percentage = analytics.artworksInternal ? Math.round((deptTotal / analytics.artworksInternal) * 100) : 0;
-
-                return (
-                  <div key={dept.id} className="grid grid-cols-5 items-center gap-4">
-                    <div className="col-span-1 min-w-0">
-                      <p className="text-xs font-bold text-zinc-800 uppercase truncate leading-none mb-1">{dept.department_name}</p>
-                      <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-tight">{deptTotal} Items</p>
-                    </div>
-                    <div className="col-span-3 flex flex-col gap-2">
-                      <div className="h-3.5 bg-[#FCFCFC] rounded-full flex border border-zinc-100 overflow-hidden shadow-inner">
-                        <StackedSegment count={dept.counts["2D Design"]} total={deptTotal} globalMax={globalMax} gradient="from-blue-400 to-cyan-500" />
-                        <StackedSegment count={dept.counts["3D Design"]} total={deptTotal} globalMax={globalMax} gradient="from-emerald-400 to-teal-500" />
-                        <StackedSegment count={dept.counts["Video"]} total={deptTotal} globalMax={globalMax} gradient="from-orange-400 to-rose-500" />
-                      </div>
-                      <div className="flex gap-3 text-[9px] font-bold uppercase tracking-tight">
-                        <span className="text-blue-600">2D: {dept.counts["2D Design"]}</span>
-                        <span className="text-emerald-600">3D: {dept.counts["3D Design"]}</span>
-                        <span className="text-orange-600">Vid: {dept.counts["Video"]}</span>
-                      </div>
-                    </div>
-                    <div className="col-span-1 text-right flex flex-col items-end">
-                      <span className="text-xs font-bold text-zinc-900 bg-[#FCFCFC] px-2 py-1 rounded-md border border-zinc-100">
-                        {percentage}%
-                      </span>
-                      <span className="text-[9px] font-bold text-zinc-400 mt-0.5">{deptTotal} / {analytics.artworksInternal}</span>
-                    </div>
+          <div className="flex flex-col h-full overflow-hidden">
+            <div className="overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-200">
+              <div className="space-y-6">
+                {analytics.departmentStats.length === 0 ? (
+                  <div className="text-center py-8 text-xs font-bold text-zinc-400 italic border border-dashed border-[#EAEAEA] rounded-xl">
+                    No internal department activity found in this period.
                   </div>
-                );
-              })}
+                ) : analytics.departmentStats.map(dept => {
+                  const deptTotal = dept.counts.total || 0;
+                  const globalMax = Math.max(...analytics.departmentStats.map(d => d.counts.total)) || 1;
+                  const percentage = analytics.artworksInternal ? Math.round((deptTotal / analytics.artworksInternal) * 100) : 0;
+
+                  return (
+                    <div key={dept.id} className="grid grid-cols-5 items-center gap-4">
+                      <div className="col-span-1 min-w-0">
+                        <p className="text-xs font-bold text-zinc-800 uppercase truncate leading-none mb-1">{dept.department_name}</p>
+                        <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-tight">{deptTotal} Items</p>
+                      </div>
+                      <div className="col-span-3 flex flex-col gap-2">
+                        <div className="h-3.5 bg-[#FCFCFC] rounded-full flex border border-zinc-100 overflow-hidden shadow-inner">
+                          <StackedSegment count={dept.counts["2D Design"]} total={deptTotal} globalMax={globalMax} gradient="from-blue-400 to-cyan-500" />
+                          <StackedSegment count={dept.counts["3D Design"]} total={deptTotal} globalMax={globalMax} gradient="from-emerald-400 to-teal-500" />
+                          <StackedSegment count={dept.counts["Video"]} total={deptTotal} globalMax={globalMax} gradient="from-orange-400 to-rose-500" />
+                        </div>
+                        <div className="flex gap-3 text-[9px] font-bold uppercase tracking-tight">
+                          <span className="text-blue-600">2D: {dept.counts["2D Design"]}</span>
+                          <span className="text-emerald-600">3D: {dept.counts["3D Design"]}</span>
+                          <span className="text-orange-600">Vid: {dept.counts["Video"]}</span>
+                        </div>
+                      </div>
+                      <div className="col-span-1 text-right flex flex-col items-end">
+                        <span className="text-xs font-bold text-zinc-900 bg-[#FCFCFC] px-2 py-1 rounded-md border border-zinc-100">
+                          {percentage}%
+                        </span>
+                        <span className="text-[9px] font-bold text-zinc-400 mt-0.5">{deptTotal} / {analytics.artworksInternal}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </section>
