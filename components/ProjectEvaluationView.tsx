@@ -130,7 +130,7 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({ pr
                 evals: dEvals,
                 catAvgs
             };
-        });
+        }).sort((a, b) => b.projectsCount - a.projectsCount || b.avgScore - a.avgScore);
     }, [evaluatedDesignerIds, validEvaluations, designers]);
 
     const tChartData = teamStats.map(t => ({
@@ -154,7 +154,7 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({ pr
 
         setIsGeneratingAi(prev => ({ ...prev, [teamId]: true }));
         try {
-            const prompt = `Berikut adalah daftar masukan evaluasi pengembangan diri untuk seorang designer:\n${feedbacks.map((f, i) => `${i + 1}. ${f}`).join('\n')}\n\nBuatkan rangkuman komprehensif tentang apa saja perbaikan atau pengembangan utama yang harus dilakukan oleh desainer ini. Tidak ada batasan panjang teks. Gunakan bahasa Indonesia profesional dan konstruktif.`;
+            const prompt = `Berikut adalah daftar masukan evaluasi pengembangan diri untuk seorang designer:\n${feedbacks.map((f, i) => `${i + 1}. ${f}`).join('\n')}\n\nBuatkan rangkuman komprehensif tentang apa saja perbaikan atau pengembangan utama yang harus dilakukan oleh desainer ini. Format dalam bentuk bullet points maksimal 7 poin. Gunakan bahasa Indonesia profesional dan konstruktif.`;
 
             const response = await fetch(
                 `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
@@ -261,6 +261,7 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({ pr
                                                         {EVAL_CRITERIA.map(c => (
                                                             <th key={c.key} className="py-3 px-2 text-[10px] font-bold text-zinc-400 uppercase tracking-wider text-center w-16 border-b border-[#EAEAEA]" title={c.label}>{c.key.substring(0, 3)}</th>
                                                         ))}
+                                                        <th className="py-3 px-2 text-[10px] font-bold text-zinc-400 uppercase tracking-wider border-b border-[#EAEAEA] min-w-[150px]">Catatan / Feedback</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-zinc-100">
@@ -268,15 +269,22 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({ pr
                                                         const dName = designers.find(d => d.id === ev.designer_id)?.name || 'Unknown';
                                                         return (
                                                             <tr key={ev.id} className="hover:bg-white transition-colors">
-                                                                <td className="py-2.5 px-2 text-xs font-bold text-zinc-800 uppercase">{dName}</td>
+                                                                <td className="py-2.5 px-2 text-xs font-bold text-zinc-800 uppercase align-top pt-3">{dName}</td>
                                                                 {EVAL_CRITERIA.map(c => {
                                                                     const val = (ev as any)[c.key];
                                                                     return (
-                                                                        <td key={c.key} className="py-2.5 px-2 text-center">
+                                                                        <td key={c.key} className="py-2.5 px-2 text-center align-top pt-3">
                                                                             {val ? <span className={`inline-block w-8 py-1 rounded text-[10px] font-bold ${getScoreColor(val)}`}>{val}</span> : <span className="text-zinc-300">-</span>}
                                                                         </td>
                                                                     )
                                                                 })}
+                                                                <td className="py-2.5 px-2 align-top pt-3">
+                                                                    {ev.masukan_pengembangan ? (
+                                                                        <p className="text-[10px] text-zinc-600 italic bg-[#FCFCFC] p-2 rounded-lg border border-zinc-100 mb-1 leading-relaxed">"{ev.masukan_pengembangan}"</p>
+                                                                    ) : (
+                                                                        <p className="text-[10px] text-zinc-400 italic">Tidak ada catatan.</p>
+                                                                    )}
+                                                                </td>
                                                             </tr>
                                                         );
                                                     })}
@@ -312,7 +320,7 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({ pr
                             {teamStats.map(t => {
                                 const getShortLabel = (label: string) => {
                                     if (label === 'Penyelesaian Tugas') return 'TUGAS';
-                                    if (label === 'Respon Terhadap Masukan') return 'RESPON/FEEDBACK';
+                                    if (label === 'Respon Terhadap Masukan') return 'FEEDBACK';
                                     return label.toUpperCase();
                                 };
 
@@ -393,14 +401,25 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({ pr
                                             </div>
 
                                             {/* Project Participations & Feedback */}
-                                            <div className="space-y-3">
+                                            <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                                                 {t.evals.map((ev, idx) => {
                                                     const proj = projects.find(p => p.id === ev.project_id);
                                                     return (
                                                         <div key={idx} className="bg-white p-4 rounded-xl border border-[#EAEAEA]">
-                                                            <div className="flex justify-between items-center mb-2">
+                                                            <div className="flex justify-between items-center mb-3">
                                                                 <span className="text-xs font-bold text-zinc-800 uppercase">{proj?.project_name || 'Unknown Project'}</span>
                                                                 <span className="text-[10px] font-bold text-zinc-400 bg-[#F8F9FA] px-2 py-1 rounded-md uppercase border">{proj?.start_date}</span>
+                                                            </div>
+                                                            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-3">
+                                                                {EVAL_CRITERIA.map(c => {
+                                                                    const val = (ev as any)[c.key];
+                                                                    return (
+                                                                        <div key={c.key} className="text-center bg-[#F8F9FA] rounded-md py-1 border border-[#EAEAEA]">
+                                                                            <div className="text-[8px] font-bold text-zinc-400 tracking-widest uppercase mb-0.5" title={c.label}>{c.key.substring(0, 3)}</div>
+                                                                            <div className={`text-xs font-black ${val ? getScoreColor(val) : 'text-zinc-400 bg-transparent'}`}>{val || '-'}</div>
+                                                                        </div>
+                                                                    )
+                                                                })}
                                                             </div>
                                                             {ev.masukan_pengembangan ? (
                                                                 <p className="text-xs font-medium text-zinc-600 italic bg-[#FCFCFC] p-3 rounded-lg border border-zinc-100">"{ev.masukan_pengembangan}"</p>
