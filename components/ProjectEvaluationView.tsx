@@ -197,11 +197,11 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({ pr
                     </div>
                     <div className="flex gap-4">
                         <div className="bg-white/10 backdrop-blur-sm border border-white/10 px-6 py-4 rounded-2xl text-center min-w-[130px]">
-                            <div className="text-3xl font-black mb-1">{evaluatedProjectIds.length}</div>
+                            <div className="text-3xl font-black mb-1">{evaluatedProjectIds.length}<span className="text-xl text-white/50 font-bold">/{projects.length}</span></div>
                             <div className="text-[10px] font-bold tracking-widest uppercase text-white/60">Total Project</div>
                         </div>
                         <div className="bg-white/10 backdrop-blur-sm border border-white/10 px-6 py-4 rounded-2xl text-center min-w-[130px]">
-                            <div className="text-3xl font-black mb-1">{evaluatedDesignerIds.length}</div>
+                            <div className="text-3xl font-black mb-1">{evaluatedDesignerIds.length}<span className="text-xl text-white/50 font-bold">/{designers.length}</span></div>
                             <div className="text-[10px] font-bold tracking-widest uppercase text-white/60">Total Tim</div>
                         </div>
                     </div>
