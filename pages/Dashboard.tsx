@@ -354,7 +354,27 @@ const Dashboard: React.FC<Props> = ({ state }) => {
         projects: { pics: projectPICs, locs: projectLocs },
         leads: { grades: leadGrades, reqs: leadRequesters },
         internal: { depts: internalDepts, reqs: internalRequesters }
-      }
+      },
+      contextTypeMatrix: [
+        {
+          ctx: WorkContext.PROJECT, label: 'Project',
+          "2D Design": filteredLogs.filter(l => l.work_context === WorkContext.PROJECT && l.artwork_type === "2D Design").length,
+          "3D Design": filteredLogs.filter(l => l.work_context === WorkContext.PROJECT && l.artwork_type === "3D Design").length,
+          "Video": filteredLogs.filter(l => l.work_context === WorkContext.PROJECT && l.artwork_type === "Video").length,
+        },
+        {
+          ctx: WorkContext.LEAD, label: 'Lead',
+          "2D Design": filteredLogs.filter(l => l.work_context === WorkContext.LEAD && l.artwork_type === "2D Design").length,
+          "3D Design": filteredLogs.filter(l => l.work_context === WorkContext.LEAD && l.artwork_type === "3D Design").length,
+          "Video": filteredLogs.filter(l => l.work_context === WorkContext.LEAD && l.artwork_type === "Video").length,
+        },
+        {
+          ctx: WorkContext.INTERNAL, label: 'Internal',
+          "2D Design": filteredLogs.filter(l => l.work_context === WorkContext.INTERNAL && l.artwork_type === "2D Design").length,
+          "3D Design": filteredLogs.filter(l => l.work_context === WorkContext.INTERNAL && l.artwork_type === "3D Design").length,
+          "Video": filteredLogs.filter(l => l.work_context === WorkContext.INTERNAL && l.artwork_type === "Video").length,
+        }
+      ]
     };
   }, [state, filterStart, filterEnd]);
 
@@ -631,30 +651,27 @@ const Dashboard: React.FC<Props> = ({ state }) => {
           </div>
         </section>
 
-        {/* HEATMAP */}
-        <section className={cardClass}>
-          <div className="flex flex-col mb-4">
-            <h2 className="text-sm font-bold text-zinc-900 uppercase tracking-tight">Heatmap Artwork Internal</h2>
-            <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wide">Volume by Department & Type</span>
-          </div>
-          <div className="overflow-x-auto overflow-y-auto pb-2 scrollbar-thin scrollbar-thumb-slate-200 pr-2 flex-col flex-1 flex justify-center">
-            <div className="min-w-fit w-full">
-              {analytics.departmentStats.length === 0 ? (
-                <div className="text-center py-8 text-xs font-bold text-zinc-400 italic border border-dashed border-[#EAEAEA] rounded-xl text-center w-full">
-                  No internal department activity found in this period.
-                </div>
-              ) : (
+        {/* HEATMAPS COLUMN */}
+        <div className="flex flex-col gap-6">
+          {/* GENERAL HEATMAP */}
+          <section className={cardClass}>
+            <div className="flex flex-col mb-4">
+              <h2 className="text-sm font-bold text-zinc-900 uppercase tracking-tight">Heatmap General Context</h2>
+              <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wide">Volume by Context (Project, Lead, Internal)</span>
+            </div>
+            <div className="overflow-x-auto overflow-y-auto pb-2 scrollbar-thin scrollbar-thumb-slate-200 pr-2 flex-col flex-1 flex justify-center">
+              <div className="min-w-fit w-full">
                 <div className="flex flex-col gap-[6px] w-full pt-2">
                   {["2D Design", "3D Design", "Video"].map(type => {
-                    const maxVal = Math.max(...analytics.departmentStats.map(d => (d.counts as any)[type] || 0), 1);
+                    const maxVal = Math.max(...analytics.contextTypeMatrix.map(c => (c as any)[type] || 0), 1);
                     return (
                       <div key={type} className="flex flex-row items-center gap-[6px]">
                         <div className="flex-shrink-0 w-24 text-[10px] font-semibold text-zinc-500 uppercase tracking-tight text-right pr-2">
                           {type === '2D Design' ? '2D Design' : type === '3D Design' ? '3D Design' : 'Video'}
                         </div>
                         <div className="flex flex-1 gap-[6px]">
-                          {analytics.departmentStats.map(d => {
-                            const val = (d.counts as any)[type] || 0;
+                          {analytics.contextTypeMatrix.map(c => {
+                            const val = (c as any)[type] || 0;
                             const intensity = val / maxVal;
 
                             let bgClass = "bg-[#F4F4F5]";
@@ -670,9 +687,9 @@ const Dashboard: React.FC<Props> = ({ state }) => {
 
                             return (
                               <div
-                                key={d.id}
+                                key={c.ctx}
                                 className={`flex-1 h-10 min-w-[28px] rounded-[4px] flex items-center justify-center text-[10px] font-bold transition-all hover:opacity-80 ${bgClass} ${textColor} relative group`}
-                                title={`${d.department_name} - ${type}: ${val}`}
+                                title={`${c.label} - ${type}: ${val}`}
                               >
                                 <span className={val > 0 ? "opacity-100" : "opacity-0"}>{val}</span>
                               </div>
@@ -683,22 +700,91 @@ const Dashboard: React.FC<Props> = ({ state }) => {
                     );
                   })}
 
-                  {/* Departments Headers Matrix X-axis */}
+                  {/* Context Headers Matrix X-axis */}
                   <div className="flex flex-row items-center gap-[6px] mt-1 hidden sm:flex">
                     <div className="flex-shrink-0 w-24"></div>
                     <div className="flex flex-1 gap-[6px]">
-                      {analytics.departmentStats.map(d => (
-                        <div key={d.id} className="flex-1 text-center text-[9px] font-semibold text-zinc-400 capitalize truncate" title={d.department_name}>
-                          {d.department_name.split(' ')[0]}
+                      {analytics.contextTypeMatrix.map(c => (
+                        <div key={c.ctx} className="flex-1 text-center text-[9px] font-semibold text-zinc-400 uppercase tracking-tight truncate" title={c.label}>
+                          {c.label}
                         </div>
                       ))}
                     </div>
                   </div>
                 </div>
-              )}
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+
+          {/* INTERNAL DEPT HEATMAP */}
+          <section className={cardClass}>
+            <div className="flex flex-col mb-4">
+              <h2 className="text-sm font-bold text-zinc-900 uppercase tracking-tight">Heatmap Artwork Internal</h2>
+              <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wide">Volume by Department & Type</span>
+            </div>
+            <div className="overflow-x-auto overflow-y-auto pb-2 scrollbar-thin scrollbar-thumb-slate-200 pr-2 flex-col flex-1 flex justify-center">
+              <div className="min-w-fit w-full">
+                {analytics.departmentStats.length === 0 ? (
+                  <div className="text-center py-8 text-xs font-bold text-zinc-400 italic border border-dashed border-[#EAEAEA] rounded-xl text-center w-full">
+                    No internal department activity found in this period.
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-[6px] w-full pt-2">
+                    {["2D Design", "3D Design", "Video"].map(type => {
+                      const maxVal = Math.max(...analytics.departmentStats.map(d => (d.counts as any)[type] || 0), 1);
+                      return (
+                        <div key={type} className="flex flex-row items-center gap-[6px]">
+                          <div className="flex-shrink-0 w-24 text-[10px] font-semibold text-zinc-500 uppercase tracking-tight text-right pr-2">
+                            {type === '2D Design' ? '2D Design' : type === '3D Design' ? '3D Design' : 'Video'}
+                          </div>
+                          <div className="flex flex-1 gap-[6px]">
+                            {analytics.departmentStats.map(d => {
+                              const val = (d.counts as any)[type] || 0;
+                              const intensity = val / maxVal;
+
+                              let bgClass = "bg-[#F4F4F5]";
+                              let textColor = "text-transparent";
+
+                              if (val > 0) {
+                                if (intensity > 0.8) { bgClass = "bg-indigo-600"; textColor = "text-indigo-100"; }
+                                else if (intensity > 0.6) { bgClass = "bg-indigo-500"; textColor = "text-indigo-50"; }
+                                else if (intensity > 0.4) { bgClass = "bg-indigo-400"; textColor = "text-indigo-50"; }
+                                else if (intensity > 0.2) { bgClass = "bg-indigo-300"; textColor = "text-indigo-900"; }
+                                else { bgClass = "bg-indigo-200"; textColor = "text-indigo-900"; }
+                              }
+
+                              return (
+                                <div
+                                  key={d.id}
+                                  className={`flex-1 h-10 min-w-[28px] rounded-[4px] flex items-center justify-center text-[10px] font-bold transition-all hover:opacity-80 ${bgClass} ${textColor} relative group`}
+                                  title={`${d.department_name} - ${type}: ${val}`}
+                                >
+                                  <span className={val > 0 ? "opacity-100" : "opacity-0"}>{val}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {/* Departments Headers Matrix X-axis */}
+                    <div className="flex flex-row items-center gap-[6px] mt-1 hidden sm:flex">
+                      <div className="flex-shrink-0 w-24"></div>
+                      <div className="flex flex-1 gap-[6px]">
+                        {analytics.departmentStats.map(d => (
+                          <div key={d.id} className="flex-1 text-center text-[9px] font-semibold text-zinc-400 capitalize truncate" title={d.department_name}>
+                            {d.department_name.split(' ')[0]}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+        </div>
       </div>
 
       {/* EVALUATION SUMMARY */}
@@ -769,10 +855,10 @@ const Dashboard: React.FC<Props> = ({ state }) => {
             </div>
           </div>
         </div>
-      </section>
+      </section >
 
       {/* DESIGNER PERFORMANCE HORIZONTAL */}
-      <div className="pt-2">
+      < div className="pt-2" >
         <span className={labelClass}>Team Output & Performance</span>
         <div className="flex overflow-x-auto flex-nowrap gap-6 mt-4 pb-4 snap-x scrollbar-thin scrollbar-thumb-slate-300">
           {analytics.teamStats.map(ds => (
@@ -838,8 +924,8 @@ const Dashboard: React.FC<Props> = ({ state }) => {
             </div>
           ))}
         </div>
-      </div>
-    </div>
+      </div >
+    </div >
   );
 };
 
