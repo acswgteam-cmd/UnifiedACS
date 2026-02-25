@@ -644,55 +644,57 @@ const Dashboard: React.FC<Props> = ({ state }) => {
                   No internal department activity found in this period.
                 </div>
               ) : (
-                <table className="w-full text-center border-collapse">
-                  <thead>
-                    <tr>
-                      <th className="p-2 border-b border-[#EAEAEA] text-left text-[10px] font-bold text-zinc-400 uppercase tracking-wider min-w-[70px]">Type / Dept</th>
-                      {analytics.departmentStats.map(d => (
-                        <th key={d.id} className="p-2 border-b border-[#EAEAEA] text-[9px] font-bold text-zinc-800 uppercase" style={{ maxWidth: '80px', wordWrap: 'break-word' }}>
-                          <div className="truncate" title={d.department_name}>{d.department_name.split(' ')[0]}</div>
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {["2D Design", "3D Design", "Video"].map(type => {
-                      const maxVal = Math.max(...analytics.departmentStats.map(d => (d.counts as any)[type] || 0), 1);
-                      return (
-                        <tr key={type}>
-                          <td className="p-2 border-b border-r border-[#EAEAEA] border-dashed text-left text-[10px] font-bold text-zinc-600 truncate uppercase mt-1">
-                            {type === '2D Design' ? '2D' : type === '3D Design' ? '3D' : 'VDO'}
-                          </td>
+                <div className="flex flex-col gap-[6px] w-full pt-2">
+                  {["2D Design", "3D Design", "Video"].map(type => {
+                    const maxVal = Math.max(...analytics.departmentStats.map(d => (d.counts as any)[type] || 0), 1);
+                    return (
+                      <div key={type} className="flex flex-row items-center gap-[6px]">
+                        <div className="flex-shrink-0 w-24 text-[10px] font-semibold text-zinc-500 uppercase tracking-tight text-right pr-2">
+                          {type === '2D Design' ? '2D Design' : type === '3D Design' ? '3D Design' : 'Video'}
+                        </div>
+                        <div className="flex flex-1 gap-[6px]">
                           {analytics.departmentStats.map(d => {
                             const val = (d.counts as any)[type] || 0;
                             const intensity = val / maxVal;
-                            let bgClass = "bg-[#F8F9FA]";
-                            let textColor = "text-zinc-400";
+
+                            let bgClass = "bg-[#F4F4F5]";
+                            let textColor = "text-transparent";
+
                             if (val > 0) {
-                              if (type === "2D Design") {
-                                bgClass = intensity > 0.6 ? "bg-blue-500" : intensity > 0.3 ? "bg-blue-400" : "bg-blue-100";
-                                textColor = intensity > 0.6 ? "text-white" : "text-blue-900";
-                              } else if (type === "3D Design") {
-                                bgClass = intensity > 0.6 ? "bg-emerald-500" : intensity > 0.3 ? "bg-emerald-400" : "bg-emerald-100";
-                                textColor = intensity > 0.6 ? "text-white" : "text-emerald-900";
-                              } else {
-                                bgClass = intensity > 0.6 ? "bg-orange-500" : intensity > 0.3 ? "bg-orange-400" : "bg-orange-100";
-                                textColor = intensity > 0.6 ? "text-white" : "text-orange-900";
-                              }
+                              if (intensity > 0.8) { bgClass = "bg-indigo-600"; textColor = "text-indigo-100"; }
+                              else if (intensity > 0.6) { bgClass = "bg-indigo-500"; textColor = "text-indigo-50"; }
+                              else if (intensity > 0.4) { bgClass = "bg-indigo-400"; textColor = "text-indigo-50"; }
+                              else if (intensity > 0.2) { bgClass = "bg-indigo-300"; textColor = "text-indigo-900"; }
+                              else { bgClass = "bg-indigo-200"; textColor = "text-indigo-900"; }
                             }
+
                             return (
-                              <td key={d.id} className="p-1.5 border-b border-[#EAEAEA] border-dashed align-middle min-w-[40px]">
-                                <div className={`w-full h-8 rounded-md flex items-center justify-center text-[11px] font-black transition-all ${bgClass} ${textColor}`}>
-                                  {val > 0 ? val : '-'}
-                                </div>
-                              </td>
+                              <div
+                                key={d.id}
+                                className={`flex-1 h-10 min-w-[28px] rounded-[4px] flex items-center justify-center text-[10px] font-bold transition-all hover:opacity-80 ${bgClass} ${textColor} relative group`}
+                                title={`${d.department_name} - ${type}: ${val}`}
+                              >
+                                <span className={val > 0 ? "opacity-100" : "opacity-0"}>{val}</span>
+                              </div>
                             );
                           })}
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* Departments Headers Matrix X-axis */}
+                  <div className="flex flex-row items-center gap-[6px] mt-1 hidden sm:flex">
+                    <div className="flex-shrink-0 w-24"></div>
+                    <div className="flex flex-1 gap-[6px]">
+                      {analytics.departmentStats.map(d => (
+                        <div key={d.id} className="flex-1 text-center text-[9px] font-semibold text-zinc-400 capitalize truncate" title={d.department_name}>
+                          {d.department_name.split(' ')[0]}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
           </div>
