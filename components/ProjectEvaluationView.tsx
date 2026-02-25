@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Project, Designer, DesignerEvaluation } from '../types';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, BarChart, Bar } from 'recharts';
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 
@@ -92,9 +92,9 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({ pr
 
     // --- View By Team Data ---
     const teamStats = useMemo(() => {
-        return evaluatedDesignerIds.map(did => {
+        return designers.map(designer => {
+            const did = designer.id;
             const dEvals = validEvaluations.filter(e => e.designer_id === did);
-            const designer = designers.find(d => d.id === did);
             let tSum = 0;
             let tCount = 0;
             const catSums: Record<string, number> = {};
@@ -297,12 +297,12 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({ pr
                             <h3 className="text-xs font-bold text-zinc-900 uppercase tracking-widest mb-6 border-b border-zinc-100 pb-3">Trend Evaluasi Berdasarkan Tim / Designer</h3>
                             <div className="h-[250px] w-full">
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <LineChart data={tChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                    <BarChart data={tChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                                         <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#A1A1AA', fontWeight: 600 }} dy={10} />
-                                        <YAxis domain={[1, 5]} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#A1A1AA', fontWeight: 600 }} dx={-10} />
-                                        <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', fontWeight: 700, fontSize: '11px' }} />
-                                        <Line type="monotone" dataKey="score" stroke="#10B981" strokeWidth={3} dot={{ r: 4, strokeWidth: 2, fill: '#fff' }} activeDot={{ r: 6, fill: '#10B981', strokeWidth: 0 }} />
-                                    </LineChart>
+                                        <YAxis domain={[0, 5]} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#A1A1AA', fontWeight: 600 }} dx={-10} />
+                                        <Tooltip cursor={{ fill: '#F4F4F5' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', fontWeight: 700, fontSize: '11px' }} />
+                                        <Bar dataKey="score" fill="#10B981" radius={[4, 4, 0, 0]} barSize={40} />
+                                    </BarChart>
                                 </ResponsiveContainer>
                             </div>
                         </div>
@@ -310,8 +310,14 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({ pr
                         {/* Visual Radar Cards */}
                         <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                             {teamStats.map(t => {
+                                const getShortLabel = (label: string) => {
+                                    if (label === 'Penyelesaian Tugas') return 'TUGAS';
+                                    if (label === 'Respon Terhadap Masukan') return 'RESPON/FEEDBACK';
+                                    return label.toUpperCase();
+                                };
+
                                 const radarData = EVAL_CRITERIA.map(c => ({
-                                    subject: c.key.substring(0, 5).toUpperCase(),
+                                    subject: getShortLabel(c.label),
                                     A: t.catAvgs[c.key] || 0,
                                     fullMark: 5,
                                 }));
@@ -326,7 +332,7 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({ pr
                                             <ResponsiveContainer width="100%" height="100%">
                                                 <RadarChart cx="50%" cy="50%" outerRadius="65%" data={radarData}>
                                                     <PolarGrid stroke="#EAEAEA" />
-                                                    <PolarAngleAxis dataKey="subject" tick={{ fontSize: 9, fill: '#A1A1AA', fontWeight: 700 }} />
+                                                    <PolarAngleAxis dataKey="subject" tick={{ fontSize: 8, fill: '#A1A1AA', fontWeight: 700 }} />
                                                     <PolarRadiusAxis angle={30} domain={[0, 5]} tick={false} axisLine={false} />
                                                     <Radar name="Designer" dataKey="A" stroke="#10B981" fill="#10B981" fillOpacity={0.2} strokeWidth={2} />
                                                 </RadarChart>
