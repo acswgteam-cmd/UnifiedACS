@@ -212,11 +212,11 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({ pr
                             {EVAL_CRITERIA.map(c => {
                                 const avg = overallCatAvgs[c.key].count > 0 ? (overallCatAvgs[c.key].sum / overallCatAvgs[c.key].count).toFixed(2) : '0.00';
                                 return (
-                                    <div key={c.key} className="flex flex-col items-center justify-center gap-2">
-                                        <div className="text-[10px] md:text-[11px] font-bold text-white/50 uppercase tracking-widest text-center max-w-[120px] leading-tight">
+                                    <div key={c.key} className="flex flex-col items-center justify-center gap-1.5">
+                                        <div className="text-[9px] md:text-[10px] font-medium text-white/40 uppercase tracking-widest text-center max-w-[120px] leading-tight">
                                             {c.label}
                                         </div>
-                                        <div className="text-xl md:text-2xl font-black text-emerald-400 drop-shadow-sm">{avg}</div>
+                                        <div className="text-lg md:text-xl font-bold text-emerald-400/90">{avg}</div>
                                     </div>
                                 )
                             })}
