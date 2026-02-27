@@ -223,12 +223,12 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({ pr
                         </div>
                     </div>
 
-                    <div className="flex gap-4 flex-shrink-0">
-                        <div className="bg-white/10 backdrop-blur-sm border border-white/10 px-6 py-4 rounded-2xl text-center min-w-[130px]">
+                    <div className="flex gap-4 flex-shrink-0 w-full md:w-auto overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                        <div className="bg-white/10 backdrop-blur-sm border border-white/10 px-6 py-4 rounded-2xl text-center flex-1 md:flex-none min-w-[130px]">
                             <div className="text-3xl font-black mb-1">{evaluatedProjectIds.length}<span className="text-xl text-white/50 font-bold">/{projects.length}</span></div>
                             <div className="text-[10px] font-bold tracking-widest uppercase text-white/60">Total Project</div>
                         </div>
-                        <div className="bg-white/10 backdrop-blur-sm border border-white/10 px-6 py-4 rounded-2xl text-center min-w-[130px]">
+                        <div className="bg-white/10 backdrop-blur-sm border border-white/10 px-6 py-4 rounded-2xl text-center flex-1 md:flex-none min-w-[130px]">
                             <div className="text-3xl font-black mb-1">{evaluatedDesignerIds.length}<span className="text-xl text-white/50 font-bold">/{designers.length}</span></div>
                             <div className="text-[10px] font-bold tracking-widest uppercase text-white/60">Total Tim</div>
                         </div>
@@ -237,9 +237,9 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({ pr
             </div>
 
             {/* Toggles */}
-            <div className="flex gap-2 bg-[#F8F9FA] p-1.5 rounded-xl w-fit mb-6 border border-[#EAEAEA]">
-                <button onClick={() => setActiveTab('project')} className={`px-8 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wide transition-all ${activeTab === 'project' ? 'bg-white text-zinc-900 shadow-[0_2px_8px_rgba(0,0,0,0.08)]' : 'text-zinc-500 hover:text-zinc-700 hover:bg-zinc-100/50'}`}>View By Project</button>
-                <button onClick={() => setActiveTab('team')} className={`px-8 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wide transition-all ${activeTab === 'team' ? 'bg-white text-zinc-900 shadow-[0_2px_8px_rgba(0,0,0,0.08)]' : 'text-zinc-500 hover:text-zinc-700 hover:bg-zinc-100/50'}`}>View By Team</button>
+            <div className="flex gap-2 bg-[#F8F9FA] p-1.5 rounded-xl w-full sm:w-fit mb-6 border border-[#EAEAEA]">
+                <button onClick={() => setActiveTab('project')} className={`flex-1 sm:flex-none px-4 sm:px-8 py-2.5 rounded-lg text-[10px] sm:text-xs font-bold uppercase tracking-wide transition-all ${activeTab === 'project' ? 'bg-white text-zinc-900 shadow-[0_2px_8px_rgba(0,0,0,0.08)]' : 'text-zinc-500 hover:text-zinc-700 hover:bg-zinc-100/50'}`}>View By Project</button>
+                <button onClick={() => setActiveTab('team')} className={`flex-1 sm:flex-none px-4 sm:px-8 py-2.5 rounded-lg text-[10px] sm:text-xs font-bold uppercase tracking-wide transition-all ${activeTab === 'team' ? 'bg-white text-zinc-900 shadow-[0_2px_8px_rgba(0,0,0,0.08)]' : 'text-zinc-500 hover:text-zinc-700 hover:bg-zinc-100/50'}`}>View By Team</button>
             </div>
 
             <div className="flex-1 overflow-y-auto pb-8 custom-scrollbar">
@@ -262,88 +262,92 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({ pr
 
                         {/* Project List */}
                         <div className="bg-white rounded-[20px] border border-[#EAEAEA] shadow-sm overflow-hidden animate-in fade-in duration-300">
-                            <table className="w-full text-left text-sm border-collapse">
-                                <thead className="bg-[#F8F9FA] border-b border-[#EAEAEA] font-bold text-[10px] uppercase text-zinc-500 tracking-wider">
-                                    <tr>
-                                        <th className="px-5 py-4">Timeline & Project Name</th>
-                                        <th className="px-5 py-4">PIC & Support</th>
-                                        <th className="px-5 py-4">Evaluator</th>
-                                        <th className="px-5 py-4 text-center">Avg Score</th>
-                                        <th className="px-5 py-4 text-right"></th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {projectStats.map(p => (
-                                        <React.Fragment key={p.id}>
-                                            <tr className="hover:bg-[#FCFCFC] transition-colors cursor-pointer group font-bold text-zinc-800 uppercase" onClick={() => toggleProject(p.id)}>
-                                                <td className="px-5 py-4">
-                                                    <div className="font-bold text-zinc-900 mb-1 leading-tight">{p.name}</div>
-                                                    <div className="text-[10px] font-bold text-zinc-500">{p.date}</div>
-                                                </td>
-                                                <td className="px-5 py-4">
-                                                    <div className="text-[11px] font-bold text-zinc-800 line-clamp-1"><span className="text-zinc-400">L:</span> {p.lead}</div>
-                                                    <div className="text-[10px] font-bold text-zinc-500 mt-1 line-clamp-1"><span className="text-zinc-400">S:</span> {p.support}</div>
-                                                </td>
-                                                <td className="px-5 py-4">
-                                                    <div className="text-[11px] font-bold text-zinc-800">{p.evaluator}</div>
-                                                </td>
-                                                <td className="px-5 py-4 text-center">
-                                                    <span className={`inline-block px-3 py-1 rounded-xl text-sm font-black ${getScoreColor(p.avgScore)}`}>{p.avgScore.toFixed(2)}</span>
-                                                </td>
-                                                <td className="px-5 py-4 text-right">
-                                                    <div className={`p-2 rounded-full inline-block transition-transform ${expandedProjects[p.id] ? 'rotate-180 bg-zinc-100' : 'bg-[#F8F9FA]'}`}>
-                                                        <svg className="w-4 h-4 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" /></svg>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            {expandedProjects[p.id] && (
-                                                <tr className="bg-[#FCFCFC]">
-                                                    <td colSpan={5} className="p-0 border-t border-zinc-50">
-                                                        <div className="px-5 pb-5 pt-2 animate-in slide-in-from-top-2 duration-200">
-                                                            <table className="w-full text-left border-collapse">
-                                                                <thead>
-                                                                    <tr>
-                                                                        <th className="py-3 px-2 text-[10px] font-bold text-zinc-400 uppercase tracking-wider border-b border-[#EAEAEA]">Nama</th>
-                                                                        {EVAL_CRITERIA.map(c => (
-                                                                            <th key={c.key} className="py-3 px-2 text-[10px] font-bold text-zinc-400 uppercase tracking-wider text-center w-16 border-b border-[#EAEAEA]" title={c.label}>{c.key.substring(0, 3)}</th>
-                                                                        ))}
-                                                                        <th className="py-3 px-2 text-[10px] font-bold text-zinc-400 uppercase tracking-wider border-b border-[#EAEAEA] min-w-[150px]">Catatan / Feedback</th>
-                                                                    </tr>
-                                                                </thead>
-                                                                <tbody className="divide-y divide-zinc-100">
-                                                                    {p.evals.map(ev => {
-                                                                        const dName = designers.find(d => d.id === ev.designer_id)?.name || 'Unknown';
-                                                                        return (
-                                                                            <tr key={ev.id} className="hover:bg-white transition-colors">
-                                                                                <td className="py-2.5 px-2 text-xs font-bold text-zinc-800 uppercase align-top pt-3">{dName}</td>
-                                                                                {EVAL_CRITERIA.map(c => {
-                                                                                    const val = (ev as any)[c.key];
-                                                                                    return (
-                                                                                        <td key={c.key} className="py-2.5 px-2 text-center align-top pt-3">
-                                                                                            {val ? <span className={`inline-block w-8 py-1 rounded text-[10px] font-bold ${getScoreColor(val)}`}>{val}</span> : <span className="text-zinc-300">-</span>}
-                                                                                        </td>
-                                                                                    )
-                                                                                })}
-                                                                                <td className="py-2.5 px-2 align-top pt-3">
-                                                                                    {ev.masukan_pengembangan ? (
-                                                                                        <p className="text-[10px] text-zinc-600 italic bg-[#FCFCFC] p-2 rounded-lg border border-zinc-100 mb-1 leading-relaxed">"{ev.masukan_pengembangan}"</p>
-                                                                                    ) : (
-                                                                                        <p className="text-[10px] text-zinc-400 italic">Tidak ada catatan.</p>
-                                                                                    )}
-                                                                                </td>
-                                                                            </tr>
-                                                                        );
-                                                                    })}
-                                                                </tbody>
-                                                            </table>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left text-sm border-collapse min-w-[700px] md:min-w-full">
+                                    <thead className="bg-[#F8F9FA] border-b border-[#EAEAEA] font-bold text-[10px] uppercase text-zinc-500 tracking-wider">
+                                        <tr>
+                                            <th className="px-5 py-4">Timeline & Project Name</th>
+                                            <th className="px-5 py-4">PIC & Support</th>
+                                            <th className="px-5 py-4">Evaluator</th>
+                                            <th className="px-5 py-4 text-center">Avg Score</th>
+                                            <th className="px-5 py-4 text-right"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {projectStats.map(p => (
+                                            <React.Fragment key={p.id}>
+                                                <tr className="hover:bg-[#FCFCFC] transition-colors cursor-pointer group font-bold text-zinc-800 uppercase" onClick={() => toggleProject(p.id)}>
+                                                    <td className="px-5 py-4">
+                                                        <div className="font-bold text-zinc-900 mb-1 leading-tight">{p.name}</div>
+                                                        <div className="text-[10px] font-bold text-zinc-500">{p.date}</div>
+                                                    </td>
+                                                    <td className="px-5 py-4">
+                                                        <div className="text-[11px] font-bold text-zinc-800 line-clamp-1"><span className="text-zinc-400">L:</span> {p.lead}</div>
+                                                        <div className="text-[10px] font-bold text-zinc-500 mt-1 line-clamp-1"><span className="text-zinc-400">S:</span> {p.support}</div>
+                                                    </td>
+                                                    <td className="px-5 py-4">
+                                                        <div className="text-[11px] font-bold text-zinc-800">{p.evaluator}</div>
+                                                    </td>
+                                                    <td className="px-5 py-4 text-center">
+                                                        <span className={`inline-block px-3 py-1 rounded-xl text-sm font-black ${getScoreColor(p.avgScore)}`}>{p.avgScore.toFixed(2)}</span>
+                                                    </td>
+                                                    <td className="px-5 py-4 text-right">
+                                                        <div className={`p-2 rounded-full inline-block transition-transform ${expandedProjects[p.id] ? 'rotate-180 bg-zinc-100' : 'bg-[#F8F9FA]'}`}>
+                                                            <svg className="w-4 h-4 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" /></svg>
                                                         </div>
                                                     </td>
                                                 </tr>
-                                            )}
-                                        </React.Fragment>
-                                    ))}
-                                </tbody>
-                            </table>
+                                                {expandedProjects[p.id] && (
+                                                    <tr className="bg-[#FCFCFC]">
+                                                        <td colSpan={5} className="p-0 border-t border-zinc-50">
+                                                            <div className="px-5 pb-5 pt-2 animate-in slide-in-from-top-2 duration-200">
+                                                                <div className="overflow-x-auto">
+                                                                    <table className="w-full text-left border-collapse min-w-[600px] md:min-w-full">
+                                                                        <thead>
+                                                                            <tr>
+                                                                                <th className="py-3 px-2 text-[10px] font-bold text-zinc-400 uppercase tracking-wider border-b border-[#EAEAEA]">Nama</th>
+                                                                                {EVAL_CRITERIA.map(c => (
+                                                                                    <th key={c.key} className="py-3 px-2 text-[10px] font-bold text-zinc-400 uppercase tracking-wider text-center w-16 border-b border-[#EAEAEA]" title={c.label}>{c.key.substring(0, 3)}</th>
+                                                                                ))}
+                                                                                <th className="py-3 px-2 text-[10px] font-bold text-zinc-400 uppercase tracking-wider border-b border-[#EAEAEA] min-w-[150px]">Catatan / Feedback</th>
+                                                                            </tr>
+                                                                        </thead>
+                                                                        <tbody className="divide-y divide-zinc-100">
+                                                                            {p.evals.map(ev => {
+                                                                                const dName = designers.find(d => d.id === ev.designer_id)?.name || 'Unknown';
+                                                                                return (
+                                                                                    <tr key={ev.id} className="hover:bg-white transition-colors">
+                                                                                        <td className="py-2.5 px-2 text-xs font-bold text-zinc-800 uppercase align-top pt-3">{dName}</td>
+                                                                                        {EVAL_CRITERIA.map(c => {
+                                                                                            const val = (ev as any)[c.key];
+                                                                                            return (
+                                                                                                <td key={c.key} className="py-2.5 px-2 text-center align-top pt-3">
+                                                                                                    {val ? <span className={`inline-block w-8 py-1 rounded text-[10px] font-bold ${getScoreColor(val)}`}>{val}</span> : <span className="text-zinc-300">-</span>}
+                                                                                                </td>
+                                                                                            )
+                                                                                        })}
+                                                                                        <td className="py-2.5 px-2 align-top pt-3">
+                                                                                            {ev.masukan_pengembangan ? (
+                                                                                                <p className="text-[10px] text-zinc-600 italic bg-[#FCFCFC] p-2 rounded-lg border border-zinc-100 mb-1 leading-relaxed">"{ev.masukan_pengembangan}"</p>
+                                                                                            ) : (
+                                                                                                <p className="text-[10px] text-zinc-400 italic">Tidak ada catatan.</p>
+                                                                                            )}
+                                                                                        </td>
+                                                                                    </tr>
+                                                                                );
+                                                                            })}
+                                                                        </tbody>
+                                                                    </table>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </React.Fragment>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 )}
@@ -366,7 +370,7 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({ pr
                         </div>
 
                         {/* Visual Radar Cards */}
-                        <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                             {teamStats.map(t => {
                                 const getShortLabel = (label: string) => {
                                     if (label === 'Penyelesaian Tugas') return 'TUGAS';
@@ -405,133 +409,137 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({ pr
                         {/* Team List View */}
                         <div className="bg-white rounded-[20px] border border-[#EAEAEA] shadow-sm overflow-hidden animate-in fade-in duration-300 mt-6">
                             <h3 className="text-xs font-bold text-zinc-900 uppercase tracking-widest p-6 border-b border-[#EAEAEA] bg-[#F8F9FA]">Daftar Detail Evaluasi Tim</h3>
-                            <table className="w-full text-left text-sm border-collapse">
-                                <thead className="bg-[#FCFCFC] border-b border-[#EAEAEA] font-bold text-[10px] uppercase text-zinc-500 tracking-wider">
-                                    <tr>
-                                        <th className="px-6 py-4">Designer & Role</th>
-                                        <th className="px-6 py-4 hidden lg:table-cell text-center">Criteria Averages</th>
-                                        <th className="px-6 py-4 text-center">Avg Score</th>
-                                        <th className="px-6 py-4"></th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {teamStats.map(t => (
-                                        <React.Fragment key={t.id}>
-                                            <tr className="hover:bg-[#FCFCFC] transition-colors cursor-pointer group font-bold text-zinc-800 uppercase" onClick={() => toggleTeam(t.id)}>
-                                                <td className="px-6 py-4">
-                                                    <div className="font-bold text-zinc-900 mb-1">{t.name}</div>
-                                                    <div className="text-[10px] font-bold text-zinc-500">{t.role} &bull; {t.projectsCount} Project(s)</div>
-                                                </td>
-                                                <td className="px-6 py-4 hidden lg:table-cell">
-                                                    <div className="flex gap-2 justify-center">
-                                                        {EVAL_CRITERIA.map(c => (
-                                                            <div key={c.key} className="text-center w-10">
-                                                                <div className="text-[8px] font-bold text-zinc-400 uppercase mb-0.5">{c.key.substring(0, 3)}</div>
-                                                                <div className={`text-[10px] font-black px-1.5 py-0.5 rounded ${getScoreColor(t.catAvgs[c.key] || 0)}`}>{(t.catAvgs[c.key] || 0).toFixed(1)}</div>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 text-center">
-                                                    <span className={`inline-block px-3 py-1 rounded-xl text-sm font-black ${getScoreColor(t.avgScore)}`}>{t.avgScore.toFixed(2)}</span>
-                                                </td>
-                                                <td className="px-6 py-4 text-right">
-                                                    <div className={`p-2 rounded-full inline-block transition-transform ${expandedTeams[t.id] ? 'rotate-180 bg-zinc-100' : 'bg-[#F8F9FA]'}`}>
-                                                        <svg className="w-4 h-4 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" /></svg>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            {expandedTeams[t.id] && (
-                                                <tr className="bg-[#FCFCFC]">
-                                                    <td colSpan={4} className="p-0 border-t border-zinc-50">
-                                                        <div className="p-6 animate-in slide-in-from-top-2 duration-200">
-
-                                                            {/* AI Summary Section */}
-                                                            <div className="mb-6 bg-gradient-to-r from-emerald-50 to-[#FCFCFC] border border-emerald-100 p-5 rounded-2xl relative shadow-sm">
-                                                                <div className="flex justify-between items-start mb-4">
-                                                                    <h5 className="text-[11px] font-black uppercase tracking-widest text-emerald-800 flex items-center gap-2"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>AI Rangkuman Pengembangan Diri</h5>
-                                                                    {!aiSummaries[t.id] && (
-                                                                        <button onClick={() => handleGenerateSummary(t.id, t.evals)} disabled={isGeneratingAi[t.id]} className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 transition-colors text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest shadow-sm">
-                                                                            {isGeneratingAi[t.id] ? 'Generating...' : 'Generate Summary'}
-                                                                        </button>
-                                                                    )}
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left text-sm border-collapse min-w-[500px] md:min-w-full">
+                                    <thead className="bg-[#FCFCFC] border-b border-[#EAEAEA] font-bold text-[10px] uppercase text-zinc-500 tracking-wider">
+                                        <tr>
+                                            <th className="px-6 py-4">Designer & Role</th>
+                                            <th className="px-6 py-4 hidden lg:table-cell text-center">Criteria Averages</th>
+                                            <th className="px-6 py-4 text-center">Avg Score</th>
+                                            <th className="px-6 py-4"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {teamStats.map(t => (
+                                            <React.Fragment key={t.id}>
+                                                <tr className="hover:bg-[#FCFCFC] transition-colors cursor-pointer group font-bold text-zinc-800 uppercase" onClick={() => toggleTeam(t.id)}>
+                                                    <td className="px-6 py-4">
+                                                        <div className="font-bold text-zinc-900 mb-1">{t.name}</div>
+                                                        <div className="text-[10px] font-bold text-zinc-500">{t.role} &bull; {t.projectsCount} Project(s)</div>
+                                                    </td>
+                                                    <td className="px-6 py-4 hidden lg:table-cell">
+                                                        <div className="flex gap-2 justify-center">
+                                                            {EVAL_CRITERIA.map(c => (
+                                                                <div key={c.key} className="text-center w-10">
+                                                                    <div className="text-[8px] font-bold text-zinc-400 uppercase mb-0.5">{c.key.substring(0, 3)}</div>
+                                                                    <div className={`text-[10px] font-black px-1.5 py-0.5 rounded ${getScoreColor(t.catAvgs[c.key] || 0)}`}>{(t.catAvgs[c.key] || 0).toFixed(1)}</div>
                                                                 </div>
-                                                                {aiSummaries[t.id] ? (
-                                                                    <div className="text-[13px] font-medium text-emerald-950 leading-relaxed max-w-none bg-white p-4 rounded-xl border border-emerald-100 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]">
-                                                                        <ReactMarkdown
-                                                                            components={{
-                                                                                h1: ({ node, ...props }) => <h1 className="text-lg font-bold mt-4 mb-2 uppercase tracking-tight" {...props} />,
-                                                                                h2: ({ node, ...props }) => <h2 className="text-base font-bold mt-3 mb-2 uppercase tracking-tight" {...props} />,
-                                                                                h3: ({ node, ...props }) => <h3 className="text-sm font-bold mt-2 mb-1 uppercase tracking-tight" {...props} />,
-                                                                                p: ({ node, ...props }) => <p className="mb-3 last:mb-0" {...props} />,
-                                                                                ul: ({ node, ...props }) => <ul className="list-disc ml-5 mb-3" {...props} />,
-                                                                                ol: ({ node, ...props }) => <ol className="list-decimal ml-5 mb-3" {...props} />,
-                                                                                li: ({ node, ...props }) => <li className="mb-1.5 pl-1" {...props} />,
-                                                                                strong: ({ node, ...props }) => <strong className="font-black text-emerald-900" {...props} />,
-                                                                                em: ({ node, ...props }) => <em className="italic text-emerald-800" {...props} />,
-                                                                            }}
-                                                                        >
-                                                                            {aiSummaries[t.id]}
-                                                                        </ReactMarkdown>
-                                                                    </div>
-                                                                ) : (
-                                                                    <p className="text-xs font-semibold text-emerald-600/60 italic bg-white p-4 rounded-xl border border-emerald-50">Klik tombol generate untuk melihat rangkuman masukan dari seluruh project secara otomatis.</p>
-                                                                )}
-                                                            </div>
-
-                                                            {/* Project Participations & Feedback */}
-                                                            <div className="bg-white rounded-xl border border-[#EAEAEA] shadow-sm overflow-hidden">
-                                                                <table className="w-full text-left border-collapse">
-                                                                    <thead className="bg-[#F8F9FA] border-b border-[#EAEAEA]">
-                                                                        <tr>
-                                                                            <th className="py-3 px-4 text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Project</th>
-                                                                            {EVAL_CRITERIA.map(c => (
-                                                                                <th key={c.key} className="py-3 px-2 text-[9px] font-bold text-zinc-500 uppercase tracking-wider text-center w-12" title={c.label}>{c.key.substring(0, 3)}</th>
-                                                                            ))}
-                                                                            <th className="py-3 px-4 text-[10px] font-bold text-zinc-500 uppercase tracking-wider min-w-[200px]">Catatan / Feedback</th>
-                                                                        </tr>
-                                                                    </thead>
-                                                                    <tbody className="divide-y divide-zinc-100">
-                                                                        {t.evals.map((ev, idx) => {
-                                                                            const proj = projects.find(p => p.id === ev.project_id);
-                                                                            return (
-                                                                                <tr key={idx} className="hover:bg-[#FCFCFC] transition-colors">
-                                                                                    <td className="py-3 px-4 text-[11px] font-bold text-zinc-800 uppercase align-top">
-                                                                                        {proj?.project_name || 'Unknown Project'}
-                                                                                        <div className="text-[9px] text-zinc-400 mt-1 uppercase">{proj?.start_date}</div>
-                                                                                    </td>
-                                                                                    {EVAL_CRITERIA.map(c => {
-                                                                                        const val = (ev as any)[c.key];
-                                                                                        return (
-                                                                                            <td key={c.key} className="py-3 px-2 text-center align-top">
-                                                                                                {val ? <span className={`inline-block py-0.5 px-1.5 rounded text-[10px] font-black ${getScoreColor(val)}`}>{val}</span> : <span className="text-zinc-300">-</span>}
-                                                                                            </td>
-                                                                                        )
-                                                                                    })}
-                                                                                    <td className="py-3 px-4 align-top">
-                                                                                        {ev.masukan_pengembangan ? (
-                                                                                            <div className="text-[11px] font-medium text-zinc-600 bg-white p-3 rounded-xl border border-[#EAEAEA] leading-relaxed italic shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
-                                                                                                "{ev.masukan_pengembangan}"
-                                                                                            </div>
-                                                                                        ) : (
-                                                                                            <p className="text-[10px] text-zinc-400 italic mt-1">Tidak ada catatan.</p>
-                                                                                        )}
-                                                                                    </td>
-                                                                                </tr>
-                                                                            );
-                                                                        })}
-                                                                    </tbody>
-                                                                </table>
-                                                            </div>
-
+                                                            ))}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-center">
+                                                        <span className={`inline-block px-3 py-1 rounded-xl text-sm font-black ${getScoreColor(t.avgScore)}`}>{t.avgScore.toFixed(2)}</span>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-right">
+                                                        <div className={`p-2 rounded-full inline-block transition-transform ${expandedTeams[t.id] ? 'rotate-180 bg-zinc-100' : 'bg-[#F8F9FA]'}`}>
+                                                            <svg className="w-4 h-4 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" /></svg>
                                                         </div>
                                                     </td>
                                                 </tr>
-                                            )}
-                                        </React.Fragment>
-                                    ))}
-                                </tbody>
-                            </table>
+                                                {expandedTeams[t.id] && (
+                                                    <tr className="bg-[#FCFCFC]">
+                                                        <td colSpan={4} className="p-0 border-t border-zinc-50">
+                                                            <div className="p-6 animate-in slide-in-from-top-2 duration-200">
+
+                                                                {/* AI Summary Section */}
+                                                                <div className="mb-6 bg-gradient-to-r from-emerald-50 to-[#FCFCFC] border border-emerald-100 p-5 rounded-2xl relative shadow-sm">
+                                                                    <div className="flex justify-between items-start mb-4">
+                                                                        <h5 className="text-[11px] font-black uppercase tracking-widest text-emerald-800 flex items-center gap-2"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>AI Rangkuman Pengembangan Diri</h5>
+                                                                        {!aiSummaries[t.id] && (
+                                                                            <button onClick={() => handleGenerateSummary(t.id, t.evals)} disabled={isGeneratingAi[t.id]} className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 transition-colors text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest shadow-sm">
+                                                                                {isGeneratingAi[t.id] ? 'Generating...' : 'Generate Summary'}
+                                                                            </button>
+                                                                        )}
+                                                                    </div>
+                                                                    {aiSummaries[t.id] ? (
+                                                                        <div className="text-[13px] font-medium text-emerald-950 leading-relaxed max-w-none bg-white p-4 rounded-xl border border-emerald-100 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]">
+                                                                            <ReactMarkdown
+                                                                                components={{
+                                                                                    h1: ({ node, ...props }) => <h1 className="text-lg font-bold mt-4 mb-2 uppercase tracking-tight" {...props} />,
+                                                                                    h2: ({ node, ...props }) => <h2 className="text-base font-bold mt-3 mb-2 uppercase tracking-tight" {...props} />,
+                                                                                    h3: ({ node, ...props }) => <h3 className="text-sm font-bold mt-2 mb-1 uppercase tracking-tight" {...props} />,
+                                                                                    p: ({ node, ...props }) => <p className="mb-3 last:mb-0" {...props} />,
+                                                                                    ul: ({ node, ...props }) => <ul className="list-disc ml-5 mb-3" {...props} />,
+                                                                                    ol: ({ node, ...props }) => <ol className="list-decimal ml-5 mb-3" {...props} />,
+                                                                                    li: ({ node, ...props }) => <li className="mb-1.5 pl-1" {...props} />,
+                                                                                    strong: ({ node, ...props }) => <strong className="font-black text-emerald-900" {...props} />,
+                                                                                    em: ({ node, ...props }) => <em className="italic text-emerald-800" {...props} />,
+                                                                                }}
+                                                                            >
+                                                                                {aiSummaries[t.id]}
+                                                                            </ReactMarkdown>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <p className="text-xs font-semibold text-emerald-600/60 italic bg-white p-4 rounded-xl border border-emerald-50">Klik tombol generate untuk melihat rangkuman masukan dari seluruh project secara otomatis.</p>
+                                                                    )}
+                                                                </div>
+
+                                                                {/* Project Participations & Feedback */}
+                                                                <div className="bg-white rounded-xl border border-[#EAEAEA] shadow-sm overflow-hidden">
+                                                                    <div className="overflow-x-auto">
+                                                                        <table className="w-full text-left border-collapse min-w-[600px] md:min-w-full">
+                                                                            <thead className="bg-[#F8F9FA] border-b border-[#EAEAEA]">
+                                                                                <tr>
+                                                                                    <th className="py-3 px-4 text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Project</th>
+                                                                                    {EVAL_CRITERIA.map(c => (
+                                                                                        <th key={c.key} className="py-3 px-2 text-[9px] font-bold text-zinc-500 uppercase tracking-wider text-center w-12" title={c.label}>{c.key.substring(0, 3)}</th>
+                                                                                    ))}
+                                                                                    <th className="py-3 px-4 text-[10px] font-bold text-zinc-500 uppercase tracking-wider min-w-[200px]">Catatan / Feedback</th>
+                                                                                </tr>
+                                                                            </thead>
+                                                                            <tbody className="divide-y divide-zinc-100">
+                                                                                {t.evals.map((ev, idx) => {
+                                                                                    const proj = projects.find(p => p.id === ev.project_id);
+                                                                                    return (
+                                                                                        <tr key={idx} className="hover:bg-[#FCFCFC] transition-colors">
+                                                                                            <td className="py-3 px-4 text-[11px] font-bold text-zinc-800 uppercase align-top">
+                                                                                                {proj?.project_name || 'Unknown Project'}
+                                                                                                <div className="text-[9px] text-zinc-400 mt-1 uppercase">{proj?.start_date}</div>
+                                                                                            </td>
+                                                                                            {EVAL_CRITERIA.map(c => {
+                                                                                                const val = (ev as any)[c.key];
+                                                                                                return (
+                                                                                                    <td key={c.key} className="py-3 px-2 text-center align-top">
+                                                                                                        {val ? <span className={`inline-block py-0.5 px-1.5 rounded text-[10px] font-black ${getScoreColor(val)}`}>{val}</span> : <span className="text-zinc-300">-</span>}
+                                                                                                    </td>
+                                                                                                )
+                                                                                            })}
+                                                                                            <td className="py-3 px-4 align-top">
+                                                                                                {ev.masukan_pengembangan ? (
+                                                                                                    <div className="text-[11px] font-medium text-zinc-600 bg-white p-3 rounded-xl border border-[#EAEAEA] leading-relaxed italic shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
+                                                                                                        "{ev.masukan_pengembangan}"
+                                                                                                    </div>
+                                                                                                ) : (
+                                                                                                    <p className="text-[10px] text-zinc-400 italic mt-1">Tidak ada catatan.</p>
+                                                                                                )}
+                                                                                            </td>
+                                                                                        </tr>
+                                                                                    );
+                                                                                })}
+                                                                            </tbody>
+                                                                        </table>
+                                                                    </div>
+                                                                </div>
+
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </React.Fragment>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 )}
