@@ -49,12 +49,22 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({ pr
 
     let overallScoreSum = 0;
     let overallScoreCount = 0;
+    const overallCatAvgs: Record<string, { sum: number, count: number }> = {};
+    EVAL_CRITERIA.forEach(c => { overallCatAvgs[c.key] = { sum: 0, count: 0 }; });
+
     validEvaluations.forEach(ev => {
         const scores = EVAL_CRITERIA.map(c => (ev as any)[c.key] || 0).filter((v: number) => v > 0);
         if (scores.length > 0) {
             overallScoreSum += scores.reduce((a, b) => a + b, 0) / scores.length;
             overallScoreCount++;
         }
+        EVAL_CRITERIA.forEach(c => {
+            const score = (ev as any)[c.key] || 0;
+            if (score > 0) {
+                overallCatAvgs[c.key].sum += score;
+                overallCatAvgs[c.key].count++;
+            }
+        });
     });
     const avgOverallScore = overallScoreCount > 0 ? (overallScoreSum / overallScoreCount).toFixed(2) : '0.00';
 
@@ -190,13 +200,30 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({ pr
             {/* Top Banner Stats */}
             <div className="bg-gradient-to-br from-zinc-900 to-[#1A1C20] rounded-[24px] p-8 text-white mb-6 shadow-xl relative overflow-hidden flex-shrink-0">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative z-10">
-                    <div>
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative z-10 w-full">
+                    <div className="flex-shrink-0">
                         <h2 className="text-sm font-bold tracking-widest uppercase text-white/60 mb-1">Project Evaluation Dashboard</h2>
                         <div className="text-4xl font-black tracking-tight">{avgOverallScore} <span className="text-lg text-white/50 font-bold">/5</span></div>
-                        <p className="text-xs font-medium text-white/70 mt-2">Nilai rata-rata seluruh evaluasi designer</p>
+                        <p className="text-xs font-medium text-white/70 mt-2">Nilai rata-rata seluruh evaluasi</p>
                     </div>
-                    <div className="flex gap-4">
+
+                    <div className="flex-1 flex justify-center w-full px-2 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                        <div className="flex gap-4 md:gap-6 lg:gap-8 min-w-max">
+                            {EVAL_CRITERIA.map(c => {
+                                const avg = overallCatAvgs[c.key].count > 0 ? (overallCatAvgs[c.key].sum / overallCatAvgs[c.key].count).toFixed(2) : '0.00';
+                                return (
+                                    <div key={c.key} className="flex flex-col items-center justify-center gap-2">
+                                        <div className="text-[10px] md:text-[11px] font-bold text-white/50 uppercase tracking-widest text-center max-w-[120px] leading-tight">
+                                            {c.label}
+                                        </div>
+                                        <div className="text-xl md:text-2xl font-black text-emerald-400 drop-shadow-sm">{avg}</div>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    </div>
+
+                    <div className="flex gap-4 flex-shrink-0">
                         <div className="bg-white/10 backdrop-blur-sm border border-white/10 px-6 py-4 rounded-2xl text-center min-w-[130px]">
                             <div className="text-3xl font-black mb-1">{evaluatedProjectIds.length}<span className="text-xl text-white/50 font-bold">/{projects.length}</span></div>
                             <div className="text-[10px] font-bold tracking-widest uppercase text-white/60">Total Project</div>
