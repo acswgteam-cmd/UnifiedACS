@@ -293,14 +293,14 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
       </div>
 
       {view === 'list' ? (
-        <div className="bg-white rounded-[20px] border border-[#EAEAEA] shadow-sm overflow-hidden overflow-x-auto animate-in fade-in duration-300">
-          <table className="w-full text-left text-xs md:text-sm border-collapse min-w-[600px] md:min-w-0">
-            <thead className="bg-[#F8F9FA] border-b border-[#EAEAEA] font-bold text-[10px] uppercase text-zinc-500 tracking-wider">
+        <div className="bg-white rounded-[16px] md:rounded-[20px] border border-[#EAEAEA] shadow-sm overflow-hidden overflow-x-auto animate-in fade-in duration-300">
+          <table className="w-full text-left text-[10px] md:text-sm border-collapse min-w-[400px] md:min-w-0">
+            <thead className="bg-[#F8F9FA] border-b border-[#EAEAEA] font-bold text-[9px] md:text-[10px] uppercase text-zinc-500 tracking-wider">
               <tr>
-                <th className="px-6 py-4">Task Name & Status</th>
-                <th className="px-6 py-4">Department & Requester</th>
-                <th className="px-6 py-4">Deadline</th>
-                <th className="px-6 py-4 text-right">Actions</th>
+                <th className="px-2 md:px-6 py-2.5 md:py-4">Task & Status</th>
+                <th className="px-2 md:px-6 py-2.5 md:py-4">Dept & Req</th>
+                <th className="px-2 md:px-6 py-2.5 md:py-4">Due</th>
+                <th className="px-2 md:px-6 py-2.5 md:py-4 text-right">Act</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -310,35 +310,39 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
                 const isToday = task.deadline === todayStr && task.status !== 'DONE';
                 return (
                   <tr key={task.id} onClick={() => setSelectedTask(task)} className="hover:bg-[#FCFCFC] transition-colors cursor-pointer group font-bold text-zinc-800 uppercase">
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col gap-1.5">
-                        <div className="font-bold text-zinc-900">{task.task_name}</div>
+                    <td className="px-2 md:px-6 py-2 md:py-4">
+                      <div className="flex flex-col gap-1">
+                        <div className="font-bold text-zinc-900 text-[10px] md:text-sm leading-tight">{task.task_name}</div>
                         <div className="flex">
-                          <span className={`px-2 py-0.5 rounded-full border text-[8px] font-bold uppercase ${getStatusColor(task.status)}`}>{task.status}</span>
+                          <span className={`px-1.5 md:px-2 py-0.5 rounded-full border text-[7px] md:text-[8px] font-bold uppercase ${getStatusColor(task.status)}`}>{task.status}</span>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="text-[11px] font-bold text-zinc-800 leading-tight">{getDeptName(task.department_id)}</div>
-                      <div className="text-[10px] text-zinc-400 font-medium mt-0.5 tracking-tight">By: {task.requester_name}</div>
+                    <td className="px-2 md:px-6 py-2 md:py-4">
+                      <div className="text-[9px] md:text-[11px] font-bold text-zinc-800 leading-tight">{getDeptName(task.department_id)}</div>
+                      <div className="text-[8px] md:text-[10px] text-zinc-400 font-medium mt-0.5 tracking-tight">By: {task.requester_name}</div>
                     </td>
-                    <td className="px-6 py-4">
-                      <span className={`text-xs font-bold leading-tight ${isOverdue ? 'text-red-700 bg-red-100 px-1.5 py-0.5 rounded border border-red-200' : isToday ? 'text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded border border-amber-200' : 'text-zinc-700'}`}>
+                    <td className="px-2 md:px-6 py-2 md:py-4">
+                      <span className={`text-[9px] md:text-xs font-bold leading-tight ${isOverdue ? 'text-red-700 bg-red-100 px-1 py-0.5 rounded border border-red-200' : isToday ? 'text-amber-700 bg-amber-100 px-1 py-0.5 rounded border border-amber-200' : 'text-zinc-700'}`}>
                         {task.deadline}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-right" onClick={e => e.stopPropagation()}>
-                      <div className="flex items-center justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => handleOpenEdit(task)} className="text-purple-600 text-[10px] font-bold uppercase">Edit</button>
-                        <button onClick={() => handleDelete(task.id)} className="text-red-500 text-[10px] font-bold uppercase">Del</button>
+                    <td className="px-2 md:px-6 py-2 md:py-4 text-right" onClick={e => e.stopPropagation()}>
+                      <div className="flex items-center justify-end gap-1.5 md:gap-3 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => handleOpenEdit(task)} className="text-purple-600 p-1 rounded hover:bg-purple-50" title="Edit">
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-5M16.5 3.5a2.121 2.121 0 113 3L7 19l-4 1 1-4L16.5 3.5z" /></svg>
+                        </button>
+                        <button onClick={() => handleDelete(task.id)} className="text-red-500 p-1 rounded hover:bg-red-50" title="Delete">
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        </button>
                         <select
                           value={task.status}
                           onChange={(e) => updateStatus(task.id, e.target.value as InternalStatus)}
-                          className="text-[9px] font-bold border-[#EAEAEA] rounded-lg p-1.5 bg-[#FCFCFC] outline-none focus:ring-2 focus:ring-purple-500 uppercase cursor-pointer"
+                          className="text-[8px] md:text-[9px] font-bold border-[#EAEAEA] rounded-lg p-1 md:p-1.5 bg-[#FCFCFC] outline-none focus:ring-2 focus:ring-purple-500 uppercase cursor-pointer"
                         >
                           <option value="NEW">NEW</option>
-                          <option value="ON PROGRESS">PROGRESS</option>
-                          <option value="ON REVIEW">REVIEW</option>
+                          <option value="ON PROGRESS">PROG</option>
+                          <option value="ON REVIEW">REV</option>
                           <option value="ON HOLD">HOLD</option>
                           <option value="DONE">DONE</option>
                         </select>

@@ -92,21 +92,21 @@ const DepartmentMaster: React.FC<Props> = ({ departments, onUpdate }) => {
         </div>
       )}
 
-      <div className="bg-white rounded-[20px] border border-[#EAEAEA] shadow-sm overflow-hidden overflow-x-auto animate-in fade-in duration-300">
+      <div className="bg-white rounded-[16px] md:rounded-[20px] border border-[#EAEAEA] shadow-sm overflow-hidden overflow-x-auto animate-in fade-in duration-300">
         <div className="overflow-y-auto max-h-[600px]">
-          <table className="w-full text-left text-xs md:text-sm border-collapse min-w-[600px] md:min-w-0">
+          <table className="w-full text-left text-[10px] md:text-sm border-collapse min-w-[280px] md:min-w-0">
             <thead className="sticky top-0 z-10 bg-[#F8F9FA]">
               <tr className="border-b border-[#EAEAEA]">
-                <th className="px-6 py-4 font-bold text-zinc-900 uppercase text-[10px]">ID</th>
-                <th className="px-6 py-4 font-bold text-zinc-900 uppercase text-[10px]">Dept Name</th>
-                <th className="px-6 py-4 font-bold text-zinc-900 uppercase text-[10px] text-right">Actions</th>
+                <th className="px-2 md:px-6 py-2.5 md:py-4 font-bold text-zinc-900 uppercase text-[9px] md:text-[10px] hidden md:table-cell">ID</th>
+                <th className="px-2 md:px-6 py-2.5 md:py-4 font-bold text-zinc-900 uppercase text-[9px] md:text-[10px]">Dept Name</th>
+                <th className="px-2 md:px-6 py-2.5 md:py-4 font-bold text-zinc-900 uppercase text-[9px] md:text-[10px] text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {departments.map(dept => (
                 <tr key={dept.id} className="hover:bg-[#FCFCFC] transition-colors">
-                  <td className="px-6 py-4 font-mono text-[10px] text-zinc-500 font-bold truncate max-w-[100px]">{dept.id}</td>
-                  <td className="px-6 py-4">
+                  <td className="px-2 md:px-6 py-2.5 md:py-4 font-mono text-[10px] text-zinc-500 font-bold truncate max-w-[100px] hidden md:table-cell">{dept.id}</td>
+                  <td className="px-2 md:px-6 py-2.5 md:py-4">
                     {editingId === dept.id ? (
                       <input
                         type="text"
@@ -118,16 +118,22 @@ const DepartmentMaster: React.FC<Props> = ({ departments, onUpdate }) => {
                         className="text-sm border-zinc-300 rounded-lg p-2 border bg-white font-bold"
                       />
                     ) : (
-                      <span className={`text-sm font-bold ${!dept.active ? 'text-zinc-400 line-through' : 'text-zinc-900'}`}>
+                      <span className={`text-[10px] md:text-sm font-bold ${!dept.active ? 'text-zinc-400 line-through' : 'text-zinc-900'}`}>
                         {dept.department_name}
                       </span>
                     )}
                   </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-6">
-                      <button onClick={() => startEdit(dept)} className="text-[10px] font-bold uppercase text-zinc-800 tracking-wider">Edit</button>
-                      <button onClick={() => toggleStatus(dept)} className={`text-[10px] font-bold uppercase tracking-wider ${dept.active ? 'text-red-500' : 'text-green-600'}`}>
-                        {dept.active ? 'Off' : 'On'}
+                  <td className="px-2 md:px-6 py-2.5 md:py-4 text-right">
+                    <div className="flex items-center justify-end gap-1.5 md:gap-6">
+                      <button onClick={() => startEdit(dept)} className="text-zinc-800 p-1 rounded hover:bg-zinc-100" title="Edit">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-5M16.5 3.5a2.121 2.121 0 113 3L7 19l-4 1 1-4L16.5 3.5z" /></svg>
+                      </button>
+                      <button onClick={() => toggleStatus(dept)} className={`p-1 rounded ${dept.active ? 'text-red-500 hover:bg-red-50' : 'text-green-600 hover:bg-green-50'}`} title={dept.active ? 'Deactivate' : 'Activate'}>
+                        {dept.active ? (
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                        ) : (
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
+                        )}
                       </button>
                     </div>
                   </td>

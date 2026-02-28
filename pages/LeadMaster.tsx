@@ -487,14 +487,14 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
 
       <div className="flex-1 overflow-auto">
         {view === 'list' ? (
-          <div className="bg-white rounded-[20px] border border-[#EAEAEA] shadow-sm overflow-hidden overflow-x-auto animate-in fade-in duration-300">
-            <table className="w-full text-left text-xs md:text-sm border-collapse min-w-[600px] md:min-w-0">
-              <thead className="bg-[#F8F9FA] border-b border-[#EAEAEA] font-bold text-[10px] uppercase text-zinc-500 tracking-wider">
+          <div className="bg-white rounded-[16px] md:rounded-[20px] border border-[#EAEAEA] shadow-sm overflow-hidden overflow-x-auto animate-in fade-in duration-300">
+            <table className="w-full text-left text-[10px] md:text-sm border-collapse min-w-[420px] md:min-w-0">
+              <thead className="bg-[#F8F9FA] border-b border-[#EAEAEA] font-bold text-[9px] md:text-[10px] uppercase text-zinc-500 tracking-wider">
                 <tr>
-                  <th className="px-6 py-4">Status & Name</th>
-                  <th className="px-6 py-4">Timeline & Grade</th>
-                  <th className="px-6 py-4">Requester</th>
-                  <th className="px-6 py-4 text-right">Actions</th>
+                  <th className="px-2 md:px-6 py-2.5 md:py-4">Name & Status</th>
+                  <th className="px-2 md:px-6 py-2.5 md:py-4">Timeline</th>
+                  <th className="px-2 md:px-6 py-2.5 md:py-4">Req</th>
+                  <th className="px-2 md:px-6 py-2.5 md:py-4 text-right">Act</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -504,28 +504,34 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
                   const isToday = l.deadline === todayStr && l.status !== 'DONE';
                   return (
                     <tr key={l.id} onClick={() => setSelectedLead(l)} className="hover:bg-[#FCFCFC] transition-colors cursor-pointer group font-bold text-zinc-800 uppercase">
-                      <td className="px-6 py-4">
-                        <div className="flex flex-col gap-1.5">
-                          <div className="font-bold text-zinc-900">{l.lead_name}</div>
+                      <td className="px-2 md:px-6 py-2 md:py-4">
+                        <div className="flex flex-col gap-1">
+                          <div className="font-bold text-zinc-900 text-[10px] md:text-sm leading-tight">{l.lead_name}</div>
                           <div className="flex">
-                            <span className={`px-2 py-0.5 rounded-full border text-[8px] font-bold uppercase ${getStatusBadge(l.status)}`}>{l.status}</span>
+                            <span className={`px-1.5 md:px-2 py-0.5 rounded-full border text-[7px] md:text-[8px] font-bold uppercase ${getStatusBadge(l.status)}`}>{l.status}</span>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="text-[11px] font-bold text-zinc-800 leading-tight">{l.order_date} → <span className={`${isOverdue ? 'text-red-700 bg-red-100 px-1 py-0.5 rounded border border-red-200' : isToday ? 'text-amber-700 bg-amber-100 px-1 py-0.5 rounded border border-amber-200' : 'text-zinc-900'} font-bold`}>{l.deadline}</span></div>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase ${l.lead_grade === 'A' ? 'bg-orange-100 text-orange-700' : 'bg-indigo-100 text-zinc-800'}`}>Grade {l.lead_grade}</span>
+                      <td className="px-2 md:px-6 py-2 md:py-4">
+                        <div className="text-[9px] md:text-[11px] font-bold text-zinc-800 leading-tight">{l.order_date} → <span className={`${isOverdue ? 'text-red-700 bg-red-100 px-1 py-0.5 rounded border border-red-200' : isToday ? 'text-amber-700 bg-amber-100 px-1 py-0.5 rounded border border-amber-200' : 'text-zinc-900'} font-bold`}>{l.deadline}</span></div>
+                        <div className="flex flex-wrap gap-1 mt-0.5">
+                          <span className={`px-1.5 py-0.5 rounded text-[7px] md:text-[8px] font-bold uppercase ${l.lead_grade === 'A' ? 'bg-orange-100 text-orange-700' : 'bg-indigo-100 text-zinc-800'}`}>Grade {l.lead_grade}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-1.5"><span className="w-2 h-2 bg-zinc-900 rounded-full"></span><span className="text-[11px] uppercase">{l.requester}</span></div>
+                      <td className="px-2 md:px-6 py-2 md:py-4">
+                        <div className="flex items-center gap-1"><span className="w-1.5 h-1.5 bg-zinc-900 rounded-full"></span><span className="text-[9px] md:text-[11px] uppercase">{l.requester}</span></div>
                       </td>
-                      <td className="px-6 py-4 text-right" onClick={e => e.stopPropagation()}>
-                        <div className="flex items-center justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={(e) => downloadPDF(e, l)} className="text-emerald-700 text-[10px] font-bold uppercase">PDF</button>
-                          <button onClick={(e) => handleEdit(e, l)} className="text-indigo-600 text-[10px] font-bold uppercase">Edit</button>
-                          <button onClick={(e) => handleDelete(e, l.id)} className="text-red-500 text-[10px] font-bold uppercase">Del</button>
+                      <td className="px-2 md:px-6 py-2 md:py-4 text-right" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-1.5 md:gap-3 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                          <button onClick={(e) => downloadPDF(e, l)} className="text-emerald-600 p-1 rounded hover:bg-emerald-50" title="Download PDF">
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                          </button>
+                          <button onClick={(e) => handleEdit(e, l)} className="text-indigo-600 p-1 rounded hover:bg-indigo-50" title="Edit">
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-5M16.5 3.5a2.121 2.121 0 113 3L7 19l-4 1 1-4L16.5 3.5z" /></svg>
+                          </button>
+                          <button onClick={(e) => handleDelete(e, l.id)} className="text-red-500 p-1 rounded hover:bg-red-50" title="Delete">
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                          </button>
                         </div>
                       </td>
                     </tr>

@@ -162,7 +162,7 @@ const ArtworkTable: React.FC<Props> = ({ state, onUpdate, onDelete }) => {
       </div>
 
       <div className="overflow-x-auto overflow-y-auto max-h-[600px]">
-        <table className="w-full text-left text-xs md:text-sm border-collapse min-w-[600px] md:min-w-0">
+        <table className="w-full text-left text-[10px] md:text-sm border-collapse min-w-[440px] md:min-w-0">
           <thead className="sticky top-0 z-10 bg-slate-100">
             <tr className="border-b border-slate-200 text-slate-800 font-black uppercase text-[10px] tracking-wider">
               <th className="px-2 md:px-6 py-3 md:py-4">Artwork Name & Type</th>
@@ -231,23 +231,27 @@ const ArtworkTable: React.FC<Props> = ({ state, onUpdate, onDelete }) => {
               }
               return (
                 <tr key={log.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="font-bold text-slate-900">{log.artwork_name}</div>
-                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider border border-slate-200 px-1.5 py-0.5 rounded bg-slate-100 inline-block mt-1">
+                  <td className="px-2 md:px-6 py-2 md:py-4">
+                    <div className="font-bold text-slate-900 text-[10px] md:text-sm leading-tight">{log.artwork_name}</div>
+                    <span className="text-[7px] md:text-[9px] font-black text-slate-400 uppercase tracking-wider border border-slate-200 px-1 py-0.5 rounded bg-slate-100 inline-block mt-0.5">
                       {log.artwork_type}
                     </span>
                   </td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex px-1.5 py-0.5 rounded text-[9px] font-black uppercase mb-1 ${getContextColor(log.work_context)}`}>{log.work_context}</span>
-                    <div className="text-[11px] font-bold text-slate-600 uppercase truncate max-w-[180px]">{getContextLabel(log)}</div>
+                  <td className="px-2 md:px-6 py-2 md:py-4">
+                    <span className={`inline-flex px-1 py-0.5 rounded text-[7px] md:text-[9px] font-black uppercase mb-0.5 ${getContextColor(log.work_context)}`}>{log.work_context}</span>
+                    <div className="text-[9px] md:text-[11px] font-bold text-slate-600 uppercase truncate max-w-[100px] md:max-w-[180px]">{getContextLabel(log)}</div>
                   </td>
-                  <td className="px-6 py-4 text-sm font-bold text-slate-800">{getDesignerName(log.pic_designer_id)}</td>
-                  <td className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase">{log.start_date} &bull; {log.end_date || '...'}</td>
-                  <td className="px-6 py-4 text-center font-black text-slate-900 text-xs">{log.revision_count}</td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-3">
-                      <button onClick={() => handleStartEdit(log)} className="text-indigo-600 text-[10px] font-black uppercase">Edit</button>
-                      <button onClick={() => onDelete(log.id)} className="text-red-500 text-[10px] font-black uppercase">Del</button>
+                  <td className="px-2 md:px-6 py-2 md:py-4 text-[10px] md:text-sm font-bold text-slate-800">{getDesignerName(log.pic_designer_id)}</td>
+                  <td className="px-2 md:px-6 py-2 md:py-4 text-[9px] md:text-[11px] font-bold text-slate-500 uppercase">{log.start_date} &bull; {log.end_date || '...'}</td>
+                  <td className="px-2 md:px-6 py-2 md:py-4 text-center font-black text-slate-900 text-[10px] md:text-xs">{log.revision_count}</td>
+                  <td className="px-2 md:px-6 py-2 md:py-4 text-right">
+                    <div className="flex justify-end gap-1.5 md:gap-3">
+                      <button onClick={() => handleStartEdit(log)} className="text-indigo-600 p-1 rounded hover:bg-indigo-50" title="Edit">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-5M16.5 3.5a2.121 2.121 0 113 3L7 19l-4 1 1-4L16.5 3.5z" /></svg>
+                      </button>
+                      <button onClick={() => onDelete(log.id)} className="text-red-500 p-1 rounded hover:bg-red-50" title="Delete">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                      </button>
                     </div>
                   </td>
                 </tr>

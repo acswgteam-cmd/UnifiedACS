@@ -673,11 +673,11 @@ const Dashboard: React.FC<Props> = ({ state }) => {
                   {["2D Design", "3D Design", "Video"].map(type => {
                     const maxVal = Math.max(...analytics.contextTypeMatrix.map(c => (c as any)[type] || 0), 1);
                     return (
-                      <div key={type} className="flex flex-row items-center gap-[6px]">
-                        <div className="flex-shrink-0 w-24 text-[10px] font-semibold text-zinc-500 uppercase tracking-tight text-right pr-2">
-                          {type === '2D Design' ? '2D Design' : type === '3D Design' ? '3D Design' : 'Video'}
+                      <div key={type} className="flex flex-row items-center gap-[4px] md:gap-[6px]">
+                        <div className="flex-shrink-0 w-10 md:w-24 text-[8px] md:text-[10px] font-semibold text-zinc-500 uppercase tracking-tight text-right pr-1 md:pr-2">
+                          {type === '2D Design' ? '2D' : type === '3D Design' ? '3D' : 'VDO'}
                         </div>
-                        <div className="flex flex-1 gap-[6px]">
+                        <div className="flex flex-1 gap-[4px] md:gap-[6px]">
                           {analytics.contextTypeMatrix.map(c => {
                             const val = (c as any)[type] || 0;
                             const intensity = val / maxVal;
@@ -696,7 +696,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
                             return (
                               <div
                                 key={c.ctx}
-                                className={`flex-1 h-10 min-w-[28px] rounded-[4px] flex items-center justify-center text-[10px] font-bold transition-all hover:opacity-80 ${bgClass} ${textColor} relative group`}
+                                className={`flex-1 h-7 md:h-10 min-w-[20px] md:min-w-[28px] rounded-[4px] flex items-center justify-center text-[8px] md:text-[10px] font-bold transition-all hover:opacity-80 ${bgClass} ${textColor} relative group`}
                                 title={`${c.label} - ${type}: ${val}`}
                               >
                                 <span className={val > 0 ? "opacity-100" : "opacity-0"}>{val}</span>
@@ -709,9 +709,9 @@ const Dashboard: React.FC<Props> = ({ state }) => {
                   })}
 
                   {/* Context Headers Matrix X-axis */}
-                  <div className="flex flex-row items-center gap-[6px] mt-1 hidden sm:flex">
-                    <div className="flex-shrink-0 w-24"></div>
-                    <div className="flex flex-1 gap-[6px]">
+                  <div className="flex flex-row items-center gap-[4px] md:gap-[6px] mt-1">
+                    <div className="flex-shrink-0 w-10 md:w-24"></div>
+                    <div className="flex flex-1 gap-[4px] md:gap-[6px]">
                       {analytics.contextTypeMatrix.map(c => (
                         <div key={c.ctx} className="flex-1 text-center text-[9px] font-semibold text-zinc-400 uppercase tracking-tight truncate" title={c.label}>
                           {c.label}
@@ -741,11 +741,11 @@ const Dashboard: React.FC<Props> = ({ state }) => {
                     {["2D Design", "3D Design", "Video"].map(type => {
                       const maxVal = Math.max(...analytics.departmentStats.map(d => (d.counts as any)[type] || 0), 1);
                       return (
-                        <div key={type} className="flex flex-row items-center gap-[6px]">
-                          <div className="flex-shrink-0 w-24 text-[10px] font-semibold text-zinc-500 uppercase tracking-tight text-right pr-2">
-                            {type === '2D Design' ? '2D Design' : type === '3D Design' ? '3D Design' : 'Video'}
+                        <div key={type} className="flex flex-row items-center gap-[4px] md:gap-[6px]">
+                          <div className="flex-shrink-0 w-10 md:w-24 text-[8px] md:text-[10px] font-semibold text-zinc-500 uppercase tracking-tight text-right pr-1 md:pr-2">
+                            {type === '2D Design' ? '2D' : type === '3D Design' ? '3D' : 'VDO'}
                           </div>
-                          <div className="flex flex-1 gap-[6px]">
+                          <div className="flex flex-1 gap-[4px] md:gap-[6px]">
                             {analytics.departmentStats.map(d => {
                               const val = (d.counts as any)[type] || 0;
                               const intensity = val / maxVal;
@@ -764,7 +764,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
                               return (
                                 <div
                                   key={d.id}
-                                  className={`flex-1 h-10 min-w-[28px] rounded-[4px] flex items-center justify-center text-[10px] font-bold transition-all hover:opacity-80 ${bgClass} ${textColor} relative group`}
+                                  className={`flex-1 h-7 md:h-10 min-w-[20px] md:min-w-[28px] rounded-[4px] flex items-center justify-center text-[8px] md:text-[10px] font-bold transition-all hover:opacity-80 ${bgClass} ${textColor} relative group`}
                                   title={`${d.department_name} - ${type}: ${val}`}
                                 >
                                   <span className={val > 0 ? "opacity-100" : "opacity-0"}>{val}</span>
@@ -777,9 +777,9 @@ const Dashboard: React.FC<Props> = ({ state }) => {
                     })}
 
                     {/* Departments Headers Matrix X-axis */}
-                    <div className="flex flex-row items-center gap-[6px] mt-1 hidden sm:flex">
-                      <div className="flex-shrink-0 w-24"></div>
-                      <div className="flex flex-1 gap-[6px]">
+                    <div className="flex flex-row items-center gap-[4px] md:gap-[6px] mt-1">
+                      <div className="flex-shrink-0 w-10 md:w-24"></div>
+                      <div className="flex flex-1 gap-[4px] md:gap-[6px]">
                         {analytics.departmentStats.map(d => (
                           <div key={d.id} className="flex-1 text-center text-[9px] font-semibold text-zinc-400 capitalize truncate" title={d.department_name}>
                             {d.department_name.split(' ')[0]}
