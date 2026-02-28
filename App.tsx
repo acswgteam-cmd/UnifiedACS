@@ -174,9 +174,9 @@ const App: React.FC = () => {
         <Route path="/portal/v1/survey/:token" element={<PublicProjectSurvey />} />
 
         <Route path="/admin/*" element={
-          <div className="flex h-screen overflow-hidden bg-[#F8F9FA] text-slate-900">
+          <div className="flex flex-col md:flex-row h-screen overflow-hidden bg-[#F8F9FA] text-slate-900 pb-16 md:pb-0">
             {/* Sidebar: Updated to match elegant dark theme */}
-            <aside className={`${collapsed ? 'w-20 overflow-visible' : 'w-64 overflow-hidden'} bg-[#1A1C20] text-zinc-300 flex-shrink-0 flex flex-col z-20 transition-all duration-300 relative border-r border-zinc-800`}>
+            <aside className={`hidden md:flex ${collapsed ? 'w-20 overflow-visible' : 'w-64 overflow-hidden'} bg-[#1A1C20] text-zinc-300 flex-shrink-0 flex-col z-20 transition-all duration-300 relative border-r border-zinc-800`}>
               <div className={`p-6 flex items-center ${collapsed ? 'justify-center' : 'justify-between'}`}>
                 {!collapsed && <h1 className="text-xl font-bold tracking-tight text-white">ACS UNIFIED</h1>}
                 <button onClick={() => setCollapsed(!collapsed)} className="p-1.5 rounded-lg bg-zinc-800/50 hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors">
@@ -228,6 +228,15 @@ const App: React.FC = () => {
                 </Routes>
               </div>
             </main>
+
+            {/* Mobile Bottom Navbar */}
+            <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[#1A1C20] border-t border-zinc-800 flex justify-around items-center h-16 z-[100] px-2 shadow-[0_-4px_20px_rgba(0,0,0,0.3)] pb-safe">
+              <MobileNavLink to="/admin/dashboard" icon={icons.dashboard} label="Dash" />
+              <MobileNavLink to="/admin/artwork-logs" icon={icons.artwork} label="Logs" />
+              <MobileNavLink to="/admin/masters/projects" icon={icons.project} label="Proj" />
+              <MobileNavLink to="/admin/masters/leads" icon={icons.lead} label="Leads" />
+              <MobileNavLink to="/admin/masters/internal" icon={icons.internal} label="Int" />
+            </nav>
           </div>
         } />
 
@@ -265,6 +274,20 @@ const NavLink: React.FC<{ to: string; icon: React.ReactNode; label: string; coll
           <div className="absolute top-1/2 right-full -mt-1 -mr-[1px] border-4 border-transparent border-r-slate-900"></div>
         </div>
       )}
+    </Link>
+  );
+};
+
+const MobileNavLink: React.FC<{ to: string; icon: React.ReactNode; label: string; }> = ({ to, icon, label }) => {
+  const location = useLocation();
+  const isActive = location.pathname === to;
+  return (
+    <Link
+      to={to}
+      className={`flex flex-col items-center justify-center w-full h-full text-xs font-medium transition-all duration-200 ${isActive ? 'text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+    >
+      <span className={`text-xl mb-1 ${isActive ? 'text-indigo-400' : ''}`}>{icon}</span>
+      <span className="truncate max-w-full text-[10px]">{label}</span>
     </Link>
   );
 };

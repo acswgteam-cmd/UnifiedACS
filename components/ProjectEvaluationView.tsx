@@ -263,7 +263,7 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({ pr
                         {/* Project List */}
                         <div className="bg-white rounded-[20px] border border-[#EAEAEA] shadow-sm overflow-hidden animate-in fade-in duration-300">
                             <div className="overflow-x-auto">
-                                <table className="w-full text-left text-sm border-collapse min-w-[700px] md:min-w-full">
+                                <table className="w-full text-left text-xs md:text-sm border-collapse min-w-[600px] md:min-w-full">
                                     <thead className="bg-[#F8F9FA] border-b border-[#EAEAEA] font-bold text-[10px] uppercase text-zinc-500 tracking-wider">
                                         <tr>
                                             <th className="px-5 py-4">Timeline & Project Name</th>
@@ -302,7 +302,7 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({ pr
                                                         <td colSpan={5} className="p-0 border-t border-zinc-50">
                                                             <div className="px-5 pb-5 pt-2 animate-in slide-in-from-top-2 duration-200">
                                                                 <div className="overflow-x-auto">
-                                                                    <table className="w-full text-left border-collapse min-w-[600px] md:min-w-full">
+                                                                    <table className="w-full text-left text-xs md:text-sm border-collapse min-w-[500px] md:min-w-full">
                                                                         <thead>
                                                                             <tr>
                                                                                 <th className="py-3 px-2 text-[10px] font-bold text-zinc-400 uppercase tracking-wider border-b border-[#EAEAEA]">Nama</th>
@@ -410,7 +410,7 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({ pr
                         <div className="bg-white rounded-[20px] border border-[#EAEAEA] shadow-sm overflow-hidden animate-in fade-in duration-300 mt-6">
                             <h3 className="text-xs font-bold text-zinc-900 uppercase tracking-widest p-6 border-b border-[#EAEAEA] bg-[#F8F9FA]">Daftar Detail Evaluasi Tim</h3>
                             <div className="overflow-x-auto">
-                                <table className="w-full text-left text-sm border-collapse min-w-[500px] md:min-w-full">
+                                <table className="w-full text-left text-xs md:text-sm border-collapse min-w-[500px] md:min-w-full">
                                     <thead className="bg-[#FCFCFC] border-b border-[#EAEAEA] font-bold text-[10px] uppercase text-zinc-500 tracking-wider">
                                         <tr>
                                             <th className="px-6 py-4">Designer & Role</th>
@@ -487,7 +487,7 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({ pr
                                                                 {/* Project Participations & Feedback */}
                                                                 <div className="bg-white rounded-xl border border-[#EAEAEA] shadow-sm overflow-hidden">
                                                                     <div className="overflow-x-auto">
-                                                                        <table className="w-full text-left border-collapse min-w-[600px] md:min-w-full">
+                                                                        <table className="w-full text-left text-xs md:text-sm border-collapse min-w-[500px] md:min-w-full">
                                                                             <thead className="bg-[#F8F9FA] border-b border-[#EAEAEA]">
                                                                                 <tr>
                                                                                     <th className="py-3 px-4 text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Project</th>

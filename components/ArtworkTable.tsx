@@ -162,7 +162,7 @@ const ArtworkTable: React.FC<Props> = ({ state, onUpdate, onDelete }) => {
       </div>
 
       <div className="overflow-x-auto overflow-y-auto max-h-[600px]">
-        <table className="w-full text-left text-sm border-collapse">
+        <table className="w-full text-left text-xs md:text-sm border-collapse min-w-[600px] md:min-w-0">
           <thead className="sticky top-0 z-10 bg-slate-100">
             <tr className="border-b border-slate-200 text-slate-800 font-black uppercase text-[10px] tracking-wider">
               <th className="px-6 py-4">Artwork Name & Type</th>

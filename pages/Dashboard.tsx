@@ -378,7 +378,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
     };
   }, [state, filterStart, filterEnd]);
 
-  const cardClass = "bg-white p-6 rounded-[20px] border border-[#EAEAEA] shadow-sm flex flex-col transition-all hover:shadow-md";
+  const cardClass = "bg-white p-4 md:p-6 rounded-[20px] border border-[#EAEAEA] shadow-sm flex flex-col transition-all hover:shadow-md";
   const labelClass = "text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1 block";
 
   return (
@@ -464,7 +464,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
       </header>
 
       {/* KPI Row - Vibrant Gradients */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6">
         <KPICard
           label="Total Artworks"
           value={analytics.totalArtworks}
@@ -505,7 +505,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
       </div>
 
       {/* Volume Insights Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
         <VolumeCard
           title="Project"
           count={analytics.artworksProject}
@@ -530,7 +530,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
       </div>
 
       {/* GRAPHIC ROW */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
         <section className={cardClass}>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-bold text-zinc-900 uppercase tracking-tight">Artwork Type Trend</h2>
@@ -540,7 +540,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
               <LegendDot color="bg-orange-500" label="Video" />
             </div>
           </div>
-          <div className="h-[240px] w-full mb-4">
+          <div className="w-full mb-4">
             <TrendLineChart
               data={analytics.monthlyTrends}
               keys={["2D Design", "3D Design", "Video"]}
@@ -567,7 +567,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
               <LegendDot color="bg-purple-600" label="Int" />
             </div>
           </div>
-          <div className="h-[240px] w-full mb-4">
+          <div className="w-full mb-4">
             <TrendLineChart
               data={analytics.monthlyTrends}
               keys={[WorkContext.PROJECT, WorkContext.LEAD, WorkContext.INTERNAL]}
@@ -596,7 +596,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
       </div>
 
       {/* DEPARTMENT REQUEST VOLUME & HEATMAP */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 md:gap-6">
         <section className={cardClass}>
           <div className="flex items-center justify-between mb-6">
             <div className="flex flex-col">
@@ -654,7 +654,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
         </section>
 
         {/* HEATMAPS COLUMN */}
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-4 md:gap-6">
           {/* GENERAL HEATMAP */}
           <section className={cardClass}>
             <div className="flex flex-col mb-4">
@@ -797,7 +797,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
             <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wide">Overall Performance Insights</span>
           </div>
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
           <div className="bg-[#FCFCFC] p-4 rounded-xl border border-[#EAEAEA] flex flex-col h-full hover:shadow-sm transition-all">
             <div className="mb-5">
               <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider block mb-1">Nilai Overall Review</span>
@@ -859,12 +859,11 @@ const Dashboard: React.FC<Props> = ({ state }) => {
         </div>
       </section >
 
-      {/* DESIGNER PERFORMANCE HORIZONTAL */}
       < div className="pt-2" >
         <span className={labelClass}>Team Output & Performance</span>
-        <div className="flex overflow-x-auto flex-nowrap gap-6 mt-4 pb-4 snap-x scrollbar-thin scrollbar-thumb-slate-300">
+        <div className="flex overflow-x-auto flex-nowrap gap-4 md:gap-6 mt-4 pb-4 snap-x scrollbar-thin scrollbar-thumb-slate-300">
           {analytics.teamStats.map(ds => (
-            <div key={ds.id} className="flex-shrink-0 w-[300px] snap-start bg-white p-6 rounded-[20px] border border-[#EAEAEA] shadow-sm group">
+            <div key={ds.id} className="flex-shrink-0 w-[260px] md:w-[300px] snap-start bg-white p-4 md:p-6 rounded-[20px] border border-[#EAEAEA] shadow-sm group">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 text-white flex items-center justify-center font-bold text-lg group-hover:from-indigo-500 group-hover:to-purple-600 transition-all shadow-md">
                   {ds.name.charAt(0)}
@@ -974,7 +973,7 @@ const LegendDot = ({ color, label }: { color: string, label: string }) => (
 );
 
 const KPICard = ({ label, value, sub, gradient, keywords, statsList }: any) => (
-  <div className="bg-white p-6 rounded-[20px] border border-[#EAEAEA] shadow-sm flex flex-col h-full transition-all hover:shadow-sm border border-[#EAEAEA] relative overflow-hidden group">
+  <div className="bg-white p-4 md:p-6 rounded-[20px] border border-[#EAEAEA] shadow-sm flex flex-col h-full transition-all hover:shadow-sm border border-[#EAEAEA] relative overflow-hidden group">
     {/* Decorative Gradient Background Opacity */}
     <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${gradient} opacity-5 rounded-bl-full pointer-events-none transition-opacity group-hover:opacity-10`}></div>
 
@@ -1027,7 +1026,7 @@ const KPICard = ({ label, value, sub, gradient, keywords, statsList }: any) => (
 
 const VolumeCard = ({ title, count, duration, typeSplit, gradient }: any) => {
   return (
-    <div className="bg-white p-5 rounded-[20px] border border-[#EAEAEA] shadow-sm flex flex-col relative overflow-hidden group hover:shadow-md transition-all">
+    <div className="bg-white p-4 md:p-5 rounded-[20px] border border-[#EAEAEA] shadow-sm flex flex-col relative overflow-hidden group hover:shadow-md transition-all">
       <div className={`absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b ${gradient}`}></div>
       <div className="flex justify-between items-center mb-4 pl-3">
         <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-700">{title} Context</h3>
@@ -1168,8 +1167,8 @@ const TrendLineChart = ({ data, keys, labels, colors }: any) => {
   };
 
   return (
-    <div className="relative w-full h-full" onMouseLeave={() => setHoverIndex(null)}>
-      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" preserveAspectRatio="none">
+    <div className="relative w-full h-auto max-w-full" onMouseLeave={() => setHoverIndex(null)}>
+      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto">
         <defs>
           {colors.map((color: string, i: number) => (
             <linearGradient key={`grad-${i}`} id={`grad-${i}`} x1="0" y1="0" x2="0" y2="1">

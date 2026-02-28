@@ -357,7 +357,7 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
           <h1 className="text-2xl font-bold text-zinc-900 tracking-tight uppercase">Lead Registry</h1>
           <p className="text-zinc-600 text-sm mt-1 font-semibold">Monitor and manage all design inquiries.</p>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 md:gap-3 w-full md:w-auto mt-4 md:mt-0">
           <button onClick={handleCopyLink} className={`px-4 py-2 rounded-lg text-xs font-bold uppercase transition-all flex items-center gap-2 border ${copySuccess ? 'bg-emerald-50 border-emerald-500 text-emerald-700' : 'bg-white border-zinc-300 text-zinc-700 hover:border-zinc-900'}`}>
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
             {copySuccess ? 'Copied Link!' : 'Copy Secured Link'}
@@ -487,8 +487,8 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
 
       <div className="flex-1 overflow-auto">
         {view === 'list' ? (
-          <div className="bg-white rounded-[20px] border border-[#EAEAEA] shadow-sm overflow-hidden animate-in fade-in duration-300">
-            <table className="w-full text-left text-sm border-collapse">
+          <div className="bg-white rounded-[20px] border border-[#EAEAEA] shadow-sm overflow-hidden overflow-x-auto animate-in fade-in duration-300">
+            <table className="w-full text-left text-xs md:text-sm border-collapse min-w-[600px] md:min-w-0">
               <thead className="bg-[#F8F9FA] border-b border-[#EAEAEA] font-bold text-[10px] uppercase text-zinc-500 tracking-wider">
                 <tr>
                   <th className="px-6 py-4">Status & Name</th>

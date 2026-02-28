@@ -222,7 +222,7 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
           <h1 className="text-2xl font-bold text-zinc-900 tracking-tight uppercase">Internal Design Tasks</h1>
           <p className="text-zinc-600 text-sm mt-1 font-semibold">Manage inter-department creative requests.</p>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 md:gap-3 w-full md:w-auto mt-4 md:mt-0">
           <div className="flex bg-[#FAFAFA] p-1 rounded-xl">
             <button onClick={() => setView('list')} className={`p-2 rounded-lg transition-all ${view === 'list' ? 'bg-white text-purple-700 shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`} title="List View"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" /></svg></button>
             <button onClick={() => setView('board')} className={`p-2 rounded-lg transition-all ${view === 'board' ? 'bg-white text-purple-700 shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`} title="Board View"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" strokeWidth="2" /><path d="M9 3v18M15 3v18" strokeWidth="2" /></svg></button>
@@ -293,8 +293,8 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
       </div>
 
       {view === 'list' ? (
-        <div className="bg-white rounded-[20px] border border-[#EAEAEA] shadow-sm overflow-hidden animate-in fade-in duration-300">
-          <table className="w-full text-left text-sm border-collapse">
+        <div className="bg-white rounded-[20px] border border-[#EAEAEA] shadow-sm overflow-hidden overflow-x-auto animate-in fade-in duration-300">
+          <table className="w-full text-left text-xs md:text-sm border-collapse min-w-[600px] md:min-w-0">
             <thead className="bg-[#F8F9FA] border-b border-[#EAEAEA] font-bold text-[10px] uppercase text-zinc-500 tracking-wider">
               <tr>
                 <th className="px-6 py-4">Task Name & Status</th>

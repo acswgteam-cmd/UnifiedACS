@@ -16,7 +16,7 @@ const DepartmentMaster: React.FC<Props> = ({ departments, onUpdate }) => {
 
   const handleAdd = async () => {
     if (!newDeptName.trim() || !supabase) return;
-    
+
     const { error } = await supabase.from('departments').insert([{
       department_name: newDeptName,
       active: true
@@ -37,7 +37,7 @@ const DepartmentMaster: React.FC<Props> = ({ departments, onUpdate }) => {
       .from('departments')
       .update({ active: !dept.active })
       .eq('id', dept.id);
-      
+
     if (error) alert(error.message);
     else onUpdate();
   };
@@ -70,7 +70,7 @@ const DepartmentMaster: React.FC<Props> = ({ departments, onUpdate }) => {
           <h1 className="text-2xl font-bold text-zinc-900 uppercase tracking-tight">Department Master</h1>
           <p className="text-zinc-600 text-sm mt-1 font-bold">Manage creative units.</p>
         </div>
-        <button 
+        <button
           onClick={() => setIsAdding(true)}
           className="px-4 py-2 bg-zinc-900 text-white rounded-lg text-sm font-bold flex items-center gap-2 shadow-sm border border-[#EAEAEA]"
         >
@@ -80,9 +80,9 @@ const DepartmentMaster: React.FC<Props> = ({ departments, onUpdate }) => {
 
       {isAdding && (
         <div className="bg-white p-6 rounded-xl border border-[#EAEAEA] shadow-sm border border-[#EAEAEA] flex items-center gap-4 animate-in slide-in-from-top duration-200">
-          <input 
-            type="text" 
-            placeholder="Department Name" 
+          <input
+            type="text"
+            placeholder="Department Name"
             value={newDeptName}
             onChange={(e) => setNewDeptName(e.target.value)}
             className={inputClass}
@@ -92,9 +92,9 @@ const DepartmentMaster: React.FC<Props> = ({ departments, onUpdate }) => {
         </div>
       )}
 
-      <div className="bg-white rounded-[20px] border border-[#EAEAEA] shadow-sm overflow-hidden flex flex-col">
+      <div className="bg-white rounded-[20px] border border-[#EAEAEA] shadow-sm overflow-hidden overflow-x-auto animate-in fade-in duration-300">
         <div className="overflow-y-auto max-h-[600px]">
-          <table className="w-full text-left text-sm border-collapse">
+          <table className="w-full text-left text-xs md:text-sm border-collapse min-w-[600px] md:min-w-0">
             <thead className="sticky top-0 z-10 bg-[#F8F9FA]">
               <tr className="border-b border-[#EAEAEA]">
                 <th className="px-6 py-4 font-bold text-zinc-900 uppercase text-[10px]">ID</th>
@@ -108,8 +108,8 @@ const DepartmentMaster: React.FC<Props> = ({ departments, onUpdate }) => {
                   <td className="px-6 py-4 font-mono text-[10px] text-zinc-500 font-bold truncate max-w-[100px]">{dept.id}</td>
                   <td className="px-6 py-4">
                     {editingId === dept.id ? (
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         value={editName}
                         onChange={(e) => setEditName(e.target.value)}
                         onBlur={saveEdit}
