@@ -378,11 +378,11 @@ const Dashboard: React.FC<Props> = ({ state }) => {
     };
   }, [state, filterStart, filterEnd]);
 
-  const cardClass = "bg-white p-4 md:p-6 rounded-[20px] border border-[#EAEAEA] shadow-sm flex flex-col transition-all hover:shadow-md";
+  const cardClass = "bg-white p-3 md:p-6 rounded-[16px] md:rounded-[20px] border border-[#EAEAEA] shadow-sm flex flex-col transition-all hover:shadow-md";
   const labelClass = "text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1 block";
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 pb-12 relative">
+    <div className="space-y-4 md:space-y-6 animate-in fade-in duration-500 pb-12 relative">
       {/* EVALUATION DETAIL MODAL */}
       {viewNotes && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-[#1A1C20]/50 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setViewNotes(null)}>
@@ -464,7 +464,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
       </header>
 
       {/* KPI Row - Vibrant Gradients */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-4 gap-3 md:gap-6">
         <KPICard
           label="Total Artworks"
           value={analytics.totalArtworks}
@@ -505,7 +505,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
       </div>
 
       {/* Volume Insights Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-6">
         <VolumeCard
           title="Project"
           count={analytics.artworksProject}
@@ -530,7 +530,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
       </div>
 
       {/* GRAPHIC ROW */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-6">
         <section className={cardClass}>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-bold text-zinc-900 uppercase tracking-tight">Artwork Type Trend</h2>
@@ -596,7 +596,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
       </div>
 
       {/* DEPARTMENT REQUEST VOLUME & HEATMAP */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 md:gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 md:gap-6">
         <section className={cardClass}>
           <div className="flex items-center justify-between mb-6">
             <div className="flex flex-col">
@@ -622,12 +622,12 @@ const Dashboard: React.FC<Props> = ({ state }) => {
                   const percentage = analytics.artworksInternal ? Math.round((deptTotal / analytics.artworksInternal) * 100) : 0;
 
                   return (
-                    <div key={dept.id} className="grid grid-cols-5 items-center gap-4">
+                    <div key={dept.id} className="grid grid-cols-3 md:grid-cols-5 items-center gap-2 md:gap-4">
                       <div className="col-span-1 min-w-0">
                         <p className="text-xs font-bold text-zinc-800 uppercase truncate leading-none mb-1">{dept.department_name}</p>
                         <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-tight">{deptTotal} Items</p>
                       </div>
-                      <div className="col-span-3 flex flex-col gap-2">
+                      <div className="col-span-1 hidden md:flex md:flex-col md:gap-2">
                         <div className="h-3.5 bg-[#FCFCFC] rounded-full flex border border-zinc-100 overflow-hidden shadow-inner">
                           <StackedSegment count={dept.counts["2D Design"]} total={deptTotal} globalMax={globalMax} gradient="from-blue-400 to-cyan-500" />
                           <StackedSegment count={dept.counts["3D Design"]} total={deptTotal} globalMax={globalMax} gradient="from-emerald-400 to-teal-500" />
@@ -639,11 +639,17 @@ const Dashboard: React.FC<Props> = ({ state }) => {
                           <span className="text-orange-600">Vid: {dept.counts["Video"]}</span>
                         </div>
                       </div>
+                      {/* Mobile counts */}
+                      <div className="col-span-1 flex flex-wrap gap-1.5 md:hidden">
+                        <span className="text-blue-600 text-[9px] font-bold">2D:{dept.counts["2D Design"]}</span>
+                        <span className="text-emerald-600 text-[9px] font-bold">3D:{dept.counts["3D Design"]}</span>
+                        <span className="text-orange-600 text-[9px] font-bold">V:{dept.counts["Video"]}</span>
+                      </div>
                       <div className="col-span-1 text-right flex flex-col items-end">
                         <span className="text-xs font-bold text-zinc-900 bg-[#FCFCFC] px-2 py-1 rounded-md border border-zinc-100">
                           {percentage}%
                         </span>
-                        <span className="text-[9px] font-bold text-zinc-400 mt-0.5">{deptTotal} / {analytics.artworksInternal}</span>
+                        <span className="text-[9px] font-bold text-zinc-400 mt-0.5 hidden md:block">{deptTotal} / {analytics.artworksInternal}</span>
                       </div>
                     </div>
                   );
@@ -797,7 +803,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
             <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wide">Overall Performance Insights</span>
           </div>
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-6">
           <div className="bg-[#FCFCFC] p-4 rounded-xl border border-[#EAEAEA] flex flex-col h-full hover:shadow-sm transition-all">
             <div className="mb-5">
               <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider block mb-1">Nilai Overall Review</span>
@@ -973,7 +979,7 @@ const LegendDot = ({ color, label }: { color: string, label: string }) => (
 );
 
 const KPICard = ({ label, value, sub, gradient, keywords, statsList }: any) => (
-  <div className="bg-white p-4 md:p-6 rounded-[20px] border border-[#EAEAEA] shadow-sm flex flex-col h-full transition-all hover:shadow-sm border border-[#EAEAEA] relative overflow-hidden group">
+  <div className="bg-white p-3 md:p-6 rounded-[16px] md:rounded-[20px] border border-[#EAEAEA] shadow-sm flex flex-col h-full transition-all hover:shadow-sm border border-[#EAEAEA] relative overflow-hidden group">
     {/* Decorative Gradient Background Opacity */}
     <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${gradient} opacity-5 rounded-bl-full pointer-events-none transition-opacity group-hover:opacity-10`}></div>
 
@@ -985,7 +991,7 @@ const KPICard = ({ label, value, sub, gradient, keywords, statsList }: any) => (
           <div className="w-3 h-3 bg-white/30 rounded-full"></div>
         </div>
       </div>
-      <div className={`text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-br ${gradient} tracking-tight`}>{value}</div>
+      <div className={`text-2xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-br ${gradient} tracking-tight`}>{value}</div>
       <p className="text-[10px] font-medium text-zinc-400 uppercase mt-1">{sub}</p>
     </div>
 
@@ -1026,7 +1032,7 @@ const KPICard = ({ label, value, sub, gradient, keywords, statsList }: any) => (
 
 const VolumeCard = ({ title, count, duration, typeSplit, gradient }: any) => {
   return (
-    <div className="bg-white p-4 md:p-5 rounded-[20px] border border-[#EAEAEA] shadow-sm flex flex-col relative overflow-hidden group hover:shadow-md transition-all">
+    <div className="bg-white p-3 md:p-5 rounded-[16px] md:rounded-[20px] border border-[#EAEAEA] shadow-sm flex flex-col relative overflow-hidden group hover:shadow-md transition-all">
       <div className={`absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b ${gradient}`}></div>
       <div className="flex justify-between items-center mb-4 pl-3">
         <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-700">{title} Context</h3>
@@ -1034,7 +1040,7 @@ const VolumeCard = ({ title, count, duration, typeSplit, gradient }: any) => {
       </div>
       <div className="grid grid-cols-2 gap-2 mb-5 pl-3">
         <div>
-          <div className={`text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r ${gradient}`}>{count}</div>
+          <div className={`text-xl md:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r ${gradient}`}>{count}</div>
           <div className="text-[9px] font-bold text-zinc-400 uppercase">Artworks</div>
         </div>
         <div className="border-l border-zinc-100 pl-4">

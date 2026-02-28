@@ -240,8 +240,8 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
       </header>
 
       {/* Simplified Status Summary & Deadline Card */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white p-6 rounded-[20px] border border-[#EAEAEA] shadow-sm flex flex-col md:col-span-2">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
+        <div className="bg-white p-3 md:p-6 rounded-[16px] md:rounded-[20px] border border-[#EAEAEA] shadow-sm flex flex-col md:col-span-2">
           <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-4">Task Status Summary</span>
           <div className="grid grid-cols-3 md:grid-cols-6 gap-y-4 gap-x-2">
             <StatusItem label="New" value={stats.new} color="text-blue-600" />
@@ -253,17 +253,17 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
           </div>
         </div>
 
-        <div className={`p-6 rounded-[20px] border flex flex-col justify-center transition-colors duration-300 ${stats.deadlinesToday > 0 ? 'bg-red-600 border-red-700 text-white shadow-sm border border-[#EAEAEA] shadow-red-100' : 'bg-white border-[#EAEAEA] text-zinc-900'}`}>
+        <div className={`p-3 md:p-6 rounded-[16px] md:rounded-[20px] border flex flex-col justify-center transition-colors duration-300 ${stats.deadlinesToday > 0 ? 'bg-red-600 border-red-700 text-white shadow-sm border border-[#EAEAEA] shadow-red-100' : 'bg-white border-[#EAEAEA] text-zinc-900'}`}>
           <span className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${stats.deadlinesToday > 0 ? 'text-red-100' : 'text-zinc-400'}`}>Deadlines Today</span>
-          <div className="text-3xl font-bold">{stats.deadlinesToday}</div>
+          <div className="text-xl md:text-3xl font-bold">{stats.deadlinesToday}</div>
           <p className={`text-[9px] font-bold mt-2 uppercase ${stats.deadlinesToday > 0 ? 'text-red-100' : 'text-zinc-400'}`}>
             {stats.deadlinesToday > 0 ? 'Urgent attention!' : 'Clear for today.'}
           </p>
         </div>
 
-        <div className={`p-6 rounded-[20px] border flex flex-col justify-center transition-colors duration-300 ${stats.overdue > 0 ? 'bg-red-50 border-red-300 text-red-600 shadow-sm' : 'bg-white border-[#EAEAEA] text-zinc-900'}`}>
+        <div className={`p-3 md:p-6 rounded-[16px] md:rounded-[20px] border flex flex-col justify-center transition-colors duration-300 ${stats.overdue > 0 ? 'bg-red-50 border-red-300 text-red-600 shadow-sm' : 'bg-white border-[#EAEAEA] text-zinc-900'}`}>
           <span className="text-[10px] font-bold uppercase tracking-wider mb-1 opacity-70">Overdue Tasks</span>
-          <div className="text-3xl font-bold">{stats.overdue}</div>
+          <div className="text-xl md:text-3xl font-bold">{stats.overdue}</div>
           <p className="text-[9px] font-bold mt-2 uppercase opacity-60">
             {stats.overdue > 0 ? 'Tasks missed deadline' : 'None overdue'}
           </p>
@@ -380,7 +380,7 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
               ];
               const theme = headerColors[idx % headerColors.length];
               return (
-                <div key={groupKey} className="w-80 flex-shrink-0 bg-zinc-50/50 rounded-2xl flex flex-col max-h-full border border-zinc-100 shadow-sm h-full">
+                <div key={groupKey} className="w-64 md:w-80 flex-shrink-0 bg-zinc-50/50 rounded-2xl flex flex-col max-h-full border border-zinc-100 shadow-sm h-full">
                   <div className={`p-4 border-b border-zinc-100 border-t-4 uppercase tracking-tight font-bold text-sm flex justify-between items-center rounded-t-2xl shrink-0 ${theme}`}>
                     <span className="truncate pr-2">{groupKey}</span>
                     <span className="bg-white/60 text-current text-[10px] px-2 py-0.5 rounded-full">{internalBoardGroups[groupKey].length}</span>

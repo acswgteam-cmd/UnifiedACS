@@ -165,12 +165,12 @@ const ArtworkTable: React.FC<Props> = ({ state, onUpdate, onDelete }) => {
         <table className="w-full text-left text-xs md:text-sm border-collapse min-w-[600px] md:min-w-0">
           <thead className="sticky top-0 z-10 bg-slate-100">
             <tr className="border-b border-slate-200 text-slate-800 font-black uppercase text-[10px] tracking-wider">
-              <th className="px-6 py-4">Artwork Name & Type</th>
-              <th className="px-6 py-4">Production Context</th>
-              <th className="px-6 py-4">PIC Designer</th>
-              <th className="px-6 py-4">Timeline</th>
-              <th className="px-6 py-4 text-center">Rev</th>
-              <th className="px-6 py-4 text-right">Actions</th>
+              <th className="px-2 md:px-6 py-3 md:py-4">Artwork Name & Type</th>
+              <th className="px-2 md:px-6 py-3 md:py-4">Context</th>
+              <th className="px-2 md:px-6 py-3 md:py-4">PIC</th>
+              <th className="px-2 md:px-6 py-3 md:py-4">Timeline</th>
+              <th className="px-2 md:px-6 py-3 md:py-4 text-center">Rev</th>
+              <th className="px-2 md:px-6 py-3 md:py-4 text-right">Act</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200">

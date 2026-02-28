@@ -198,17 +198,17 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({ pr
     return (
         <div className="flex flex-col h-full animate-in fade-in duration-300">
             {/* Top Banner Stats */}
-            <div className="bg-gradient-to-br from-zinc-900 to-[#1A1C20] rounded-[24px] p-8 text-white mb-6 shadow-xl relative overflow-hidden flex-shrink-0">
+            <div className="bg-gradient-to-br from-zinc-900 to-[#1A1C20] rounded-[16px] md:rounded-[24px] p-4 md:p-8 text-white mb-4 md:mb-6 shadow-xl relative overflow-hidden flex-shrink-0">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative z-10 w-full">
                     <div className="flex-shrink-0">
-                        <h2 className="text-sm font-bold tracking-widest uppercase text-white/60 mb-1">Project Evaluation Dashboard</h2>
-                        <div className="text-4xl font-black tracking-tight">{avgOverallScore} <span className="text-lg text-white/50 font-bold">/5</span></div>
+                        <h2 className="text-xs md:text-sm font-bold tracking-widest uppercase text-white/60 mb-1">Project Evaluation</h2>
+                        <div className="text-2xl md:text-4xl font-black tracking-tight">{avgOverallScore} <span className="text-sm md:text-lg text-white/50 font-bold">/5</span></div>
                         <p className="text-xs font-medium text-white/70 mt-2">Nilai rata-rata seluruh evaluasi</p>
                     </div>
 
                     <div className="flex-1 flex justify-center w-full px-2 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                        <div className="flex gap-4 md:gap-6 lg:gap-8 min-w-max">
+                        <div className="flex gap-3 md:gap-6 lg:gap-8 min-w-max">
                             {EVAL_CRITERIA.map(c => {
                                 const avg = overallCatAvgs[c.key].count > 0 ? (overallCatAvgs[c.key].sum / overallCatAvgs[c.key].count).toFixed(2) : '0.00';
                                 return (
@@ -216,20 +216,20 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({ pr
                                         <div className="text-[9px] md:text-[10px] font-medium text-white/40 uppercase tracking-widest text-center max-w-[120px] leading-tight">
                                             {c.label}
                                         </div>
-                                        <div className="text-lg md:text-xl font-bold text-emerald-400/90">{avg}</div>
+                                        <div className="text-base md:text-xl font-bold text-emerald-400/90">{avg}</div>
                                     </div>
                                 )
                             })}
                         </div>
                     </div>
 
-                    <div className="flex gap-4 flex-shrink-0 w-full md:w-auto overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                        <div className="bg-white/10 backdrop-blur-sm border border-white/10 px-6 py-4 rounded-2xl text-center flex-1 md:flex-none min-w-[130px]">
-                            <div className="text-3xl font-black mb-1">{evaluatedProjectIds.length}<span className="text-xl text-white/50 font-bold">/{projects.length}</span></div>
+                    <div className="flex gap-2 md:gap-4 flex-shrink-0 w-full md:w-auto overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                        <div className="bg-white/10 backdrop-blur-sm border border-white/10 px-3 md:px-6 py-2 md:py-4 rounded-xl md:rounded-2xl text-center flex-1 md:flex-none min-w-[100px] md:min-w-[130px]">
+                            <div className="text-xl md:text-3xl font-black mb-1">{evaluatedProjectIds.length}<span className="text-base md:text-xl text-white/50 font-bold">/{projects.length}</span></div>
                             <div className="text-[10px] font-bold tracking-widest uppercase text-white/60">Total Project</div>
                         </div>
-                        <div className="bg-white/10 backdrop-blur-sm border border-white/10 px-6 py-4 rounded-2xl text-center flex-1 md:flex-none min-w-[130px]">
-                            <div className="text-3xl font-black mb-1">{evaluatedDesignerIds.length}<span className="text-xl text-white/50 font-bold">/{designers.length}</span></div>
+                        <div className="bg-white/10 backdrop-blur-sm border border-white/10 px-3 md:px-6 py-2 md:py-4 rounded-xl md:rounded-2xl text-center flex-1 md:flex-none min-w-[100px] md:min-w-[130px]">
+                            <div className="text-xl md:text-3xl font-black mb-1">{evaluatedDesignerIds.length}<span className="text-base md:text-xl text-white/50 font-bold">/{designers.length}</span></div>
                             <div className="text-[10px] font-bold tracking-widest uppercase text-white/60">Total Tim</div>
                         </div>
                     </div>
@@ -246,9 +246,9 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({ pr
                 {activeTab === 'project' && (
                     <div className="space-y-6 animate-in slide-in-from-bottom-2 duration-300">
                         {/* Project Line Chart */}
-                        <div className="bg-white p-6 rounded-[24px] border border-[#EAEAEA] shadow-sm">
-                            <h3 className="text-xs font-bold text-zinc-900 uppercase tracking-widest mb-6 border-b border-zinc-100 pb-3">Trend Evaluasi Berdasarkan Project</h3>
-                            <div className="h-[250px] w-full">
+                        <div className="bg-white p-3 md:p-6 rounded-[16px] md:rounded-[24px] border border-[#EAEAEA] shadow-sm">
+                            <h3 className="text-[10px] md:text-xs font-bold text-zinc-900 uppercase tracking-widest mb-4 md:mb-6 border-b border-zinc-100 pb-3">Trend Evaluasi Per Project</h3>
+                            <div className="h-[180px] md:h-[250px] w-full">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <LineChart data={pChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                                         <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#A1A1AA', fontWeight: 600 }} dy={10} />
@@ -355,9 +355,9 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({ pr
                 {activeTab === 'team' && (
                     <div className="space-y-6 animate-in slide-in-from-bottom-2 duration-300">
                         {/* Team Line Chart */}
-                        <div className="bg-white p-6 rounded-[24px] border border-[#EAEAEA] shadow-sm">
-                            <h3 className="text-xs font-bold text-zinc-900 uppercase tracking-widest mb-6 border-b border-zinc-100 pb-3">Trend Evaluasi Berdasarkan Tim / Designer</h3>
-                            <div className="h-[250px] w-full">
+                        <div className="bg-white p-3 md:p-6 rounded-[16px] md:rounded-[24px] border border-[#EAEAEA] shadow-sm">
+                            <h3 className="text-[10px] md:text-xs font-bold text-zinc-900 uppercase tracking-widest mb-4 md:mb-6 border-b border-zinc-100 pb-3">Trend Evaluasi Per Tim</h3>
+                            <div className="h-[180px] md:h-[250px] w-full">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart data={tChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                                         <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#A1A1AA', fontWeight: 600 }} dy={10} />
@@ -370,7 +370,7 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({ pr
                         </div>
 
                         {/* Visual Radar Cards */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-2 md:gap-3">
                             {teamStats.map(t => {
                                 const getShortLabel = (label: string) => {
                                     if (label === 'Penyelesaian Tugas') return 'TUGAS';
@@ -384,13 +384,13 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({ pr
                                     fullMark: 5,
                                 }));
                                 return (
-                                    <div key={t.id} className="bg-white p-3 rounded-2xl border border-[#EAEAEA] shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col items-center hover:border-emerald-300 transition-colors">
-                                        <div className="text-center mb-1.5 line-clamp-1 w-full px-1">
-                                            <h4 className="text-sm font-black text-zinc-900 uppercase tracking-tight truncate">{t.name}</h4>
+                                    <div key={t.id} className="bg-white p-2 md:p-3 rounded-xl md:rounded-2xl border border-[#EAEAEA] shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col items-center hover:border-emerald-300 transition-colors">
+                                        <div className="text-center mb-1 md:mb-1.5 line-clamp-1 w-full px-1">
+                                            <h4 className="text-xs md:text-sm font-black text-zinc-900 uppercase tracking-tight truncate">{t.name}</h4>
                                             <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest truncate">{t.role}</p>
                                         </div>
                                         <div className={`text-xs font-black px-2.5 py-0.5 rounded-lg mb-2 ${getScoreColor(t.avgScore)}`}>{t.avgScore.toFixed(2)} Score</div>
-                                        <div className="w-full h-[120px]">
+                                        <div className="w-full h-[90px] md:h-[120px]">
                                             <ResponsiveContainer width="100%" height="100%">
                                                 <RadarChart cx="50%" cy="50%" outerRadius="65%" data={radarData}>
                                                     <PolarGrid stroke="#EAEAEA" />

@@ -174,7 +174,7 @@ const App: React.FC = () => {
         <Route path="/portal/v1/survey/:token" element={<PublicProjectSurvey />} />
 
         <Route path="/admin/*" element={
-          <div className="flex flex-col md:flex-row h-screen overflow-hidden bg-[#F8F9FA] text-slate-900 pb-16 md:pb-0">
+          <div className="flex flex-col md:flex-row h-screen overflow-hidden bg-[#F8F9FA] text-slate-900 pb-20 md:pb-0">
             {/* Sidebar: Updated to match elegant dark theme */}
             <aside className={`hidden md:flex ${collapsed ? 'w-20 overflow-visible' : 'w-64 overflow-hidden'} bg-[#1A1C20] text-zinc-300 flex-shrink-0 flex-col z-20 transition-all duration-300 relative border-r border-zinc-800`}>
               <div className={`p-6 flex items-center ${collapsed ? 'justify-center' : 'justify-between'}`}>
@@ -229,13 +229,15 @@ const App: React.FC = () => {
               </div>
             </main>
 
-            {/* Mobile Bottom Navbar */}
-            <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[#1A1C20] border-t border-zinc-800 flex justify-around items-center h-16 z-[100] px-2 shadow-[0_-4px_20px_rgba(0,0,0,0.3)] pb-safe">
-              <MobileNavLink to="/admin/dashboard" icon={icons.dashboard} label="Dash" />
+            {/* Mobile Bottom Navbar - Floating Glass */}
+            <nav className="md:hidden fixed bottom-3 left-3 right-3 bg-[#1A1C20]/80 backdrop-blur-xl border border-white/10 flex justify-around items-center h-14 z-[100] px-1 rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.4)]">
+              <MobileNavLink to="/admin/dashboard" icon={icons.dashboard} label="Home" />
               <MobileNavLink to="/admin/artwork-logs" icon={icons.artwork} label="Logs" />
               <MobileNavLink to="/admin/masters/projects" icon={icons.project} label="Proj" />
-              <MobileNavLink to="/admin/masters/leads" icon={icons.lead} label="Leads" />
-              <MobileNavLink to="/admin/masters/internal" icon={icons.internal} label="Int" />
+              <MobileNavLink to="/admin/masters/leads" icon={icons.lead} label="Lead" />
+              <MobileNavLink to="/admin/masters/internal" icon={icons.internal} label="Task" />
+              <MobileNavLink to="/admin/masters/designers" icon={icons.team} label="Team" />
+              <MobileNavLink to="/admin/masters/departments" icon={icons.dept} label="Dept" />
             </nav>
           </div>
         } />
@@ -284,10 +286,10 @@ const MobileNavLink: React.FC<{ to: string; icon: React.ReactNode; label: string
   return (
     <Link
       to={to}
-      className={`flex flex-col items-center justify-center w-full h-full text-xs font-medium transition-all duration-200 ${isActive ? 'text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+      className={`flex flex-col items-center justify-center flex-1 min-w-0 py-1 rounded-xl transition-all duration-200 ${isActive ? 'text-white bg-white/10' : 'text-zinc-500 hover:text-zinc-300'}`}
     >
-      <span className={`text-xl mb-1 ${isActive ? 'text-indigo-400' : ''}`}>{icon}</span>
-      <span className="truncate max-w-full text-[10px]">{label}</span>
+      <span className={`mb-0.5 ${isActive ? 'text-indigo-400' : ''}`} style={{ fontSize: '16px', lineHeight: 1 }}>{icon}</span>
+      <span className="truncate max-w-full text-[8px] font-bold uppercase tracking-tight">{label}</span>
     </Link>
   );
 };

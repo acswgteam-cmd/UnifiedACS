@@ -42,7 +42,7 @@ const ArtworkLogPage: React.FC<Props> = ({ state, onAdd, onUpdate, onDelete }) =
         <section>
           <ArtworkForm state={state} onSubmit={onAdd} />
         </section>
-        
+
         <section>
           <ArtworkTable state={state} onUpdate={onUpdate} onDelete={onDelete} />
         </section>
@@ -52,13 +52,13 @@ const ArtworkLogPage: React.FC<Props> = ({ state, onAdd, onUpdate, onDelete }) =
 };
 
 const StatCard: React.FC<{ label: string; value: number; icon: string; color: string }> = ({ label, value, icon, color }) => (
-  <div className="bg-white p-5 rounded-[20px] border border-[#EAEAEA] shadow-sm flex items-center space-x-4 transition-all hover:shadow-md">
-    <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl shadow-inner ${color}`}>
+  <div className="bg-white p-3 md:p-5 rounded-[16px] md:rounded-[20px] border border-[#EAEAEA] shadow-sm flex items-center space-x-3 md:space-x-4 transition-all hover:shadow-md">
+    <div className={`w-9 h-9 md:w-12 md:h-12 rounded-lg md:rounded-xl flex items-center justify-center text-lg md:text-xl shadow-inner ${color}`}>
       {icon}
     </div>
     <div>
-      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">{label}</p>
-      <p className="text-2xl font-bold text-zinc-900 leading-none mt-1">{value}</p>
+      <p className="text-[9px] md:text-[10px] font-bold text-zinc-500 uppercase tracking-wider">{label}</p>
+      <p className="text-xl md:text-2xl font-bold text-zinc-900 leading-none mt-1">{value}</p>
     </div>
   </div>
 );

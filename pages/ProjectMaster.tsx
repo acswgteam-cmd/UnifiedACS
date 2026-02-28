@@ -820,13 +820,13 @@ IMPORTANT: Extract ALL rows. Return raw JSON only, no explanations.`;
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
             {/* Card 1: Project Overview */}
-            <div className="bg-white p-5 rounded-[20px] border border-[#EAEAEA] shadow-sm flex flex-col justify-between">
+            <div className="bg-white p-3 md:p-5 rounded-[16px] md:rounded-[20px] border border-[#EAEAEA] shadow-sm flex flex-col justify-between">
               <div className="flex justify-between items-start mb-4">
                 <div>
                   <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Total Projects</span>
-                  <div className="text-3xl font-bold text-zinc-900">{dashboardStats.totalProjects}</div>
+                  <div className="text-xl md:text-3xl font-bold text-zinc-900">{dashboardStats.totalProjects}</div>
                 </div>
                 <div className="text-right">
                   <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Avg Team Size</span>
@@ -841,7 +841,7 @@ IMPORTANT: Extract ALL rows. Return raw JSON only, no explanations.`;
             </div>
 
             {/* Card 2: Evaluation Score */}
-            <div className="bg-white p-5 rounded-[20px] border border-[#EAEAEA] shadow-sm md:col-span-2">
+            <div className="bg-white p-3 md:p-5 rounded-[16px] md:rounded-[20px] border border-[#EAEAEA] shadow-sm md:col-span-2">
               <div className="flex flex-col md:flex-row gap-6 h-full items-center">
                 {/* Left side: Avg Score & Evaluated Count */}
                 <div className="flex flex-col justify-center min-w-[140px] pr-6 md:border-r border-[#EAEAEA]">
@@ -903,7 +903,7 @@ IMPORTANT: Extract ALL rows. Return raw JSON only, no explanations.`;
                   ];
                   const theme = headerColors[idx % headerColors.length];
                   return (
-                    <div key={groupKey} className="w-80 flex-shrink-0 bg-zinc-50/50 rounded-2xl flex flex-col max-h-full border border-zinc-100 shadow-sm">
+                    <div key={groupKey} className="w-64 md:w-80 flex-shrink-0 bg-zinc-50/50 rounded-2xl flex flex-col max-h-full border border-zinc-100 shadow-sm">
                       <div className={`p-4 border-b border-zinc-100 border-t-4 uppercase tracking-tight font-bold text-sm flex justify-between items-center rounded-t-2xl shrink-0 ${theme}`}>
                         <span className="truncate pr-2">{groupKey}</span>
                         <span className="bg-white/60 text-current text-[10px] px-2 py-0.5 rounded-full">{projectBoardGroups[groupKey].length}</span>

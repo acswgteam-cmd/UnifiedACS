@@ -65,7 +65,7 @@ const DepartmentMaster: React.FC<Props> = ({ departments, onUpdate }) => {
 
   return (
     <div className="space-y-6">
-      <header className="flex items-center justify-between">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-zinc-900 uppercase tracking-tight">Department Master</h1>
           <p className="text-zinc-600 text-sm mt-1 font-bold">Manage creative units.</p>
