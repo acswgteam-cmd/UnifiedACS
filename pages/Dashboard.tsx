@@ -1,5 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
+import html2canvas from 'html2canvas';
+
 import { AppState, WorkContext, ArtworkLog, Project, Lead, DesignerEvaluation } from '../types';
 import DateRangePicker from '../components/DateRangePicker';
 
@@ -378,8 +380,10 @@ const Dashboard: React.FC<Props> = ({ state }) => {
     };
   }, [state, filterStart, filterEnd]);
 
-  const cardClass = "bg-white p-3 md:p-6 rounded-[16px] md:rounded-[20px] border border-[#EAEAEA] shadow-sm flex flex-col transition-all hover:shadow-md";
+  const cardClass = "bg-white p-3 md:p-6 rounded-[16px] md:rounded-[20px] border border-[#EAEAEA] shadow-sm flex flex-col transition-all hover:shadow-md relative";
   const labelClass = "text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1 block";
+
+  const dateLabel = (filterStart && filterEnd) ? `${filterStart}_to_${filterEnd}` : (filterStart || filterEnd ? (filterStart || filterEnd) : 'All_Time');
 
   return (
     <div className="space-y-4 md:space-y-6 animate-in fade-in duration-500 pb-12 relative">
@@ -466,6 +470,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
       {/* KPI Row - Vibrant Gradients */}
       <div className="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-4 gap-3 md:gap-6">
         <KPICard
+          id="kpi-artworks" filename={`Total_Artworks_${dateLabel}`}
           label="Total Artworks"
           value={analytics.totalArtworks}
           sub="Filtered Output"
@@ -473,6 +478,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
           keywords={analytics.topKeywords}
         />
         <KPICard
+          id="kpi-projects" filename={`Total_Projects_${dateLabel}`}
           label="Total Projects"
           value={analytics.totalProjectsCount}
           sub="All Statuses"
@@ -483,6 +489,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
           ]}
         />
         <KPICard
+          id="kpi-leads" filename={`Total_Leads_${dateLabel}`}
           label="Total Leads"
           value={analytics.totalLeadsCount}
           sub="All Statuses"
@@ -493,6 +500,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
           ]}
         />
         <KPICard
+          id="kpi-tasks" filename={`Total_Tasks_${dateLabel}`}
           label="Total Tasks"
           value={analytics.totalInternalCount}
           sub="All Statuses"
@@ -507,6 +515,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
       {/* Volume Insights Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-6">
         <VolumeCard
+          id="vol-project" filename={`Volume_Project_${dateLabel}`}
           title="Project"
           count={analytics.artworksProject}
           duration={analytics.avgDurProj}
@@ -514,6 +523,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
           gradient="from-blue-500 to-cyan-500"
         />
         <VolumeCard
+          id="vol-lead" filename={`Volume_Lead_${dateLabel}`}
           title="Lead"
           count={analytics.artworksLead}
           duration={analytics.avgDurLead}
@@ -521,6 +531,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
           gradient="from-emerald-500 to-green-500"
         />
         <VolumeCard
+          id="vol-internal" filename={`Volume_Internal_${dateLabel}`}
           title="Internal"
           count={analytics.artworksInternal}
           duration={analytics.avgDurInt}
@@ -531,7 +542,8 @@ const Dashboard: React.FC<Props> = ({ state }) => {
 
       {/* GRAPHIC ROW */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-6">
-        <section className={cardClass}>
+        <section id="chart-artwork-trend" className={cardClass}>
+          <DownloadBtn id="chart-artwork-trend" filename={`Artwork_Type_Trend_${dateLabel}`} />
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-bold text-zinc-900 uppercase tracking-tight">Artwork Type Trend</h2>
             <div className="flex gap-2">
@@ -558,7 +570,8 @@ const Dashboard: React.FC<Props> = ({ state }) => {
           />
         </section>
 
-        <section className={cardClass}>
+        <section id="chart-context-trend" className={cardClass}>
+          <DownloadBtn id="chart-context-trend" filename={`Work_Context_Trend_${dateLabel}`} />
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-bold text-zinc-900 uppercase tracking-tight">Work Context Trend</h2>
             <div className="flex gap-2">
@@ -585,7 +598,8 @@ const Dashboard: React.FC<Props> = ({ state }) => {
           />
         </section>
 
-        <section className={cardClass}>
+        <section id="chart-distribution" className={cardClass}>
+          <DownloadBtn id="chart-distribution" filename={`Distribution_Split_${dateLabel}`} />
           <h2 className="text-sm font-bold text-zinc-900 uppercase tracking-tight mb-4">Distribution Split</h2>
           <div className="flex flex-col gap-8 h-full justify-center py-4">
             <PieRow title="By Artwork Type" data={analytics.globalTypeSplit} total={analytics.totalArtworks} />
@@ -597,7 +611,8 @@ const Dashboard: React.FC<Props> = ({ state }) => {
 
       {/* DEPARTMENT REQUEST VOLUME & HEATMAP */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 md:gap-6">
-        <section className={cardClass}>
+        <section id="chart-dept-volume" className={cardClass}>
+          <DownloadBtn id="chart-dept-volume" filename={`Department_Request_Volume_${dateLabel}`} />
           <div className="flex items-center justify-between mb-6">
             <div className="flex flex-col">
               <h2 className="text-sm font-bold text-zinc-900 uppercase tracking-tight">Department Request Volume</h2>
@@ -662,7 +677,8 @@ const Dashboard: React.FC<Props> = ({ state }) => {
         {/* HEATMAPS COLUMN */}
         <div className="flex flex-col gap-4 md:gap-6">
           {/* GENERAL HEATMAP */}
-          <section className={cardClass}>
+          <section id="heatmap-general" className={cardClass}>
+            <DownloadBtn id="heatmap-general" filename={`Heatmap_General_Context_${dateLabel}`} />
             <div className="flex flex-col mb-4">
               <h2 className="text-sm font-bold text-zinc-900 uppercase tracking-tight">Heatmap General Context</h2>
               <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wide">Volume by Context (Project, Lead, Internal)</span>
@@ -725,7 +741,8 @@ const Dashboard: React.FC<Props> = ({ state }) => {
           </section>
 
           {/* INTERNAL DEPT HEATMAP */}
-          <section className={cardClass}>
+          <section id="heatmap-internal" className={cardClass}>
+            <DownloadBtn id="heatmap-internal" filename={`Heatmap_Artwork_Internal_${dateLabel}`} />
             <div className="flex flex-col mb-4">
               <h2 className="text-sm font-bold text-zinc-900 uppercase tracking-tight">Heatmap Artwork Internal</h2>
               <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wide">Volume by Department & Type</span>
@@ -796,7 +813,8 @@ const Dashboard: React.FC<Props> = ({ state }) => {
       </div>
 
       {/* EVALUATION SUMMARY */}
-      <section className={cardClass + " animate-slide-up"}>
+      <section id="eval-summary" className={cardClass + " animate-slide-up"}>
+        <DownloadBtn id="eval-summary" filename={`Evaluation_Summary_${dateLabel}`} />
         <div className="flex items-center justify-between mb-4">
           <div className="flex flex-col">
             <h2 className="text-sm font-bold text-zinc-900 uppercase tracking-tight">Evaluation Summary</h2>
@@ -869,7 +887,8 @@ const Dashboard: React.FC<Props> = ({ state }) => {
         <span className={labelClass}>Team Output & Performance</span>
         <div className="flex overflow-x-auto flex-nowrap gap-4 md:gap-6 mt-4 pb-4 snap-x scrollbar-thin scrollbar-thumb-slate-300">
           {analytics.teamStats.map(ds => (
-            <div key={ds.id} className="flex-shrink-0 w-[260px] md:w-[300px] snap-start bg-white p-4 md:p-6 rounded-[20px] border border-[#EAEAEA] shadow-sm group">
+            <div key={ds.id} id={`team-stat-${ds.id}`} className="relative flex-shrink-0 w-[260px] md:w-[300px] snap-start bg-white p-4 md:p-6 rounded-[20px] border border-[#EAEAEA] shadow-sm group">
+              <DownloadBtn id={`team-stat-${ds.id}`} filename={`Team_Stat_${ds.name.replace(/\s+/g, '_')}_${dateLabel}`} />
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 text-white flex items-center justify-center font-bold text-lg group-hover:from-indigo-500 group-hover:to-purple-600 transition-all shadow-md">
                   {ds.name.charAt(0)}
@@ -938,6 +957,37 @@ const Dashboard: React.FC<Props> = ({ state }) => {
 
 // --- Sub-Components ---
 
+const handleDownload = async (elementId: string, filename: string) => {
+  const element = document.getElementById(elementId);
+  if (!element) return;
+  const buttons = element.querySelectorAll<HTMLElement>('.download-btn');
+  buttons.forEach(btn => btn.style.display = 'none');
+  try {
+    const canvas = await html2canvas(element, { backgroundColor: '#ffffff', scale: 2 });
+    const image = canvas.toDataURL('image/png');
+    const link = document.createElement('a');
+    link.href = image;
+    link.download = `${filename}.png`;
+    link.click();
+  } catch (error) {
+    console.error("Error downloading card:", error);
+  } finally {
+    buttons.forEach(btn => btn.style.display = '');
+  }
+};
+
+const DownloadBtn = ({ id, filename }: { id: string, filename: string }) => (
+  <button
+    className="download-btn absolute top-3 right-3 p-1.5 rounded-md hover:bg-zinc-100 transition-colors z-20"
+    onClick={() => handleDownload(id, filename)}
+    title="Download as PNG"
+  >
+    <svg className="w-3.5 h-3.5 text-zinc-400 hover:text-zinc-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+    </svg>
+  </button>
+);
+
 const TinyScore = ({ label, val }: { label: string, val: string }) => (
   <div className="flex justify-between items-center bg-[#FCFCFC] px-2 py-1 rounded border border-zinc-100">
     <span className="text-[7px] font-bold text-zinc-500 uppercase tracking-tight">{label}</span>
@@ -978,8 +1028,9 @@ const LegendDot = ({ color, label }: { color: string, label: string }) => (
   </div>
 );
 
-const KPICard = ({ label, value, sub, gradient, keywords, statsList }: any) => (
-  <div className="bg-white p-3 md:p-6 rounded-[16px] md:rounded-[20px] border border-[#EAEAEA] shadow-sm flex flex-col h-full transition-all hover:shadow-sm border border-[#EAEAEA] relative overflow-hidden group">
+const KPICard = ({ id, filename, label, value, sub, gradient, keywords, statsList }: any) => (
+  <div id={id} className="bg-white p-3 md:p-6 rounded-[16px] md:rounded-[20px] border border-[#EAEAEA] shadow-sm flex flex-col h-full transition-all hover:shadow-sm relative overflow-hidden group">
+    {id && filename && <DownloadBtn id={id} filename={filename} />}
     {/* Decorative Gradient Background Opacity */}
     <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${gradient} opacity-5 rounded-bl-full pointer-events-none transition-opacity group-hover:opacity-10`}></div>
 
@@ -1030,9 +1081,10 @@ const KPICard = ({ label, value, sub, gradient, keywords, statsList }: any) => (
   </div>
 );
 
-const VolumeCard = ({ title, count, duration, typeSplit, gradient }: any) => {
+const VolumeCard = ({ id, filename, title, count, duration, typeSplit, gradient }: any) => {
   return (
-    <div className="bg-white p-3 md:p-5 rounded-[16px] md:rounded-[20px] border border-[#EAEAEA] shadow-sm flex flex-col relative overflow-hidden group hover:shadow-md transition-all">
+    <div id={id} className="bg-white p-3 md:p-5 rounded-[16px] md:rounded-[20px] border border-[#EAEAEA] shadow-sm flex flex-col relative overflow-hidden group hover:shadow-md transition-all">
+      {id && filename && <DownloadBtn id={id} filename={filename} />}
       <div className={`absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b ${gradient}`}></div>
       <div className="flex justify-between items-center mb-4 pl-3">
         <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-700">{title} Context</h3>
