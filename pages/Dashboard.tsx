@@ -967,36 +967,31 @@ const Dashboard: React.FC<Props> = ({ state }) => {
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 const fixClonedStyles = (clonedDoc: Document) => {
-  // Fix ALL elements with transparent text fill (gradient text technique)
   const allElements = clonedDoc.querySelectorAll('*');
   allElements.forEach(el => {
-    if (el instanceof HTMLElement) {
-      const computed = clonedDoc.defaultView?.getComputedStyle(el);
-      if (!computed) return;
+    if (!(el instanceof HTMLElement)) return;
 
-      // Detect gradient text: -webkit-text-fill-color: transparent or color: transparent
-      const textFill = computed.getPropertyValue('-webkit-text-fill-color');
-      const bgClip = computed.getPropertyValue('-webkit-background-clip');
-      const color = computed.color;
+    // 1. Fix gradient text — the big invisible numbers
+    // html2canvas cannot render background-clip:text, so gradient shows as solid block
+    // covering the text. We must remove the gradient and set a solid text color.
+    if (el.classList.contains('text-transparent') || el.classList.contains('bg-clip-text')) {
+      el.style.setProperty('-webkit-text-fill-color', '#1e293b', 'important');
+      el.style.setProperty('-webkit-background-clip', 'initial', 'important');
+      el.style.setProperty('background-clip', 'initial', 'important');
+      el.style.setProperty('color', '#1e293b', 'important');
+      el.style.setProperty('background-image', 'none', 'important');
+      el.style.setProperty('background', 'none', 'important');
+    }
 
-      if (
-        textFill === 'transparent' ||
-        bgClip === 'text' ||
-        (color === 'rgba(0, 0, 0, 0)' && el.textContent?.trim())
-      ) {
-        // Extract gradient colors from background-image to pick the first as solid color
-        const bgImage = computed.backgroundImage;
-        let solidColor = '#1e293b'; // fallback dark color
-        if (bgImage && bgImage !== 'none') {
-          const colorMatch = bgImage.match(/rgb\([^)]+\)/);
-          if (colorMatch) solidColor = colorMatch[0];
-        }
-        el.style.setProperty('-webkit-text-fill-color', 'initial', 'important');
-        el.style.setProperty('-webkit-background-clip', 'initial', 'important');
-        el.style.setProperty('background-clip', 'initial', 'important');
-        el.style.setProperty('color', solidColor, 'important');
-        el.style.backgroundImage = 'none';
-      }
+    // 2. Hide decorative gradient blobs (the rounded circle in KPI corners)
+    // html2canvas renders opacity-5 at full opacity, causing visual blockage
+    if (el.classList.contains('pointer-events-none') && el.classList.contains('rounded-bl-full')) {
+      el.style.setProperty('display', 'none', 'important');
+    }
+
+    // 3. Fix any element with very low opacity that html2canvas might misrender
+    if (el.classList.contains('opacity-5') || el.classList.contains('opacity-10')) {
+      el.style.setProperty('opacity', '0.05', 'important');
     }
   });
 };
