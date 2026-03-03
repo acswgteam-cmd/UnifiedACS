@@ -452,319 +452,257 @@ const Dashboard: React.FC<Props> = ({ state }) => {
       )}
 
       {/* Added relative z-20 to ensure datepicker pops over charts */}
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-20">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-20 mb-4">
         <div>
           <h1 className="text-2xl font-bold text-zinc-900 tracking-tight uppercase">Executive Studio Hub</h1>
           <p className="text-zinc-500 text-sm font-medium">Creative Production Insights.</p>
         </div>
-        {/* Pass filtered dates to DateRangePicker to properly control state */}
-        <DateRangePicker
-          startDate={filterStart}
-          endDate={filterEnd}
-          onChange={(start, end) => { setFilterStart(start); setFilterEnd(end); }}
-          onReset={() => { setFilterStart(''); setFilterEnd(''); }}
-          placeholder="Filter Date Range"
-        />
+        <div className="flex items-center gap-2">
+          {/* Pass filtered dates to DateRangePicker to properly control state */}
+          <DateRangePicker
+            startDate={filterStart}
+            endDate={filterEnd}
+            onChange={(start, end) => { setFilterStart(start); setFilterEnd(end); }}
+            onReset={() => { setFilterStart(''); setFilterEnd(''); }}
+            placeholder="Filter Date Range"
+          />
+          <button
+            onClick={() => handleDownload('dashboard-content', `Dashboard_Report_${dateLabel}`)}
+            className="flex items-center gap-2 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-bold shadow-sm transition-colors download-btn"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            <span className="hidden sm:inline">Export</span>
+          </button>
+        </div>
       </header>
 
-      {/* KPI Row - Vibrant Gradients */}
-      <div className="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-4 gap-3 md:gap-6">
-        <KPICard
-          id="kpi-artworks" filename={`Total_Artworks_${dateLabel}`}
-          label="Total Artworks"
-          value={analytics.totalArtworks}
-          sub="Filtered Output"
-          gradient="from-orange-400 to-red-500"
-          keywords={analytics.topKeywords}
-        />
-        <KPICard
-          id="kpi-projects" filename={`Total_Projects_${dateLabel}`}
-          label="Total Projects"
-          value={analytics.totalProjectsCount}
-          sub="All Statuses"
-          gradient="from-blue-400 to-indigo-600"
-          statsList={[
-            { title: "Top 3 PIC", items: analytics.statsData.projects.pics },
-            { title: "Top 3 Locations", items: analytics.statsData.projects.locs }
-          ]}
-        />
-        <KPICard
-          id="kpi-leads" filename={`Total_Leads_${dateLabel}`}
-          label="Total Leads"
-          value={analytics.totalLeadsCount}
-          sub="All Statuses"
-          gradient="from-emerald-400 to-teal-600"
-          statsList={[
-            { title: "By Grade", items: analytics.statsData.leads.grades },
-            { title: "Top Requesters", items: analytics.statsData.leads.reqs }
-          ]}
-        />
-        <KPICard
-          id="kpi-tasks" filename={`Total_Tasks_${dateLabel}`}
-          label="Total Tasks"
-          value={analytics.totalInternalCount}
-          sub="All Statuses"
-          gradient="from-purple-400 to-fuchsia-600"
-          statsList={[
-            { title: "Top Depts", items: analytics.statsData.internal.depts },
-            { title: "Top Requesters", items: analytics.statsData.internal.reqs }
-          ]}
-        />
-      </div>
-
-      {/* Volume Insights Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-6">
-        <VolumeCard
-          id="vol-project" filename={`Volume_Project_${dateLabel}`}
-          title="Project"
-          count={analytics.artworksProject}
-          duration={analytics.avgDurProj}
-          typeSplit={analytics.projectTypeSplit}
-          gradient="from-blue-500 to-cyan-500"
-        />
-        <VolumeCard
-          id="vol-lead" filename={`Volume_Lead_${dateLabel}`}
-          title="Lead"
-          count={analytics.artworksLead}
-          duration={analytics.avgDurLead}
-          typeSplit={analytics.leadTypeSplit}
-          gradient="from-emerald-500 to-green-500"
-        />
-        <VolumeCard
-          id="vol-internal" filename={`Volume_Internal_${dateLabel}`}
-          title="Internal"
-          count={analytics.artworksInternal}
-          duration={analytics.avgDurInt}
-          typeSplit={analytics.internalTypeSplit}
-          gradient="from-purple-500 to-pink-500"
-        />
-      </div>
-
-      {/* GRAPHIC ROW */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-6">
-        <section id="chart-artwork-trend" className={cardClass}>
-          <DownloadBtn id="chart-artwork-trend" filename={`Artwork_Type_Trend_${dateLabel}`} />
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-bold text-zinc-900 uppercase tracking-tight">Artwork Type Trend</h2>
-            <div className="flex gap-2">
-              <LegendDot color="bg-blue-500" label="2D" />
-              <LegendDot color="bg-emerald-500" label="3D" />
-              <LegendDot color="bg-orange-500" label="Video" />
-            </div>
-          </div>
-          <div className="w-full mb-4">
-            <TrendLineChart
-              data={analytics.monthlyTrends}
-              keys={["2D Design", "3D Design", "Video"]}
-              labels={["2D", "3D", "VDO"]}
-              colors={["#3b82f6", "#10b981", "#f97316"]}
-            />
-          </div>
-          <TrendDataList
-            data={analytics.monthlyTrends}
-            cols={[
-              { key: '2D Design', label: '2D', color: 'text-blue-600' },
-              { key: '3D Design', label: '3D', color: 'text-emerald-600' },
-              { key: 'Video', label: 'Video', color: 'text-orange-600' }
+      <div id="dashboard-content" className="space-y-4 md:space-y-6 pt-2">
+        {/* KPI Row - Vibrant Gradients */}
+        <div className="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-4 gap-3 md:gap-6">
+          <KPICard
+            id="kpi-artworks" filename={`Total_Artworks_${dateLabel}`}
+            label="Total Artworks"
+            value={analytics.totalArtworks}
+            sub="Filtered Output"
+            gradient="from-orange-400 to-red-500"
+            keywords={analytics.topKeywords}
+          />
+          <KPICard
+            id="kpi-projects" filename={`Total_Projects_${dateLabel}`}
+            label="Total Projects"
+            value={analytics.totalProjectsCount}
+            sub="All Statuses"
+            gradient="from-blue-400 to-indigo-600"
+            statsList={[
+              { title: "Top 3 PIC", items: analytics.statsData.projects.pics },
+              { title: "Top 3 Locations", items: analytics.statsData.projects.locs }
             ]}
           />
-        </section>
-
-        <section id="chart-context-trend" className={cardClass}>
-          <DownloadBtn id="chart-context-trend" filename={`Work_Context_Trend_${dateLabel}`} />
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-bold text-zinc-900 uppercase tracking-tight">Work Context Trend</h2>
-            <div className="flex gap-2">
-              <LegendDot color="bg-blue-600" label="Proj" />
-              <LegendDot color="bg-emerald-600" label="Lead" />
-              <LegendDot color="bg-purple-600" label="Int" />
-            </div>
-          </div>
-          <div className="w-full mb-4">
-            <TrendLineChart
-              data={analytics.monthlyTrends}
-              keys={[WorkContext.PROJECT, WorkContext.LEAD, WorkContext.INTERNAL]}
-              labels={["PRJ", "LED", "INT"]}
-              colors={["#2563eb", "#059669", "#7c3aed"]}
-            />
-          </div>
-          <TrendDataList
-            data={analytics.monthlyTrends}
-            cols={[
-              { key: WorkContext.PROJECT, label: 'PRJ', color: 'text-blue-700' },
-              { key: WorkContext.LEAD, label: 'LED', color: 'text-emerald-700' },
-              { key: WorkContext.INTERNAL, label: 'INT', color: 'text-purple-700' }
+          <KPICard
+            id="kpi-leads" filename={`Total_Leads_${dateLabel}`}
+            label="Total Leads"
+            value={analytics.totalLeadsCount}
+            sub="All Statuses"
+            gradient="from-emerald-400 to-teal-600"
+            statsList={[
+              { title: "By Grade", items: analytics.statsData.leads.grades },
+              { title: "Top Requesters", items: analytics.statsData.leads.reqs }
             ]}
           />
-        </section>
+          <KPICard
+            id="kpi-tasks" filename={`Total_Tasks_${dateLabel}`}
+            label="Total Tasks"
+            value={analytics.totalInternalCount}
+            sub="All Statuses"
+            gradient="from-purple-400 to-fuchsia-600"
+            statsList={[
+              { title: "Top Depts", items: analytics.statsData.internal.depts },
+              { title: "Top Requesters", items: analytics.statsData.internal.reqs }
+            ]}
+          />
+        </div>
 
-        <section id="chart-distribution" className={cardClass}>
-          <DownloadBtn id="chart-distribution" filename={`Distribution_Split_${dateLabel}`} />
-          <h2 className="text-sm font-bold text-zinc-900 uppercase tracking-tight mb-4">Distribution Split</h2>
-          <div className="flex flex-col gap-8 h-full justify-center py-4">
-            <PieRow title="By Artwork Type" data={analytics.globalTypeSplit} total={analytics.totalArtworks} />
-            <div className="h-px bg-[#F8F9FA]"></div>
-            <PieRow title="By Work Context" data={analytics.globalContextSplit} total={analytics.totalArtworks} />
-          </div>
-        </section>
-      </div>
+        {/* Volume Insights Row */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-6">
+          <VolumeCard
+            id="vol-project" filename={`Volume_Project_${dateLabel}`}
+            title="Project"
+            count={analytics.artworksProject}
+            duration={analytics.avgDurProj}
+            typeSplit={analytics.projectTypeSplit}
+            gradient="from-blue-500 to-cyan-500"
+          />
+          <VolumeCard
+            id="vol-lead" filename={`Volume_Lead_${dateLabel}`}
+            title="Lead"
+            count={analytics.artworksLead}
+            duration={analytics.avgDurLead}
+            typeSplit={analytics.leadTypeSplit}
+            gradient="from-emerald-500 to-green-500"
+          />
+          <VolumeCard
+            id="vol-internal" filename={`Volume_Internal_${dateLabel}`}
+            title="Internal"
+            count={analytics.artworksInternal}
+            duration={analytics.avgDurInt}
+            typeSplit={analytics.internalTypeSplit}
+            gradient="from-purple-500 to-pink-500"
+          />
+        </div>
 
-      {/* DEPARTMENT REQUEST VOLUME & HEATMAP */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 md:gap-6">
-        <section id="chart-dept-volume" className={cardClass}>
-          <DownloadBtn id="chart-dept-volume" filename={`Department_Request_Volume_${dateLabel}`} />
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex flex-col">
-              <h2 className="text-sm font-bold text-zinc-900 uppercase tracking-tight">Department Request Volume</h2>
-              <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wide">Internal Context Only</span>
-            </div>
-            <div className="flex gap-4">
-              <LegendDot color="bg-blue-500" label="2D" />
-              <LegendDot color="bg-emerald-500" label="3D" />
-              <LegendDot color="bg-orange-500" label="Video" />
-            </div>
-          </div>
-          <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-            <div className="flex-1 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-200">
-              <div className="space-y-6">
-                {analytics.departmentStats.length === 0 ? (
-                  <div className="text-center py-8 text-xs font-bold text-zinc-400 italic border border-dashed border-[#EAEAEA] rounded-xl">
-                    No internal department activity found in this period.
-                  </div>
-                ) : analytics.departmentStats.map(dept => {
-                  const deptTotal = dept.counts.total || 0;
-                  const globalMax = Math.max(...analytics.departmentStats.map(d => d.counts.total)) || 1;
-                  const percentage = analytics.artworksInternal ? Math.round((deptTotal / analytics.artworksInternal) * 100) : 0;
-
-                  return (
-                    <div key={dept.id} className="grid grid-cols-3 md:grid-cols-5 items-center gap-2 md:gap-4">
-                      <div className="col-span-1 min-w-0">
-                        <p className="text-xs font-bold text-zinc-800 uppercase truncate leading-none mb-1">{dept.department_name}</p>
-                        <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-tight">{deptTotal} Items</p>
-                      </div>
-                      <div className="col-span-1 hidden md:flex md:flex-col md:gap-2">
-                        <div className="h-3.5 bg-[#FCFCFC] rounded-full flex border border-zinc-100 overflow-hidden shadow-inner">
-                          <StackedSegment count={dept.counts["2D Design"]} total={deptTotal} globalMax={globalMax} gradient="from-blue-400 to-cyan-500" />
-                          <StackedSegment count={dept.counts["3D Design"]} total={deptTotal} globalMax={globalMax} gradient="from-emerald-400 to-teal-500" />
-                          <StackedSegment count={dept.counts["Video"]} total={deptTotal} globalMax={globalMax} gradient="from-orange-400 to-rose-500" />
-                        </div>
-                        <div className="flex gap-3 text-[9px] font-bold uppercase tracking-tight">
-                          <span className="text-blue-600">2D: {dept.counts["2D Design"]}</span>
-                          <span className="text-emerald-600">3D: {dept.counts["3D Design"]}</span>
-                          <span className="text-orange-600">Vid: {dept.counts["Video"]}</span>
-                        </div>
-                      </div>
-                      {/* Mobile counts */}
-                      <div className="col-span-1 flex flex-wrap gap-1.5 md:hidden">
-                        <span className="text-blue-600 text-[9px] font-bold">2D:{dept.counts["2D Design"]}</span>
-                        <span className="text-emerald-600 text-[9px] font-bold">3D:{dept.counts["3D Design"]}</span>
-                        <span className="text-orange-600 text-[9px] font-bold">V:{dept.counts["Video"]}</span>
-                      </div>
-                      <div className="col-span-1 text-right flex flex-col items-end">
-                        <span className="text-xs font-bold text-zinc-900 bg-[#FCFCFC] px-2 py-1 rounded-md border border-zinc-100">
-                          {percentage}%
-                        </span>
-                        <span className="text-[9px] font-bold text-zinc-400 mt-0.5 hidden md:block">{deptTotal} / {analytics.artworksInternal}</span>
-                      </div>
-                    </div>
-                  );
-                })}
+        {/* GRAPHIC ROW */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-6">
+          <section id="chart-artwork-trend" className={cardClass}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-bold text-zinc-900 uppercase tracking-tight">Artwork Type Trend</h2>
+              <div className="flex gap-2">
+                <LegendDot color="bg-blue-500" label="2D" />
+                <LegendDot color="bg-emerald-500" label="3D" />
+                <LegendDot color="bg-orange-500" label="Video" />
               </div>
             </div>
-          </div>
-        </section>
-
-        {/* HEATMAPS COLUMN */}
-        <div className="flex flex-col gap-4 md:gap-6">
-          {/* GENERAL HEATMAP */}
-          <section id="heatmap-general" className={cardClass}>
-            <DownloadBtn id="heatmap-general" filename={`Heatmap_General_Context_${dateLabel}`} />
-            <div className="flex flex-col mb-4">
-              <h2 className="text-sm font-bold text-zinc-900 uppercase tracking-tight">Heatmap General Context</h2>
-              <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wide">Volume by Context (Project, Lead, Internal)</span>
+            <div className="w-full mb-4">
+              <TrendLineChart
+                data={analytics.monthlyTrends}
+                keys={["2D Design", "3D Design", "Video"]}
+                labels={["2D", "3D", "VDO"]}
+                colors={["#3b82f6", "#10b981", "#f97316"]}
+              />
             </div>
-            <div className="overflow-x-auto overflow-y-auto pb-2 scrollbar-thin scrollbar-thumb-slate-200 pr-2 flex-col flex-1 flex justify-center">
-              <div className="min-w-fit w-full">
-                <div className="flex flex-col gap-[6px] w-full pt-2">
-                  {["2D Design", "3D Design", "Video"].map(type => {
-                    const maxVal = Math.max(...analytics.contextTypeMatrix.map(c => (c as any)[type] || 0), 1);
+            <TrendDataList
+              data={analytics.monthlyTrends}
+              cols={[
+                { key: '2D Design', label: '2D', color: 'text-blue-600' },
+                { key: '3D Design', label: '3D', color: 'text-emerald-600' },
+                { key: 'Video', label: 'Video', color: 'text-orange-600' }
+              ]}
+            />
+          </section>
+
+          <section id="chart-context-trend" className={cardClass}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-bold text-zinc-900 uppercase tracking-tight">Work Context Trend</h2>
+              <div className="flex gap-2">
+                <LegendDot color="bg-blue-600" label="Proj" />
+                <LegendDot color="bg-emerald-600" label="Lead" />
+                <LegendDot color="bg-purple-600" label="Int" />
+              </div>
+            </div>
+            <div className="w-full mb-4">
+              <TrendLineChart
+                data={analytics.monthlyTrends}
+                keys={[WorkContext.PROJECT, WorkContext.LEAD, WorkContext.INTERNAL]}
+                labels={["PRJ", "LED", "INT"]}
+                colors={["#2563eb", "#059669", "#7c3aed"]}
+              />
+            </div>
+            <TrendDataList
+              data={analytics.monthlyTrends}
+              cols={[
+                { key: WorkContext.PROJECT, label: 'PRJ', color: 'text-blue-700' },
+                { key: WorkContext.LEAD, label: 'LED', color: 'text-emerald-700' },
+                { key: WorkContext.INTERNAL, label: 'INT', color: 'text-purple-700' }
+              ]}
+            />
+          </section>
+
+          <section id="chart-distribution" className={cardClass}>
+            <h2 className="text-sm font-bold text-zinc-900 uppercase tracking-tight mb-4">Distribution Split</h2>
+            <div className="flex flex-col gap-8 h-full justify-center py-4">
+              <PieRow title="By Artwork Type" data={analytics.globalTypeSplit} total={analytics.totalArtworks} />
+              <div className="h-px bg-[#F8F9FA]"></div>
+              <PieRow title="By Work Context" data={analytics.globalContextSplit} total={analytics.totalArtworks} />
+            </div>
+          </section>
+        </div>
+
+        {/* DEPARTMENT REQUEST VOLUME & HEATMAP */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 md:gap-6">
+          <section id="chart-dept-volume" className={cardClass}>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex flex-col">
+                <h2 className="text-sm font-bold text-zinc-900 uppercase tracking-tight">Department Request Volume</h2>
+                <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wide">Internal Context Only</span>
+              </div>
+              <div className="flex gap-4">
+                <LegendDot color="bg-blue-500" label="2D" />
+                <LegendDot color="bg-emerald-500" label="3D" />
+                <LegendDot color="bg-orange-500" label="Video" />
+              </div>
+            </div>
+            <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+              <div className="flex-1 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-200">
+                <div className="space-y-6">
+                  {analytics.departmentStats.length === 0 ? (
+                    <div className="text-center py-8 text-xs font-bold text-zinc-400 italic border border-dashed border-[#EAEAEA] rounded-xl">
+                      No internal department activity found in this period.
+                    </div>
+                  ) : analytics.departmentStats.map(dept => {
+                    const deptTotal = dept.counts.total || 0;
+                    const globalMax = Math.max(...analytics.departmentStats.map(d => d.counts.total)) || 1;
+                    const percentage = analytics.artworksInternal ? Math.round((deptTotal / analytics.artworksInternal) * 100) : 0;
+
                     return (
-                      <div key={type} className="flex flex-row items-center gap-[4px] md:gap-[6px]">
-                        <div className="flex-shrink-0 w-10 md:w-24 text-[8px] md:text-[10px] font-semibold text-zinc-500 uppercase tracking-tight text-right pr-1 md:pr-2">
-                          {type === '2D Design' ? '2D' : type === '3D Design' ? '3D' : 'VDO'}
+                      <div key={dept.id} className="grid grid-cols-3 md:grid-cols-5 items-center gap-2 md:gap-4">
+                        <div className="col-span-1 min-w-0">
+                          <p className="text-xs font-bold text-zinc-800 uppercase truncate leading-none mb-1">{dept.department_name}</p>
+                          <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-tight">{deptTotal} Items</p>
                         </div>
-                        <div className="flex flex-1 gap-[4px] md:gap-[6px]">
-                          {analytics.contextTypeMatrix.map(c => {
-                            const val = (c as any)[type] || 0;
-                            const intensity = val / maxVal;
-
-                            let bgClass = "bg-[#F4F4F5]";
-                            let textColor = "text-transparent";
-
-                            if (val > 0) {
-                              if (intensity > 0.8) { bgClass = "bg-indigo-600"; textColor = "text-indigo-100"; }
-                              else if (intensity > 0.6) { bgClass = "bg-indigo-500"; textColor = "text-indigo-50"; }
-                              else if (intensity > 0.4) { bgClass = "bg-indigo-400"; textColor = "text-indigo-50"; }
-                              else if (intensity > 0.2) { bgClass = "bg-indigo-300"; textColor = "text-indigo-900"; }
-                              else { bgClass = "bg-indigo-200"; textColor = "text-indigo-900"; }
-                            }
-
-                            return (
-                              <div
-                                key={c.ctx}
-                                className={`flex-1 h-7 md:h-10 min-w-[20px] md:min-w-[28px] rounded-[4px] flex items-center justify-center text-[8px] md:text-[10px] font-bold transition-all hover:opacity-80 ${bgClass} ${textColor} relative group`}
-                                title={`${c.label} - ${type}: ${val}`}
-                              >
-                                <span className={val > 0 ? "opacity-100" : "opacity-0"}>{val}</span>
-                              </div>
-                            );
-                          })}
+                        <div className="col-span-1 hidden md:flex md:flex-col md:gap-2">
+                          <div className="h-3.5 bg-[#FCFCFC] rounded-full flex border border-zinc-100 overflow-hidden shadow-inner">
+                            <StackedSegment count={dept.counts["2D Design"]} total={deptTotal} globalMax={globalMax} gradient="from-blue-400 to-cyan-500" />
+                            <StackedSegment count={dept.counts["3D Design"]} total={deptTotal} globalMax={globalMax} gradient="from-emerald-400 to-teal-500" />
+                            <StackedSegment count={dept.counts["Video"]} total={deptTotal} globalMax={globalMax} gradient="from-orange-400 to-rose-500" />
+                          </div>
+                          <div className="flex gap-3 text-[9px] font-bold uppercase tracking-tight">
+                            <span className="text-blue-600">2D: {dept.counts["2D Design"]}</span>
+                            <span className="text-emerald-600">3D: {dept.counts["3D Design"]}</span>
+                            <span className="text-orange-600">Vid: {dept.counts["Video"]}</span>
+                          </div>
+                        </div>
+                        {/* Mobile counts */}
+                        <div className="col-span-1 flex flex-wrap gap-1.5 md:hidden">
+                          <span className="text-blue-600 text-[9px] font-bold">2D:{dept.counts["2D Design"]}</span>
+                          <span className="text-emerald-600 text-[9px] font-bold">3D:{dept.counts["3D Design"]}</span>
+                          <span className="text-orange-600 text-[9px] font-bold">V:{dept.counts["Video"]}</span>
+                        </div>
+                        <div className="col-span-1 text-right flex flex-col items-end">
+                          <span className="text-xs font-bold text-zinc-900 bg-[#FCFCFC] px-2 py-1 rounded-md border border-zinc-100">
+                            {percentage}%
+                          </span>
+                          <span className="text-[9px] font-bold text-zinc-400 mt-0.5 hidden md:block">{deptTotal} / {analytics.artworksInternal}</span>
                         </div>
                       </div>
                     );
                   })}
-
-                  {/* Context Headers Matrix X-axis */}
-                  <div className="flex flex-row items-center gap-[4px] md:gap-[6px] mt-1">
-                    <div className="flex-shrink-0 w-10 md:w-24"></div>
-                    <div className="flex flex-1 gap-[4px] md:gap-[6px]">
-                      {analytics.contextTypeMatrix.map(c => (
-                        <div key={c.ctx} className="flex-1 text-center text-[9px] font-semibold text-zinc-400 uppercase tracking-tight truncate" title={c.label}>
-                          {c.label}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
                 </div>
               </div>
             </div>
           </section>
 
-          {/* INTERNAL DEPT HEATMAP */}
-          <section id="heatmap-internal" className={cardClass}>
-            <DownloadBtn id="heatmap-internal" filename={`Heatmap_Artwork_Internal_${dateLabel}`} />
-            <div className="flex flex-col mb-4">
-              <h2 className="text-sm font-bold text-zinc-900 uppercase tracking-tight">Heatmap Artwork Internal</h2>
-              <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wide">Volume by Department & Type</span>
-            </div>
-            <div className="overflow-x-auto overflow-y-auto pb-2 scrollbar-thin scrollbar-thumb-slate-200 pr-2 flex-col flex-1 flex justify-center">
-              <div className="min-w-fit w-full">
-                {analytics.departmentStats.length === 0 ? (
-                  <div className="text-center py-8 text-xs font-bold text-zinc-400 italic border border-dashed border-[#EAEAEA] rounded-xl text-center w-full">
-                    No internal department activity found in this period.
-                  </div>
-                ) : (
+          {/* HEATMAPS COLUMN */}
+          <div className="flex flex-col gap-4 md:gap-6">
+            {/* GENERAL HEATMAP */}
+            <section id="heatmap-general" className={cardClass}>
+              <div className="flex flex-col mb-4">
+                <h2 className="text-sm font-bold text-zinc-900 uppercase tracking-tight">Heatmap General Context</h2>
+                <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wide">Volume by Context (Project, Lead, Internal)</span>
+              </div>
+              <div className="overflow-x-auto overflow-y-auto pb-2 scrollbar-thin scrollbar-thumb-slate-200 pr-2 flex-col flex-1 flex justify-center">
+                <div className="min-w-fit w-full">
                   <div className="flex flex-col gap-[6px] w-full pt-2">
                     {["2D Design", "3D Design", "Video"].map(type => {
-                      const maxVal = Math.max(...analytics.departmentStats.map(d => (d.counts as any)[type] || 0), 1);
+                      const maxVal = Math.max(...analytics.contextTypeMatrix.map(c => (c as any)[type] || 0), 1);
                       return (
                         <div key={type} className="flex flex-row items-center gap-[4px] md:gap-[6px]">
                           <div className="flex-shrink-0 w-10 md:w-24 text-[8px] md:text-[10px] font-semibold text-zinc-500 uppercase tracking-tight text-right pr-1 md:pr-2">
                             {type === '2D Design' ? '2D' : type === '3D Design' ? '3D' : 'VDO'}
                           </div>
                           <div className="flex flex-1 gap-[4px] md:gap-[6px]">
-                            {analytics.departmentStats.map(d => {
-                              const val = (d.counts as any)[type] || 0;
+                            {analytics.contextTypeMatrix.map(c => {
+                              const val = (c as any)[type] || 0;
                               const intensity = val / maxVal;
 
                               let bgClass = "bg-[#F4F4F5]";
@@ -780,9 +718,9 @@ const Dashboard: React.FC<Props> = ({ state }) => {
 
                               return (
                                 <div
-                                  key={d.id}
+                                  key={c.ctx}
                                   className={`flex-1 h-7 md:h-10 min-w-[20px] md:min-w-[28px] rounded-[4px] flex items-center justify-center text-[8px] md:text-[10px] font-bold transition-all hover:opacity-80 ${bgClass} ${textColor} relative group`}
-                                  title={`${d.department_name} - ${type}: ${val}`}
+                                  title={`${c.label} - ${type}: ${val}`}
                                 >
                                   <span className={val > 0 ? "opacity-100" : "opacity-0"}>{val}</span>
                                 </div>
@@ -793,164 +731,231 @@ const Dashboard: React.FC<Props> = ({ state }) => {
                       );
                     })}
 
-                    {/* Departments Headers Matrix X-axis */}
+                    {/* Context Headers Matrix X-axis */}
                     <div className="flex flex-row items-center gap-[4px] md:gap-[6px] mt-1">
                       <div className="flex-shrink-0 w-10 md:w-24"></div>
                       <div className="flex flex-1 gap-[4px] md:gap-[6px]">
-                        {analytics.departmentStats.map(d => (
-                          <div key={d.id} className="flex-1 text-center text-[9px] font-semibold text-zinc-400 capitalize truncate" title={d.department_name}>
-                            {d.department_name.split(' ')[0]}
+                        {analytics.contextTypeMatrix.map(c => (
+                          <div key={c.ctx} className="flex-1 text-center text-[9px] font-semibold text-zinc-400 uppercase tracking-tight truncate" title={c.label}>
+                            {c.label}
                           </div>
                         ))}
                       </div>
                     </div>
                   </div>
-                )}
-              </div>
-            </div>
-          </section>
-        </div>
-      </div>
-
-      {/* EVALUATION SUMMARY */}
-      <section id="eval-summary" className={cardClass + " animate-slide-up"}>
-        <DownloadBtn id="eval-summary" filename={`Evaluation_Summary_${dateLabel}`} />
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex flex-col">
-            <h2 className="text-sm font-bold text-zinc-900 uppercase tracking-tight">Evaluation Summary</h2>
-            <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wide">Overall Performance Insights</span>
-          </div>
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-6">
-          <div className="bg-[#FCFCFC] p-4 rounded-xl border border-[#EAEAEA] flex flex-col h-full hover:shadow-sm transition-all">
-            <div className="mb-5">
-              <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider block mb-1">Nilai Overall Review</span>
-              <div className="flex items-baseline gap-1">
-                <span className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 tracking-tight">{analytics.globalEvalAverage}</span>
-                <span className="text-xs font-bold text-zinc-400">/ 5.0</span>
-              </div>
-            </div>
-            <h3 className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mb-2.5">Rata-Rata Nilai Per Project (Top 5)</h3>
-            <div className="mt-auto flex flex-col border border-zinc-200 rounded-lg overflow-hidden bg-white shadow-sm">
-              {analytics.evalProjectSummary.slice(0, 5).map((p: any, idx: number) => (
-                <div key={idx} className={`flex justify-between items-center text-xs p-2.5 animate-fade-in ${idx !== Math.min(analytics.evalProjectSummary.length, 5) - 1 ? 'border-b border-zinc-100' : ''}`} style={{ animationDelay: `${idx * 50}ms` }}>
-                  <span className="font-bold text-zinc-800 truncate max-w-[70%]">{p.projectName}</span>
-                  <span className="font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-200">{p.avgScore}</span>
-                </div>
-              ))}
-              {analytics.evalProjectSummary.length === 0 && <span className="text-xs text-zinc-400 italic p-2.5">No project stats</span>}
-            </div>
-          </div>
-          <div className="bg-[#FCFCFC] p-4 rounded-xl border border-[#EAEAEA] flex flex-col h-full hover:shadow-sm transition-all">
-            <h3 className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mb-2.5">Rata-Rata Nilai Kategori</h3>
-            <div className="mt-auto flex flex-col border border-zinc-200 rounded-lg overflow-hidden bg-white shadow-sm">
-              {analytics.evalCategorySummary.map((c: any, idx: number) => (
-                <div key={idx} className={`flex justify-between items-center text-xs p-2.5 animate-fade-in ${idx !== analytics.evalCategorySummary.length - 1 ? 'border-b border-zinc-100' : ''}`} style={{ animationDelay: `${idx * 50}ms` }}>
-                  <span className="font-bold text-zinc-800 uppercase tracking-tight">{c.category}</span>
-                  <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">{c.avgScore}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="bg-[#FCFCFC] p-4 rounded-xl border border-[#EAEAEA] flex flex-col h-full hover:shadow-sm transition-all overflow-hidden">
-            <h3 className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mb-2">Top 10 Keywords (Pengembangan Diri)</h3>
-            <div className="flex flex-col gap-3 mt-auto flex-1 overflow-y-auto custom-scrollbar pr-1">
-              <div>
-                <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-tight mb-1.5 block">2 Kombinasi Kata</span>
-                <div className="flex flex-wrap gap-1.5">
-                  {analytics.topDevKeywords2.map((k: any, idx: number) => (
-                    <span key={`2w-${idx}`} className="px-2 py-1 bg-white text-zinc-700 rounded-lg text-[10px] font-bold border border-[#EAEAEA] shadow-sm animate-slide-up" style={{ animationDelay: `${idx * 50}ms` }}>
-                      {k.word} <span className="text-[8px] text-zinc-400 font-medium">({k.count})</span>
-                    </span>
-                  ))}
-                  {analytics.topDevKeywords2.length === 0 && <span className="text-[9px] text-zinc-400 italic">Kosong</span>}
                 </div>
               </div>
-              <div className="h-px bg-[#EAEAEA]"></div>
-              <div>
-                <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-tight mb-1.5 block">3 Kombinasi Kata</span>
-                <div className="flex flex-wrap gap-1.5">
-                  {analytics.topDevKeywords3.map((k: any, idx: number) => (
-                    <span key={`3w-${idx}`} className="px-2 py-1 bg-zinc-900 text-white rounded-lg text-[10px] font-bold shadow-sm animate-slide-up" style={{ animationDelay: `${idx * 50}ms` }}>
-                      {k.word} <span className="text-[8px] text-zinc-400 font-medium">({k.count})</span>
-                    </span>
-                  ))}
-                  {analytics.topDevKeywords3.length === 0 && <span className="text-[9px] text-zinc-400 italic">Kosong</span>}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section >
+            </section>
 
-      < div className="pt-2" >
-        <span className={labelClass}>Team Output & Performance</span>
-        <div className="flex overflow-x-auto flex-nowrap gap-4 md:gap-6 mt-4 pb-4 snap-x scrollbar-thin scrollbar-thumb-slate-300">
-          {analytics.teamStats.map(ds => (
-            <div key={ds.id} id={`team-stat-${ds.id}`} className="relative flex-shrink-0 w-[260px] md:w-[300px] snap-start bg-white p-4 md:p-6 rounded-[20px] border border-[#EAEAEA] shadow-sm group">
-              <DownloadBtn id={`team-stat-${ds.id}`} filename={`Team_Stat_${ds.name.replace(/\s+/g, '_')}_${dateLabel}`} />
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 text-white flex items-center justify-center font-bold text-lg group-hover:from-indigo-500 group-hover:to-purple-600 transition-all shadow-md">
-                  {ds.name.charAt(0)}
-                </div>
-                <div className="min-w-0">
-                  <h4 className="text-sm font-bold text-zinc-900 truncate uppercase tracking-tight">{ds.name}</h4>
-                  <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider">{ds.role}</p>
-                </div>
+            {/* INTERNAL DEPT HEATMAP */}
+            <section id="heatmap-internal" className={cardClass}>
+              <div className="flex flex-col mb-4">
+                <h2 className="text-sm font-bold text-zinc-900 uppercase tracking-tight">Heatmap Artwork Internal</h2>
+                <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wide">Volume by Department & Type</span>
               </div>
-
-              <div className="grid grid-cols-3 gap-2 mb-6">
-                <MetricBox label="Projects" value={ds.uniqueProjectsInvolved} gradient="from-blue-50 to-indigo-50" textGradient="from-blue-600 to-indigo-600" />
-                <MetricBox label="Leads" value={ds.uniqueLeads} gradient="from-emerald-50 to-teal-50" textGradient="from-emerald-600 to-teal-600" />
-                <MetricBox label="Lead Days" value={ds.avgLeadDuration} unit="d" gradient="from-purple-50 to-fuchsia-50" textGradient="from-purple-600 to-fuchsia-600" />
-              </div>
-
-              <div className="space-y-3 pt-4 border-t border-zinc-100">
-                <StatBar label="Project" value={ds.projectArtworks} max={ds.totalArtworks} gradient="from-blue-500 to-indigo-500" />
-                <StatBar label="Lead" value={ds.leadArtworks} max={ds.totalArtworks} gradient="from-emerald-500 to-teal-500" />
-                <StatBar label="Internal" value={ds.internalArtworks} max={ds.totalArtworks} gradient="from-purple-500 to-fuchsia-500" />
-              </div>
-
-              <div className="mt-6 pt-4 border-t border-zinc-100 flex justify-between items-center">
-                <span className="text-[10px] font-bold text-zinc-900 uppercase">Total Logged</span>
-                <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-700 to-slate-900 tracking-tight">{ds.totalArtworks}</span>
-              </div>
-
-              {/* EVALUATION SCORE SECTION (Bottom) */}
-              <div className="mt-4 pt-4 border-t border-dashed border-[#EAEAEA]">
-                <div
-                  className="flex justify-between items-center mb-2 cursor-pointer hover:bg-[#FCFCFC] rounded p-1 -mx-1 transition-colors"
-                  onClick={() => setViewNotes({ name: ds.name, notes: ds.evalNotes, projectEvals: ds.projectEvalDetails })}
-                  title="Lihat detail evaluasi per project"
-                >
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Designer Eval</span>
-                    {ds.evalNotes.length > 0 && <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span>}
-                  </div>
-                  {ds.avgRating ? (
-                    <span className="bg-gradient-to-r from-amber-100 to-orange-100 text-orange-700 px-2 py-0.5 rounded text-[10px] font-bold border border-orange-200 hover:from-amber-200 hover:to-orange-200 transition-colors">
-                      {ds.avgRating} / 5.0
-                    </span>
+              <div className="overflow-x-auto overflow-y-auto pb-2 scrollbar-thin scrollbar-thumb-slate-200 pr-2 flex-col flex-1 flex justify-center">
+                <div className="min-w-fit w-full">
+                  {analytics.departmentStats.length === 0 ? (
+                    <div className="text-center py-8 text-xs font-bold text-zinc-400 italic border border-dashed border-[#EAEAEA] rounded-xl text-center w-full">
+                      No internal department activity found in this period.
+                    </div>
                   ) : (
-                    <span className="text-[9px] text-zinc-300 font-bold italic">No data</span>
+                    <div className="flex flex-col gap-[6px] w-full pt-2">
+                      {["2D Design", "3D Design", "Video"].map(type => {
+                        const maxVal = Math.max(...analytics.departmentStats.map(d => (d.counts as any)[type] || 0), 1);
+                        return (
+                          <div key={type} className="flex flex-row items-center gap-[4px] md:gap-[6px]">
+                            <div className="flex-shrink-0 w-10 md:w-24 text-[8px] md:text-[10px] font-semibold text-zinc-500 uppercase tracking-tight text-right pr-1 md:pr-2">
+                              {type === '2D Design' ? '2D' : type === '3D Design' ? '3D' : 'VDO'}
+                            </div>
+                            <div className="flex flex-1 gap-[4px] md:gap-[6px]">
+                              {analytics.departmentStats.map(d => {
+                                const val = (d.counts as any)[type] || 0;
+                                const intensity = val / maxVal;
+
+                                let bgClass = "bg-[#F4F4F5]";
+                                let textColor = "text-transparent";
+
+                                if (val > 0) {
+                                  if (intensity > 0.8) { bgClass = "bg-indigo-600"; textColor = "text-indigo-100"; }
+                                  else if (intensity > 0.6) { bgClass = "bg-indigo-500"; textColor = "text-indigo-50"; }
+                                  else if (intensity > 0.4) { bgClass = "bg-indigo-400"; textColor = "text-indigo-50"; }
+                                  else if (intensity > 0.2) { bgClass = "bg-indigo-300"; textColor = "text-indigo-900"; }
+                                  else { bgClass = "bg-indigo-200"; textColor = "text-indigo-900"; }
+                                }
+
+                                return (
+                                  <div
+                                    key={d.id}
+                                    className={`flex-1 h-7 md:h-10 min-w-[20px] md:min-w-[28px] rounded-[4px] flex items-center justify-center text-[8px] md:text-[10px] font-bold transition-all hover:opacity-80 ${bgClass} ${textColor} relative group`}
+                                    title={`${d.department_name} - ${type}: ${val}`}
+                                  >
+                                    <span className={val > 0 ? "opacity-100" : "opacity-0"}>{val}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {/* Departments Headers Matrix X-axis */}
+                      <div className="flex flex-row items-center gap-[4px] md:gap-[6px] mt-1">
+                        <div className="flex-shrink-0 w-10 md:w-24"></div>
+                        <div className="flex flex-1 gap-[4px] md:gap-[6px]">
+                          {analytics.departmentStats.map(d => (
+                            <div key={d.id} className="flex-1 text-center text-[9px] font-semibold text-zinc-400 capitalize truncate" title={d.department_name}>
+                              {d.department_name.split(' ')[0]}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
                   )}
                 </div>
+              </div>
+            </section>
+          </div>
+        </div>
 
-                {ds.detailedScores && (
-                  <div className="grid grid-cols-2 gap-2 mt-2">
-                    <TinyScore label="Inisiatif" val={ds.detailedScores.inisiatif} />
-                    <TinyScore label="Disiplin" val={ds.detailedScores.disiplin} />
-                    <TinyScore label="Tugas" val={ds.detailedScores.penyelesaian_tugas} />
-                    <TinyScore label="Attitude" val={ds.detailedScores.attitude} />
-                    <TinyScore label="Komunikasi" val={ds.detailedScores.komunikasi} />
-                    <TinyScore label="Respon" val={ds.detailedScores.respon_masukan} />
+        {/* EVALUATION SUMMARY */}
+        <section id="eval-summary" className={cardClass + " animate-slide-up"}>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col">
+              <h2 className="text-sm font-bold text-zinc-900 uppercase tracking-tight">Evaluation Summary</h2>
+              <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wide">Overall Performance Insights</span>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-6">
+            <div className="bg-[#FCFCFC] p-4 rounded-xl border border-[#EAEAEA] flex flex-col h-full hover:shadow-sm transition-all">
+              <div className="mb-5">
+                <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider block mb-1">Nilai Overall Review</span>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 tracking-tight">{analytics.globalEvalAverage}</span>
+                  <span className="text-xs font-bold text-zinc-400">/ 5.0</span>
+                </div>
+              </div>
+              <h3 className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mb-2.5">Rata-Rata Nilai Per Project (Top 5)</h3>
+              <div className="mt-auto flex flex-col border border-zinc-200 rounded-lg overflow-hidden bg-white shadow-sm">
+                {analytics.evalProjectSummary.slice(0, 5).map((p: any, idx: number) => (
+                  <div key={idx} className={`flex justify-between items-center text-xs p-2.5 animate-fade-in ${idx !== Math.min(analytics.evalProjectSummary.length, 5) - 1 ? 'border-b border-zinc-100' : ''}`} style={{ animationDelay: `${idx * 50}ms` }}>
+                    <span className="font-bold text-zinc-800 truncate max-w-[70%]">{p.projectName}</span>
+                    <span className="font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-200">{p.avgScore}</span>
                   </div>
-                )}
+                ))}
+                {analytics.evalProjectSummary.length === 0 && <span className="text-xs text-zinc-400 italic p-2.5">No project stats</span>}
               </div>
             </div>
-          ))}
-        </div>
-      </div >
+            <div className="bg-[#FCFCFC] p-4 rounded-xl border border-[#EAEAEA] flex flex-col h-full hover:shadow-sm transition-all">
+              <h3 className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mb-2.5">Rata-Rata Nilai Kategori</h3>
+              <div className="mt-auto flex flex-col border border-zinc-200 rounded-lg overflow-hidden bg-white shadow-sm">
+                {analytics.evalCategorySummary.map((c: any, idx: number) => (
+                  <div key={idx} className={`flex justify-between items-center text-xs p-2.5 animate-fade-in ${idx !== analytics.evalCategorySummary.length - 1 ? 'border-b border-zinc-100' : ''}`} style={{ animationDelay: `${idx * 50}ms` }}>
+                    <span className="font-bold text-zinc-800 uppercase tracking-tight">{c.category}</span>
+                    <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">{c.avgScore}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="bg-[#FCFCFC] p-4 rounded-xl border border-[#EAEAEA] flex flex-col h-full hover:shadow-sm transition-all overflow-hidden">
+              <h3 className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mb-2">Top 10 Keywords (Pengembangan Diri)</h3>
+              <div className="flex flex-col gap-3 mt-auto flex-1 overflow-y-auto custom-scrollbar pr-1">
+                <div>
+                  <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-tight mb-1.5 block">2 Kombinasi Kata</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {analytics.topDevKeywords2.map((k: any, idx: number) => (
+                      <span key={`2w-${idx}`} className="px-2 py-1 bg-white text-zinc-700 rounded-lg text-[10px] font-bold border border-[#EAEAEA] shadow-sm animate-slide-up" style={{ animationDelay: `${idx * 50}ms` }}>
+                        {k.word} <span className="text-[8px] text-zinc-400 font-medium">({k.count})</span>
+                      </span>
+                    ))}
+                    {analytics.topDevKeywords2.length === 0 && <span className="text-[9px] text-zinc-400 italic">Kosong</span>}
+                  </div>
+                </div>
+                <div className="h-px bg-[#EAEAEA]"></div>
+                <div>
+                  <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-tight mb-1.5 block">3 Kombinasi Kata</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {analytics.topDevKeywords3.map((k: any, idx: number) => (
+                      <span key={`3w-${idx}`} className="px-2 py-1 bg-zinc-900 text-white rounded-lg text-[10px] font-bold shadow-sm animate-slide-up" style={{ animationDelay: `${idx * 50}ms` }}>
+                        {k.word} <span className="text-[8px] text-zinc-400 font-medium">({k.count})</span>
+                      </span>
+                    ))}
+                    {analytics.topDevKeywords3.length === 0 && <span className="text-[9px] text-zinc-400 italic">Kosong</span>}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section >
+
+        < div className="pt-2" >
+          <span className={labelClass}>Team Output & Performance</span>
+          <div className="flex overflow-x-auto flex-nowrap gap-4 md:gap-6 mt-4 pb-4 snap-x scrollbar-thin scrollbar-thumb-slate-300">
+            {analytics.teamStats.map(ds => (
+              <div key={ds.id} id={`team-stat-${ds.id}`} className="relative flex-shrink-0 w-[260px] md:w-[300px] snap-start bg-white p-4 md:p-6 rounded-[20px] border border-[#EAEAEA] shadow-sm group">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 text-white flex items-center justify-center font-bold text-lg group-hover:from-indigo-500 group-hover:to-purple-600 transition-all shadow-md">
+                    {ds.name.charAt(0)}
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="text-sm font-bold text-zinc-900 truncate uppercase tracking-tight">{ds.name}</h4>
+                    <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider">{ds.role}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 mb-6">
+                  <MetricBox label="Projects" value={ds.uniqueProjectsInvolved} gradient="from-blue-50 to-indigo-50" textGradient="from-blue-600 to-indigo-600" />
+                  <MetricBox label="Leads" value={ds.uniqueLeads} gradient="from-emerald-50 to-teal-50" textGradient="from-emerald-600 to-teal-600" />
+                  <MetricBox label="Lead Days" value={ds.avgLeadDuration} unit="d" gradient="from-purple-50 to-fuchsia-50" textGradient="from-purple-600 to-fuchsia-600" />
+                </div>
+
+                <div className="space-y-3 pt-4 border-t border-zinc-100">
+                  <StatBar label="Project" value={ds.projectArtworks} max={ds.totalArtworks} gradient="from-blue-500 to-indigo-500" />
+                  <StatBar label="Lead" value={ds.leadArtworks} max={ds.totalArtworks} gradient="from-emerald-500 to-teal-500" />
+                  <StatBar label="Internal" value={ds.internalArtworks} max={ds.totalArtworks} gradient="from-purple-500 to-fuchsia-500" />
+                </div>
+
+                <div className="mt-6 pt-4 border-t border-zinc-100 flex justify-between items-center">
+                  <span className="text-[10px] font-bold text-zinc-900 uppercase">Total Logged</span>
+                  <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-700 to-slate-900 tracking-tight">{ds.totalArtworks}</span>
+                </div>
+
+                {/* EVALUATION SCORE SECTION (Bottom) */}
+                <div className="mt-4 pt-4 border-t border-dashed border-[#EAEAEA]">
+                  <div
+                    className="flex justify-between items-center mb-2 cursor-pointer hover:bg-[#FCFCFC] rounded p-1 -mx-1 transition-colors"
+                    onClick={() => setViewNotes({ name: ds.name, notes: ds.evalNotes, projectEvals: ds.projectEvalDetails })}
+                    title="Lihat detail evaluasi per project"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Designer Eval</span>
+                      {ds.evalNotes.length > 0 && <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span>}
+                    </div>
+                    {ds.avgRating ? (
+                      <span className="bg-gradient-to-r from-amber-100 to-orange-100 text-orange-700 px-2 py-0.5 rounded text-[10px] font-bold border border-orange-200 hover:from-amber-200 hover:to-orange-200 transition-colors">
+                        {ds.avgRating} / 5.0
+                      </span>
+                    ) : (
+                      <span className="text-[9px] text-zinc-300 font-bold italic">No data</span>
+                    )}
+                  </div>
+
+                  {ds.detailedScores && (
+                    <div className="grid grid-cols-2 gap-2 mt-2">
+                      <TinyScore label="Inisiatif" val={ds.detailedScores.inisiatif} />
+                      <TinyScore label="Disiplin" val={ds.detailedScores.disiplin} />
+                      <TinyScore label="Tugas" val={ds.detailedScores.penyelesaian_tugas} />
+                      <TinyScore label="Attitude" val={ds.detailedScores.attitude} />
+                      <TinyScore label="Komunikasi" val={ds.detailedScores.komunikasi} />
+                      <TinyScore label="Respon" val={ds.detailedScores.respon_masukan} />
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div >
+      </div>
     </div >
   );
 };
@@ -963,7 +968,20 @@ const handleDownload = async (elementId: string, filename: string) => {
   const buttons = element.querySelectorAll<HTMLElement>('.download-btn');
   buttons.forEach(btn => btn.style.display = 'none');
   try {
-    const canvas = await html2canvas(element, { backgroundColor: '#ffffff', scale: 2 });
+    const canvas = await html2canvas(element, {
+      backgroundColor: '#ffffff',
+      scale: 2,
+      onclone: (clonedDoc) => {
+        const textElements = clonedDoc.querySelectorAll('.bg-clip-text.text-transparent');
+        textElements.forEach(el => {
+          if (el instanceof HTMLElement) {
+            el.classList.remove('text-transparent', 'bg-clip-text');
+            el.style.color = '#1e293b';
+            el.style.backgroundImage = 'none';
+          }
+        });
+      }
+    });
     const image = canvas.toDataURL('image/png');
     const link = document.createElement('a');
     link.href = image;
@@ -975,18 +993,6 @@ const handleDownload = async (elementId: string, filename: string) => {
     buttons.forEach(btn => btn.style.display = '');
   }
 };
-
-const DownloadBtn = ({ id, filename }: { id: string, filename: string }) => (
-  <button
-    className="download-btn absolute top-3 right-3 p-1.5 rounded-md hover:bg-zinc-100 transition-colors z-20"
-    onClick={() => handleDownload(id, filename)}
-    title="Download as PNG"
-  >
-    <svg className="w-3.5 h-3.5 text-zinc-400 hover:text-zinc-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-    </svg>
-  </button>
-);
 
 const TinyScore = ({ label, val }: { label: string, val: string }) => (
   <div className="flex justify-between items-center bg-[#FCFCFC] px-2 py-1 rounded border border-zinc-100">
@@ -1030,7 +1036,6 @@ const LegendDot = ({ color, label }: { color: string, label: string }) => (
 
 const KPICard = ({ id, filename, label, value, sub, gradient, keywords, statsList }: any) => (
   <div id={id} className="bg-white p-3 md:p-6 rounded-[16px] md:rounded-[20px] border border-[#EAEAEA] shadow-sm flex flex-col h-full transition-all hover:shadow-sm relative overflow-hidden group">
-    {id && filename && <DownloadBtn id={id} filename={filename} />}
     {/* Decorative Gradient Background Opacity */}
     <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${gradient} opacity-5 rounded-bl-full pointer-events-none transition-opacity group-hover:opacity-10`}></div>
 
@@ -1084,7 +1089,6 @@ const KPICard = ({ id, filename, label, value, sub, gradient, keywords, statsLis
 const VolumeCard = ({ id, filename, title, count, duration, typeSplit, gradient }: any) => {
   return (
     <div id={id} className="bg-white p-3 md:p-5 rounded-[16px] md:rounded-[20px] border border-[#EAEAEA] shadow-sm flex flex-col relative overflow-hidden group hover:shadow-md transition-all">
-      {id && filename && <DownloadBtn id={id} filename={filename} />}
       <div className={`absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b ${gradient}`}></div>
       <div className="flex justify-between items-center mb-4 pl-3">
         <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-700">{title} Context</h3>
