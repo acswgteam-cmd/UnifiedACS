@@ -964,6 +964,43 @@ const Dashboard: React.FC<Props> = ({ state }) => {
 
 // --- Sub-Components ---
 
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+const fixClonedStyles = (clonedDoc: Document) => {
+  // Fix ALL elements with transparent text fill (gradient text technique)
+  const allElements = clonedDoc.querySelectorAll('*');
+  allElements.forEach(el => {
+    if (el instanceof HTMLElement) {
+      const computed = clonedDoc.defaultView?.getComputedStyle(el);
+      if (!computed) return;
+
+      // Detect gradient text: -webkit-text-fill-color: transparent or color: transparent
+      const textFill = computed.getPropertyValue('-webkit-text-fill-color');
+      const bgClip = computed.getPropertyValue('-webkit-background-clip');
+      const color = computed.color;
+
+      if (
+        textFill === 'transparent' ||
+        bgClip === 'text' ||
+        (color === 'rgba(0, 0, 0, 0)' && el.textContent?.trim())
+      ) {
+        // Extract gradient colors from background-image to pick the first as solid color
+        const bgImage = computed.backgroundImage;
+        let solidColor = '#1e293b'; // fallback dark color
+        if (bgImage && bgImage !== 'none') {
+          const colorMatch = bgImage.match(/rgb\([^)]+\)/);
+          if (colorMatch) solidColor = colorMatch[0];
+        }
+        el.style.setProperty('-webkit-text-fill-color', 'initial', 'important');
+        el.style.setProperty('-webkit-background-clip', 'initial', 'important');
+        el.style.setProperty('background-clip', 'initial', 'important');
+        el.style.setProperty('color', solidColor, 'important');
+        el.style.backgroundImage = 'none';
+      }
+    }
+  });
+};
+
 const handleDownloadZip = async (dateLabel: string, teamStats: any[]) => {
   const zip = new JSZip();
   const folder = zip.folder(`Dashboard_Cards_${dateLabel}`);
@@ -993,41 +1030,43 @@ const handleDownloadZip = async (dateLabel: string, teamStats: any[]) => {
   const buttons = document.querySelectorAll<HTMLElement>('.download-btn');
   buttons.forEach(btn => btn.style.display = 'none');
 
+  let capturedCount = 0;
+
   try {
     for (const item of exportItems) {
       const element = document.getElementById(item.id);
       if (!element) continue;
 
-      const canvas = await html2canvas(element, {
-        backgroundColor: '#ffffff',
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        onclone: (clonedDoc) => {
-          // Fix transparent clip texts
-          const textElements = clonedDoc.querySelectorAll('.bg-clip-text.text-transparent');
-          textElements.forEach(el => {
-            if (el instanceof HTMLElement) {
-              el.classList.remove('text-transparent', 'bg-clip-text');
-              el.style.color = '#1e293b';
-              el.style.backgroundImage = 'none';
-              el.style.webkitTextFillColor = 'initial';
-            }
-          });
-          // Fix potential flex layout issues inside absolute contexts
-          const parentElements = clonedDoc.querySelectorAll('.border-\\[\\#EAEAEA\\]');
-          parentElements.forEach(el => {
-            if (el instanceof HTMLElement) el.style.border = '1px solid #EAEAEA';
-          });
-        }
-      });
-      const dataUri = canvas.toDataURL('image/png');
-      const base64Data = dataUri.replace(/^data:image\/png;base64,/, "");
-      folder.file(item.name, base64Data, { base64: true });
+      try {
+        const canvas = await html2canvas(element, {
+          backgroundColor: '#ffffff',
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          windowWidth: element.scrollWidth + 40,
+          windowHeight: element.scrollHeight + 40,
+          onclone: (_clonedDoc) => {
+            fixClonedStyles(_clonedDoc);
+          }
+        });
+        const dataUri = canvas.toDataURL('image/png');
+        const base64Data = dataUri.replace(/^data:image\/png;base64,/, "");
+        folder.file(item.name, base64Data, { base64: true });
+        capturedCount++;
+      } catch (cardError) {
+        console.warn(`Skipped card "${item.name}":`, cardError);
+      }
+
+      // Small delay between captures to ease memory pressure
+      await delay(150);
     }
 
-    const content = await zip.generateAsync({ type: 'blob' });
-    saveAs(content, `Dashboard_Cards_${dateLabel}.zip`);
+    if (capturedCount > 0) {
+      const content = await zip.generateAsync({ type: 'blob' });
+      saveAs(content, `Dashboard_Cards_${dateLabel}.zip`);
+    } else {
+      console.error("No cards were captured.");
+    }
   } catch (error) {
     console.error("Error generating ZIP:", error);
   } finally {
