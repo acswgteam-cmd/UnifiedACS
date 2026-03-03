@@ -82,9 +82,9 @@ const DesignerMaster: React.FC<Props> = ({ designers, onUpdate }) => {
       </header>
 
       {isAdding && (
-        <form onSubmit={handleAdd} className="bg-white p-4 rounded-xl border border-[#EAEAEA] shadow-sm border border-[#EAEAEA] animate-in slide-in-from-top duration-200 max-w-2xl">
+        <form onSubmit={handleAdd} className="bg-white p-3 md:p-4 rounded-xl border border-[#EAEAEA] shadow-sm animate-in slide-in-from-top duration-200 max-w-2xl">
           <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-3">New Team Member</h3>
-          <div className="flex gap-3 mb-3">
+          <div className="flex flex-col md:flex-row gap-2 md:gap-3 mb-3">
             <input
               type="text" required placeholder="Name (e.g. JOHN)" className="flex-1 p-2.5 border border-[#EAEAEA] rounded-lg text-xs font-bold outline-none focus:border-zinc-900"
               value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -135,16 +135,16 @@ const DesignerMaster: React.FC<Props> = ({ designers, onUpdate }) => {
                   <div className={`w-2 h-2 rounded-full flex-shrink-0 ${d.active ? 'bg-emerald-500' : 'bg-red-300'}`}></div>
                 </div>
 
-                <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity pt-2 border-t border-zinc-50">
+                <div className="flex gap-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity pt-2 border-t border-zinc-50">
                   <button
                     onClick={() => startEdit(d)}
-                    className="flex-1 text-[9px] font-bold text-zinc-400 hover:text-zinc-900 uppercase text-left"
+                    className="flex-1 text-[9px] md:text-[10px] font-bold text-zinc-400 hover:text-zinc-900 uppercase text-left py-1"
                   >
                     Edit
                   </button>
                   <button
                     onClick={() => toggleStatus(d)}
-                    className={`flex-1 text-[9px] font-bold uppercase text-right hover:underline ${d.active ? 'text-zinc-400 hover:text-red-500' : 'text-emerald-600'}`}
+                    className={`flex-1 text-[9px] md:text-[10px] font-bold uppercase text-right py-1 hover:underline ${d.active ? 'text-zinc-400 hover:text-red-500' : 'text-emerald-600'}`}
                   >
                     {d.active ? 'Deactivate' : 'Activate'}
                   </button>

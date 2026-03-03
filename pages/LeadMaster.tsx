@@ -441,8 +441,8 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
       </div>
 
       {isAdding && (
-        <form onSubmit={handleSave} className="bg-white p-8 rounded-[20px] border border-[#EAEAEA] shadow-sm border border-[#EAEAEA] animate-in zoom-in duration-200 flex-shrink-0">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <form onSubmit={handleSave} className="bg-white p-4 md:p-8 rounded-[16px] md:rounded-[20px] border border-[#EAEAEA] shadow-sm animate-in zoom-in duration-200 flex-shrink-0">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-4 md:mb-6">
             <div className="md:col-span-2">
               <label className={labelClass}>Lead Name</label>
               <input type="text" required value={formData.lead_name} onChange={e => setFormData({ ...formData, lead_name: e.target.value })} className={inputClass} placeholder="Project title..." />
@@ -476,9 +476,9 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
               <textarea value={formData.brief} onChange={e => setFormData({ ...formData, brief: e.target.value })} className={inputClass} rows={3} placeholder="Production scope..." />
             </div>
           </div>
-          <div className="flex justify-end gap-4">
-            <button type="button" onClick={resetForm} className="px-6 py-2.5 text-sm font-bold text-zinc-500 uppercase">Cancel</button>
-            <button type="submit" className="px-8 py-2.5 bg-zinc-900 text-white rounded-lg text-sm font-bold shadow-md hover:bg-black transition-all uppercase tracking-wider">
+          <div className="flex justify-end gap-3 md:gap-4">
+            <button type="button" onClick={resetForm} className="px-4 md:px-6 py-2.5 text-sm font-bold text-zinc-500 uppercase">Cancel</button>
+            <button type="submit" className="px-6 md:px-8 py-2.5 bg-zinc-900 text-white rounded-lg text-sm font-bold shadow-md hover:bg-black transition-all uppercase tracking-wider">
               {editingId ? 'Update Lead' : 'Commit Lead'}
             </button>
           </div>
@@ -634,8 +634,8 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
       </div>
 
       {selectedLead && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 backdrop-blur-sm bg-[#1A1C20]/40 animate-in fade-in duration-200" onClick={() => setSelectedLead(null)}>
-          <div className="bg-white w-full max-w-lg rounded-[24px] shadow-2xl overflow-hidden animate-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-center p-0 md:p-6 backdrop-blur-sm bg-[#1A1C20]/40 animate-in fade-in duration-200" onClick={() => setSelectedLead(null)}>
+          <div className="bg-white w-full max-w-lg rounded-t-[24px] md:rounded-[24px] shadow-2xl overflow-hidden animate-in slide-in-from-bottom md:zoom-in duration-200 max-h-[90vh] md:max-h-none overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="p-6 md:p-8 border-b border-[#EAEAEA] bg-[#FCFCFC] flex justify-between items-start">
               <div>
                 <span className={`px-2 py-0.5 rounded-full border text-[9px] font-bold uppercase mb-2 inline-block ${getStatusBadge(selectedLead.status)}`}>{selectedLead.status}</span>

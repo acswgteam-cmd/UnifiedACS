@@ -444,8 +444,8 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
 
       {/* Modal & Detail components remain unchanged */}
       {selectedTask && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 backdrop-blur-sm bg-[#1A1C20]/40 animate-in fade-in duration-200" onClick={() => setSelectedTask(null)}>
-          <div className="bg-white w-full max-w-lg rounded-[24px] shadow-2xl overflow-hidden animate-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-center p-0 md:p-6 backdrop-blur-sm bg-[#1A1C20]/40 animate-in fade-in duration-200" onClick={() => setSelectedTask(null)}>
+          <div className="bg-white w-full max-w-lg rounded-t-[24px] md:rounded-[24px] shadow-2xl overflow-hidden animate-in slide-in-from-bottom md:zoom-in duration-200 max-h-[90vh] md:max-h-none overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="p-6 md:p-8 border-b border-[#EAEAEA] bg-[#FCFCFC] flex justify-between items-start">
               <div>
                 <span className={`px-2 py-0.5 rounded-full border text-[9px] font-bold uppercase mb-2 inline-block ${getStatusColor(selectedTask.status)}`}>{selectedTask.status}</span>
@@ -475,8 +475,8 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
       )}
 
       {isFormOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 backdrop-blur-sm bg-[#1A1C20]/40 animate-in fade-in duration-200">
-          <form onSubmit={handleSave} className="bg-white w-full max-w-lg rounded-[20px] shadow-2xl p-8 animate-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-6 backdrop-blur-sm bg-[#1A1C20]/40 animate-in fade-in duration-200">
+          <form onSubmit={handleSave} className="bg-white w-full max-w-lg rounded-t-[20px] md:rounded-[20px] shadow-2xl p-5 md:p-8 animate-in slide-in-from-bottom md:zoom-in duration-200 max-h-[90vh] md:max-h-none overflow-y-auto" onClick={e => e.stopPropagation()}>
             <h2 className="text-xl font-bold text-zinc-900 uppercase mb-6">{editingTask ? 'Edit Internal Task' : 'New Internal Task'}</h2>
             <div className="space-y-4">
               <div>
@@ -504,9 +504,9 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
                 <textarea value={formData.brief} onChange={e => setFormData({ ...formData, brief: e.target.value })} className="w-full p-3 rounded-xl border border-[#EAEAEA] text-sm font-bold outline-none focus:ring-2 focus:ring-purple-600" rows={4} />
               </div>
             </div>
-            <div className="flex gap-4 mt-8">
-              <button type="submit" className="flex-1 py-3 bg-purple-600 text-white rounded-xl font-bold uppercase tracking-wider text-xs">Save Task</button>
-              <button type="button" onClick={() => setIsFormOpen(false)} className="flex-1 py-3 bg-[#F8F9FA] text-zinc-600 rounded-xl font-bold uppercase tracking-wider text-xs">Cancel</button>
+            <div className="flex gap-3 md:gap-4 mt-6 md:mt-8">
+              <button type="submit" className="flex-1 py-3 bg-purple-600 text-white rounded-xl font-bold uppercase tracking-wider text-xs hover:bg-purple-700 transition-all">Save Task</button>
+              <button type="button" onClick={() => setIsFormOpen(false)} className="flex-1 py-3 bg-[#F8F9FA] text-zinc-600 rounded-xl font-bold uppercase tracking-wider text-xs hover:bg-zinc-200 transition-all">Cancel</button>
             </div>
           </form>
         </div>

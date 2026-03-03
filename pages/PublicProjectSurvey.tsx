@@ -680,7 +680,7 @@ IMPORTANT: Extract ALL rows. Return raw JSON only, no explanations.`;
   // --- SCREEN 1: PROJECT LIST ---
   if (!selectedProject) {
     return (
-      <div className="min-h-screen bg-[#F8F9FA] py-12 px-6">
+      <div className="min-h-screen bg-[#F8F9FA] py-6 md:py-12 px-4 md:px-6">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12">
             <div className="inline-block px-4 py-1.5 bg-[#1A1C20] text-white rounded-full text-[10px] font-bold uppercase tracking-wider mb-4">ACS Project Portal</div>
@@ -769,14 +769,14 @@ IMPORTANT: Extract ALL rows. Return raw JSON only, no explanations.`;
   return (
     <div className="min-h-screen bg-[#FCFCFC] flex flex-col">
       {/* Header */}
-      <div className="bg-white border-b border-[#EAEAEA] px-6 py-4 sticky top-0 z-30">
-        <div className="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-4">
-            <button onClick={() => setSelectedProject(null)} className="p-2 bg-[#F8F9FA] rounded-lg hover:bg-[#FAFAFA]200 text-zinc-500 transition-colors">
+      <div className="bg-white border-b border-[#EAEAEA] px-4 md:px-6 py-3 md:py-4 sticky top-0 z-30">
+        <div className="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-2 md:gap-4">
+          <div className="flex items-center gap-3 md:gap-4">
+            <button onClick={() => setSelectedProject(null)} className="p-2.5 bg-[#F8F9FA] rounded-lg hover:bg-[#FAFAFA]200 text-zinc-500 transition-colors">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
             </button>
-            <div>
-              <h1 className="text-xl font-bold text-zinc-900 uppercase tracking-tight leading-none">{selectedProject.project_name}</h1>
+            <div className="min-w-0">
+              <h1 className="text-base md:text-xl font-bold text-zinc-900 uppercase tracking-tight leading-none truncate">{selectedProject.project_name}</h1>
               <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Project Portal</span>
             </div>
           </div>
@@ -789,12 +789,12 @@ IMPORTANT: Extract ALL rows. Return raw JSON only, no explanations.`;
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-6 py-8">
+      <div className="flex-1 overflow-y-auto px-3 md:px-6 py-4 md:py-8">
         <div className="max-w-5xl mx-auto">
 
           {/* Design Checklist - always shown */}
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
-            <div className="bg-white p-6 rounded-[20px] border border-[#EAEAEA] shadow-sm">
+            <div className="bg-white p-4 md:p-6 rounded-[16px] md:rounded-[20px] border border-[#EAEAEA] shadow-sm">
               <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-3">Quick Add from Templates</span>
               {isEditable ? (
                 <div className="flex flex-wrap gap-2">
@@ -819,50 +819,52 @@ IMPORTANT: Extract ALL rows. Return raw JSON only, no explanations.`;
                 <h2 className="text-lg font-bold text-zinc-900 uppercase tracking-wide">Design Request List</h2>
                 <p className="text-xs text-zinc-500 mt-1">List all design assets needed for this project.</p>
               </div>
-              <table className="w-full text-left text-xs">
-                <thead className="bg-[#FCFCFC] text-[10px] font-bold text-zinc-500 uppercase tracking-wider border-b border-[#EAEAEA]">
-                  <tr>
-                    <th className="px-6 py-4 text-center w-12">#</th>
-                    <th className="px-6 py-4">Design Item</th>
-                    <th className="px-6 py-4 w-32">Size</th>
-                    <th className="px-6 py-4 text-center w-20">Qty</th>
-                    <th className="px-6 py-4">Notes</th>
-                    <th className="px-6 py-4 w-32">Status</th>
-                    <th className="px-6 py-4 text-right w-16"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 font-bold text-zinc-700">
-                  {Array.from(activeTemplatesInProject).map(templateId => {
-                    const items = groupedChecklists.groups[templateId] || [];
-                    const templateName = templates.find(t => t.id === templateId)?.name || 'Unknown Template';
-                    const newItemState = newItemsMap[templateId] || { task_name: '', size: '', quantity: 1, notes: '' };
-                    return (
-                      <React.Fragment key={templateId}>
-                        <tr className="bg-zinc-100 border-y border-[#EAEAEA]">
-                          <td colSpan={7} className="px-6 py-2">
-                            <span className="text-[10px] font-bold text-indigo-800 uppercase tracking-wider flex items-center gap-2">
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg> {templateName}
-                            </span>
-                          </td>
-                        </tr>
-                        {items.map((cl, idx) => (<TableRow key={cl.id} cl={cl} idx={idx} isEditable={isEditable} cellInputClass={cellInputClass} handleLocalChange={handleLocalChange} handleSaveItem={handleSaveItem} handleDeleteItem={handleDeleteItem} />))}
-                        {isEditable && <AddRow newItem={newItemState} updateNewItem={(field: string, val: any) => updateNewItemState(templateId, field, val)} onAdd={() => handleAddItem(templateId)} newRowInputClass={newRowInputClass} />}
-                      </React.Fragment>
-                    );
-                  })}
-                  <React.Fragment key="manual">
-                    <tr className="bg-[#F8F9FA] border-y border-[#EAEAEA]">
-                      <td colSpan={7} className="px-6 py-2">
-                        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-2">
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> Additional / Manual Items
-                        </span>
-                      </td>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs min-w-[600px]">
+                  <thead className="bg-[#FCFCFC] text-[10px] font-bold text-zinc-500 uppercase tracking-wider border-b border-[#EAEAEA]">
+                    <tr>
+                      <th className="px-6 py-4 text-center w-12">#</th>
+                      <th className="px-6 py-4">Design Item</th>
+                      <th className="px-6 py-4 w-32">Size</th>
+                      <th className="px-6 py-4 text-center w-20">Qty</th>
+                      <th className="px-6 py-4">Notes</th>
+                      <th className="px-6 py-4 w-32">Status</th>
+                      <th className="px-6 py-4 text-right w-16"></th>
                     </tr>
-                    {groupedChecklists.manualItems.map((cl, idx) => (<TableRow key={cl.id} cl={cl} idx={idx} isEditable={isEditable} cellInputClass={cellInputClass} handleLocalChange={handleLocalChange} handleSaveItem={handleSaveItem} handleDeleteItem={handleDeleteItem} />))}
-                    {isEditable && <AddRow newItem={newItemsMap['manual'] || { task_name: '', size: '', quantity: 1, notes: '' }} updateNewItem={(field: string, val: any) => updateNewItemState(null, field, val)} onAdd={() => handleAddItem(null)} newRowInputClass={newRowInputClass} />}
-                  </React.Fragment>
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-bold text-zinc-700">
+                    {Array.from(activeTemplatesInProject).map(templateId => {
+                      const items = groupedChecklists.groups[templateId] || [];
+                      const templateName = templates.find(t => t.id === templateId)?.name || 'Unknown Template';
+                      const newItemState = newItemsMap[templateId] || { task_name: '', size: '', quantity: 1, notes: '' };
+                      return (
+                        <React.Fragment key={templateId}>
+                          <tr className="bg-zinc-100 border-y border-[#EAEAEA]">
+                            <td colSpan={7} className="px-6 py-2">
+                              <span className="text-[10px] font-bold text-indigo-800 uppercase tracking-wider flex items-center gap-2">
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg> {templateName}
+                              </span>
+                            </td>
+                          </tr>
+                          {items.map((cl, idx) => (<TableRow key={cl.id} cl={cl} idx={idx} isEditable={isEditable} cellInputClass={cellInputClass} handleLocalChange={handleLocalChange} handleSaveItem={handleSaveItem} handleDeleteItem={handleDeleteItem} />))}
+                          {isEditable && <AddRow newItem={newItemState} updateNewItem={(field: string, val: any) => updateNewItemState(templateId, field, val)} onAdd={() => handleAddItem(templateId)} newRowInputClass={newRowInputClass} />}
+                        </React.Fragment>
+                      );
+                    })}
+                    <React.Fragment key="manual">
+                      <tr className="bg-[#F8F9FA] border-y border-[#EAEAEA]">
+                        <td colSpan={7} className="px-6 py-2">
+                          <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-2">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> Additional / Manual Items
+                          </span>
+                        </td>
+                      </tr>
+                      {groupedChecklists.manualItems.map((cl, idx) => (<TableRow key={cl.id} cl={cl} idx={idx} isEditable={isEditable} cellInputClass={cellInputClass} handleLocalChange={handleLocalChange} handleSaveItem={handleSaveItem} handleDeleteItem={handleDeleteItem} />))}
+                      {isEditable && <AddRow newItem={newItemsMap['manual'] || { task_name: '', size: '', quantity: 1, notes: '' }} updateNewItem={(field: string, val: any) => updateNewItemState(null, field, val)} onAdd={() => handleAddItem(null)} newRowInputClass={newRowInputClass} />}
+                    </React.Fragment>
+                  </tbody>
+                </table>
+              </div>
               {checklists.length === 0 && <div className="p-8 text-center text-xs text-zinc-400 font-bold italic">No items yet. Add manually or pick a template above.</div>}
             </div>
           </div>

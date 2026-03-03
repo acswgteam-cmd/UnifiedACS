@@ -6,6 +6,26 @@
   body {
     @apply bg-slate-50 text-slate-900;
     font-family: 'Inter', sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* Prevent iOS zoom on input focus by ensuring 16px minimum font size */
+  @media screen and (max-width: 768px) {
+    input, select, textarea {
+      font-size: 16px !important;
+    }
+    input[type="date"] {
+      font-size: 16px !important;
+      min-height: 44px;
+    }
+    select {
+      min-height: 44px;
+    }
+    /* Better touch targets for buttons */
+    button {
+      min-height: 36px;
+    }
   }
 }
 
@@ -14,12 +34,37 @@
     background-color: rgba(15, 23, 42, 0.4);
 }
 
+/* Custom scrollbar for mobile and desktop */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #d4d4d8;
+  border-radius: 2px;
+}
+
+/* Hide scrollbar on mobile for cleaner look */
+@media screen and (max-width: 768px) {
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 2px;
+    height: 2px;
+  }
+}
+
 @layer utilities {
   .animate-fade-in {
     animation: fadeIn 0.3s ease-in-out;
   }
   .animate-slide-up {
     animation: slideUp 0.3s ease-out;
+  }
+  /* Safe area padding for mobile devices with notch */
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 }
 

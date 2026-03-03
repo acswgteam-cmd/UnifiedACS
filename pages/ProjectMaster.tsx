@@ -375,19 +375,19 @@ IMPORTANT: Extract ALL rows. Return raw JSON only, no explanations.`;
       <div className="flex flex-col h-full animate-in slide-in-from-right duration-300 relative">
         {/* MODAL START */}
         {isManageTemplatesOpen && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-[#1A1C20]/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setIsManageTemplatesOpen(false)}>
-            <div className="bg-white w-full max-w-6xl h-[85vh] rounded-[20px] shadow-2xl overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-2 md:p-6 bg-[#1A1C20]/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setIsManageTemplatesOpen(false)}>
+            <div className="bg-white w-full max-w-6xl h-[95vh] md:h-[85vh] rounded-[12px] md:rounded-[20px] shadow-2xl overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
               {/* Modal Header */}
-              <div className="p-6 border-b border-[#EAEAEA] bg-[#FCFCFC] flex justify-between items-center">
-                <h3 className="text-xl font-bold text-zinc-900 uppercase tracking-tight">Manage Checklist Templates</h3>
+              <div className="p-4 md:p-6 border-b border-[#EAEAEA] bg-[#FCFCFC] flex justify-between items-center">
+                <h3 className="text-sm md:text-xl font-bold text-zinc-900 uppercase tracking-tight">Manage Templates</h3>
                 <button onClick={() => setIsManageTemplatesOpen(false)} className="p-2 bg-white rounded-lg hover:bg-[#FAFAFA]200 text-zinc-500">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
               </div>
 
-              <div className="flex flex-1 overflow-hidden">
+              <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
                 {/* Sidebar */}
-                <div className="w-80 border-r border-[#EAEAEA] bg-white p-4 flex flex-col flex-shrink-0">
+                <div className="w-full md:w-80 border-b md:border-b-0 md:border-r border-[#EAEAEA] bg-white p-3 md:p-4 flex flex-col flex-shrink-0 max-h-[30vh] md:max-h-none">
                   <div className="flex gap-2 mb-4">
                     <input type="text" placeholder="New Template Name" value={newTemplateName} onChange={e => setNewTemplateName(e.target.value)} className="w-full text-xs font-bold p-2.5 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-indigo-600 outline-none" />
                     <button onClick={handleAddTemplate} className="px-4 bg-zinc-900 text-white rounded-lg text-xs font-bold shadow-sm hover:bg-black">Add</button>
@@ -414,7 +414,7 @@ IMPORTANT: Extract ALL rows. Return raw JSON only, no explanations.`;
                 </div>
 
                 {/* Main Content */}
-                <div className="flex-1 p-8 bg-[#FCFCFC] overflow-y-auto">
+                <div className="flex-1 p-4 md:p-8 bg-[#FCFCFC] overflow-y-auto">
                   {selectedTemplateForEdit ? (
                     <div className="space-y-8 max-w-4xl mx-auto">
                       <div className="flex justify-between items-end border-b border-[#EAEAEA] pb-4">
@@ -459,14 +459,14 @@ IMPORTANT: Extract ALL rows. Return raw JSON only, no explanations.`;
         )}
         {/* MODAL END */}
 
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 pb-4 border-b border-[#EAEAEA]">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 md:gap-4 mb-4 md:mb-6 pb-3 md:pb-4 border-b border-[#EAEAEA]">
           <div className="flex items-center gap-4 w-full md:w-auto">
             <button onClick={() => setSelectedProject(null)} className="p-2 bg-white border border-zinc-300 rounded-lg hover:bg-[#FCFCFC] text-zinc-600 transition-colors">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
             </button>
             <div>
-              <h1 className="text-2xl font-bold text-zinc-900 uppercase tracking-tight">{selectedProject.project_name}</h1>
-              <p className="text-xs font-bold text-zinc-500 uppercase">Timeline: {selectedProject.start_date} → {selectedProject.end_date} &bull; Type: {selectedProject.project_type}</p>
+              <h1 className="text-lg md:text-2xl font-bold text-zinc-900 uppercase tracking-tight">{selectedProject.project_name}</h1>
+              <p className="text-[10px] md:text-xs font-bold text-zinc-500 uppercase">{selectedProject.start_date} → {selectedProject.end_date} &bull; {selectedProject.project_type}</p>
             </div>
           </div>
           <div className="w-full md:w-auto">
@@ -476,9 +476,9 @@ IMPORTANT: Extract ALL rows. Return raw JSON only, no explanations.`;
           </div>
         </div>
 
-        <div className="flex gap-1 bg-[#F8F9FA] p-1 rounded-xl w-fit mb-6">
-          <button onClick={() => setActiveTab('details')} className={`px-6 py-2 rounded-lg text-xs font-bold uppercase tracking-wide transition-all ${activeTab === 'details' ? 'bg-white text-zinc-800 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}>Project Details</button>
-          <button onClick={() => setActiveTab('checklist')} className={`px-6 py-2 rounded-lg text-xs font-bold uppercase tracking-wide transition-all ${activeTab === 'checklist' ? 'bg-white text-zinc-800 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}>Design Checklist</button>
+        <div className="flex gap-1 bg-[#F8F9FA] p-1 rounded-xl w-full md:w-fit mb-4 md:mb-6">
+          <button onClick={() => setActiveTab('details')} className={`flex-1 md:flex-none px-4 md:px-6 py-2.5 md:py-2 rounded-lg text-[10px] md:text-xs font-bold uppercase tracking-wide transition-all ${activeTab === 'details' ? 'bg-white text-zinc-800 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}>Details</button>
+          <button onClick={() => setActiveTab('checklist')} className={`flex-1 md:flex-none px-4 md:px-6 py-2.5 md:py-2 rounded-lg text-[10px] md:text-xs font-bold uppercase tracking-wide transition-all ${activeTab === 'checklist' ? 'bg-white text-zinc-800 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}>Checklist</button>
         </div>
 
         <div className="flex-1 overflow-y-auto">
