@@ -1,6 +1,8 @@
 
 import React, { useMemo, useState } from 'react';
 import html2canvas from 'html2canvas';
+import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
 
 import { AppState, WorkContext, ArtworkLog, Project, Lead, DesignerEvaluation } from '../types';
 import DateRangePicker from '../components/DateRangePicker';
@@ -467,13 +469,13 @@ const Dashboard: React.FC<Props> = ({ state }) => {
             placeholder="Filter Date Range"
           />
           <button
-            onClick={() => handleDownload('dashboard-content', `Dashboard_Report_${dateLabel}`)}
+            onClick={() => handleDownloadZip(dateLabel, analytics.teamStats)}
             className="flex items-center gap-2 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-bold shadow-sm transition-colors download-btn"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
-            <span className="hidden sm:inline">Export</span>
+            <span className="hidden sm:inline">Export ZIP</span>
           </button>
         </div>
       </header>
@@ -962,33 +964,72 @@ const Dashboard: React.FC<Props> = ({ state }) => {
 
 // --- Sub-Components ---
 
-const handleDownload = async (elementId: string, filename: string) => {
-  const element = document.getElementById(elementId);
-  if (!element) return;
-  const buttons = element.querySelectorAll<HTMLElement>('.download-btn');
+const handleDownloadZip = async (dateLabel: string, teamStats: any[]) => {
+  const zip = new JSZip();
+  const folder = zip.folder(`Dashboard_Cards_${dateLabel}`);
+  if (!folder) return;
+
+  const exportItems = [
+    { id: 'kpi-artworks', name: `Total_Artworks_${dateLabel}.png` },
+    { id: 'kpi-projects', name: `Total_Projects_${dateLabel}.png` },
+    { id: 'kpi-leads', name: `Total_Leads_${dateLabel}.png` },
+    { id: 'kpi-tasks', name: `Total_Tasks_${dateLabel}.png` },
+    { id: 'vol-project', name: `Volume_Project_${dateLabel}.png` },
+    { id: 'vol-lead', name: `Volume_Lead_${dateLabel}.png` },
+    { id: 'vol-internal', name: `Volume_Internal_${dateLabel}.png` },
+    { id: 'chart-artwork-trend', name: `Artwork_Type_Trend_${dateLabel}.png` },
+    { id: 'chart-context-trend', name: `Work_Context_Trend_${dateLabel}.png` },
+    { id: 'chart-distribution', name: `Distribution_Split_${dateLabel}.png` },
+    { id: 'chart-dept-volume', name: `Department_Request_Volume_${dateLabel}.png` },
+    { id: 'heatmap-general', name: `Heatmap_General_Context_${dateLabel}.png` },
+    { id: 'heatmap-internal', name: `Heatmap_Artwork_Internal_${dateLabel}.png` },
+    { id: 'eval-summary', name: `Evaluation_Summary_${dateLabel}.png` },
+    ...teamStats.map(ds => ({
+      id: `team-stat-${ds.id}`,
+      name: `Team_Stat_${ds.name.replace(/\s+/g, '_')}_${dateLabel}.png`
+    }))
+  ];
+
+  const buttons = document.querySelectorAll<HTMLElement>('.download-btn');
   buttons.forEach(btn => btn.style.display = 'none');
+
   try {
-    const canvas = await html2canvas(element, {
-      backgroundColor: '#ffffff',
-      scale: 2,
-      onclone: (clonedDoc) => {
-        const textElements = clonedDoc.querySelectorAll('.bg-clip-text.text-transparent');
-        textElements.forEach(el => {
-          if (el instanceof HTMLElement) {
-            el.classList.remove('text-transparent', 'bg-clip-text');
-            el.style.color = '#1e293b';
-            el.style.backgroundImage = 'none';
-          }
-        });
-      }
-    });
-    const image = canvas.toDataURL('image/png');
-    const link = document.createElement('a');
-    link.href = image;
-    link.download = `${filename}.png`;
-    link.click();
+    for (const item of exportItems) {
+      const element = document.getElementById(item.id);
+      if (!element) continue;
+
+      const canvas = await html2canvas(element, {
+        backgroundColor: '#ffffff',
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        onclone: (clonedDoc) => {
+          // Fix transparent clip texts
+          const textElements = clonedDoc.querySelectorAll('.bg-clip-text.text-transparent');
+          textElements.forEach(el => {
+            if (el instanceof HTMLElement) {
+              el.classList.remove('text-transparent', 'bg-clip-text');
+              el.style.color = '#1e293b';
+              el.style.backgroundImage = 'none';
+              el.style.webkitTextFillColor = 'initial';
+            }
+          });
+          // Fix potential flex layout issues inside absolute contexts
+          const parentElements = clonedDoc.querySelectorAll('.border-\\[\\#EAEAEA\\]');
+          parentElements.forEach(el => {
+            if (el instanceof HTMLElement) el.style.border = '1px solid #EAEAEA';
+          });
+        }
+      });
+      const dataUri = canvas.toDataURL('image/png');
+      const base64Data = dataUri.replace(/^data:image\/png;base64,/, "");
+      folder.file(item.name, base64Data, { base64: true });
+    }
+
+    const content = await zip.generateAsync({ type: 'blob' });
+    saveAs(content, `Dashboard_Cards_${dateLabel}.zip`);
   } catch (error) {
-    console.error("Error downloading card:", error);
+    console.error("Error generating ZIP:", error);
   } finally {
     buttons.forEach(btn => btn.style.display = '');
   }
