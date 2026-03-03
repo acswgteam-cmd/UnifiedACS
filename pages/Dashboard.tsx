@@ -993,6 +993,24 @@ const fixClonedStyles = (clonedDoc: Document) => {
     if (el.classList.contains('opacity-5') || el.classList.contains('opacity-10')) {
       el.style.setProperty('opacity', '0.05', 'important');
     }
+
+    // 4. Fix text truncation — remove ellipsis/clipping so full text shows
+    if (el.classList.contains('truncate')) {
+      el.style.setProperty('overflow', 'visible', 'important');
+      el.style.setProperty('text-overflow', 'clip', 'important');
+      el.style.setProperty('white-space', 'normal', 'important');
+    }
+
+    // 5. Fix overflow-hidden on card containers — prevents content clipping
+    if (el.classList.contains('overflow-hidden')) {
+      el.style.setProperty('overflow', 'visible', 'important');
+    }
+
+    // 6. Remove max-w constraints that limit text width
+    const classStr = el.className;
+    if (typeof classStr === 'string' && classStr.match(/max-w-\[/)) {
+      el.style.setProperty('max-width', 'none', 'important');
+    }
   });
 };
 
