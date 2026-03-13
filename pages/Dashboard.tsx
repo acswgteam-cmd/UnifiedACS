@@ -129,6 +129,39 @@ const Dashboard: React.FC<Props> = ({ state }) => {
       return trends;
     };
 
+    // --- Lead Duration by Month (avg days per lead artwork, grouped by month) ---
+    const getLeadDurationByMonth = () => {
+      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const result = [];
+      const now = new Date();
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        const leadLogs = filteredLogs.filter(l =>
+          l.work_context === WorkContext.LEAD &&
+          l.end_date &&
+          l.start_date.startsWith(monthKey)
+        );
+        let avgDays = 0;
+        let totalItems = leadLogs.length;
+        if (leadLogs.length > 0) {
+          const totalDays = leadLogs.reduce((acc, l) => {
+            const start = new Date(l.start_date);
+            const end = new Date(l.end_date!);
+            return acc + (Math.max(0, (end.getTime() - start.getTime()) / (1000 * 3600 * 24)) + 1);
+          }, 0);
+          avgDays = parseFloat((totalDays / leadLogs.length).toFixed(1));
+        }
+        result.push({
+          label: monthNames[d.getMonth()],
+          fullDate: `${monthNames[d.getMonth()]} ${d.getFullYear()}`,
+          avgDays,
+          totalItems,
+        });
+      }
+      return result;
+    };
+
     // Corrected Department Stats: Only count Internal Requests
     const departmentStats = departments.map(dept => {
       // STRICT FILTER: Only include artwork logs where context is INTERNAL and matches department
@@ -339,6 +372,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
       teamStats, departmentStats, topKeywords, evalProjectSummary, evalCategorySummary, topDevKeywords2, topDevKeywords3, globalEvalAverage,
       globalTypeSplit, globalContextSplit,
       monthlyTrends: getMonthlyTrends(),
+      leadDurationByMonth: getLeadDurationByMonth(),
       avgDurProj: calcAvgDuration(WorkContext.PROJECT),
       avgDurLead: calcAvgDuration(WorkContext.LEAD),
       avgDurInt: calcAvgDuration(WorkContext.INTERNAL),
@@ -817,6 +851,17 @@ const Dashboard: React.FC<Props> = ({ state }) => {
                 </div>
               </div>
             </section>
+
+            {/* LEAD DURATION BAR CHART */}
+            <section id="chart-lead-duration" className={cardClass}>
+              <div className="flex flex-col mb-4">
+                <h2 className="text-sm font-bold text-zinc-900 uppercase tracking-tight">Lead Duration per Month</h2>
+                <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wide">Avg Processing Days (Lead Artworks)</span>
+              </div>
+              <div className="flex-1 min-h-0 flex flex-col justify-center">
+                <LeadDurationBarChart data={analytics.leadDurationByMonth} />
+              </div>
+            </section>
           </div>
         </div>
 
@@ -1033,6 +1078,7 @@ const handleDownloadZip = async (dateLabel: string, teamStats: any[]) => {
     { id: 'chart-dept-volume', name: `Department_Request_Volume_${dateLabel}.png` },
     { id: 'heatmap-general', name: `Heatmap_General_Context_${dateLabel}.png` },
     { id: 'heatmap-internal', name: `Heatmap_Artwork_Internal_${dateLabel}.png` },
+    { id: 'chart-lead-duration', name: `Lead_Duration_Per_Month_${dateLabel}.png` },
     { id: 'eval-summary', name: `Evaluation_Summary_${dateLabel}.png` },
     ...teamStats.map(ds => ({
       id: `team-stat-${ds.id}`,
@@ -1396,6 +1442,140 @@ const TrendLineChart = ({ data, keys, labels, colors }: any) => {
                 <span className="text-sm font-bold">{data[hoverIndex][key]}</span>
               </div>
             ))}
+          </div>
+          <div className="absolute left-1/2 -bottom-1.5 w-3 h-3 bg-[#1A1C20] rotate-45 transform -translate-x-1/2 border-r border-b border-zinc-700/50"></div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const LeadDurationBarChart = ({ data }: { data: { label: string; fullDate: string; avgDays: number; totalItems: number }[] }) => {
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+  const maxVal = Math.max(...data.map(d => d.avgDays), 1);
+  const width = 400;
+  const height = 200;
+  const paddingLeft = 38;
+  const paddingRight = 16;
+  const paddingTop = 20;
+  const paddingBottom = 30;
+  const chartWidth = width - paddingLeft - paddingRight;
+  const chartHeight = height - paddingTop - paddingBottom;
+  const barCount = data.length;
+  const barGap = 12;
+  const barWidth = Math.min(40, (chartWidth - barGap * (barCount - 1)) / barCount);
+  const totalBarsWidth = barCount * barWidth + (barCount - 1) * barGap;
+  const offsetX = paddingLeft + (chartWidth - totalBarsWidth) / 2;
+
+  // Generate nice grid lines
+  const gridLines = [];
+  const gridCount = 4;
+  for (let i = 0; i <= gridCount; i++) {
+    const val = (maxVal / gridCount) * i;
+    const y = paddingTop + chartHeight - (val / maxVal) * chartHeight;
+    gridLines.push({ val, y });
+  }
+
+  return (
+    <div className="relative w-full h-auto max-w-full" onMouseLeave={() => setHoverIdx(null)}>
+      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto">
+        <defs>
+          <linearGradient id="lead-bar-grad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#6366f1" />
+            <stop offset="100%" stopColor="#a78bfa" />
+          </linearGradient>
+          <linearGradient id="lead-bar-grad-hover" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#818cf8" />
+            <stop offset="100%" stopColor="#c4b5fd" />
+          </linearGradient>
+          <filter id="bar-shadow">
+            <feDropShadow dx="0" dy="1" stdDeviation="2" floodColor="#6366f1" floodOpacity="0.15" />
+          </filter>
+        </defs>
+
+        {/* Grid lines */}
+        {gridLines.map((g, i) => (
+          <g key={i}>
+            <line x1={paddingLeft} y1={g.y} x2={width - paddingRight} y2={g.y} stroke="#f1f5f9" strokeWidth="1" strokeDasharray={i === 0 ? "0" : "4 4"} />
+            <text x={paddingLeft - 6} y={g.y + 3} textAnchor="end" fontSize="8" fontWeight="bold" className="fill-slate-400">
+              {g.val.toFixed(g.val % 1 === 0 ? 0 : 1)}
+            </text>
+          </g>
+        ))}
+
+        {/* Bars */}
+        {data.map((d, i) => {
+          const barH = maxVal > 0 ? (d.avgDays / maxVal) * chartHeight : 0;
+          const x = offsetX + i * (barWidth + barGap);
+          const y = paddingTop + chartHeight - barH;
+          const isHovered = hoverIdx === i;
+
+          return (
+            <g key={i} onMouseEnter={() => setHoverIdx(i)}>
+              {/* Bar */}
+              <rect
+                x={x}
+                y={y}
+                width={barWidth}
+                height={Math.max(barH, 0)}
+                rx={barWidth > 16 ? 6 : 4}
+                fill={isHovered ? "url(#lead-bar-grad-hover)" : "url(#lead-bar-grad)"}
+                filter={isHovered ? "url(#bar-shadow)" : undefined}
+                className="transition-all duration-200"
+              />
+              {/* Value label on top */}
+              {d.avgDays > 0 && (
+                <text
+                  x={x + barWidth / 2}
+                  y={y - 5}
+                  textAnchor="middle"
+                  fontSize="9"
+                  fontWeight="bold"
+                  className="fill-indigo-600"
+                >
+                  {d.avgDays}
+                </text>
+              )}
+              {/* Month label at bottom */}
+              <text
+                x={x + barWidth / 2}
+                y={height - 10}
+                textAnchor="middle"
+                fontSize="9"
+                fontWeight="bold"
+                className="fill-slate-400 uppercase"
+              >
+                {d.label}
+              </text>
+            </g>
+          );
+        })}
+
+        {/* Y axis label */}
+        <text x={4} y={paddingTop + chartHeight / 2} textAnchor="middle" fontSize="8" fontWeight="bold" className="fill-slate-400 uppercase" transform={`rotate(-90 4 ${paddingTop + chartHeight / 2})`}>
+          Days
+        </text>
+      </svg>
+
+      {/* Hover tooltip */}
+      {hoverIdx !== null && data[hoverIdx] && (
+        <div
+          className="absolute z-10 bg-[#1A1C20]/95 backdrop-blur-sm text-white p-3 rounded-xl shadow-sm pointer-events-none transform -translate-x-1/2 border border-zinc-700/50"
+          style={{
+            left: `${((offsetX + hoverIdx * (barWidth + barGap) + barWidth / 2) / width) * 100}%`,
+            top: '4px',
+          }}
+        >
+          <p className="text-[10px] font-bold uppercase text-zinc-400 mb-1 tracking-wider text-center border-b border-zinc-700 pb-1">{data[hoverIdx].fullDate}</p>
+          <div className="flex gap-4 items-center justify-center">
+            <div className="flex flex-col items-center">
+              <span className="text-[9px] font-bold uppercase text-indigo-400 mb-0.5">Avg Days</span>
+              <span className="text-sm font-bold">{data[hoverIdx].avgDays || '–'}</span>
+            </div>
+            <div className="flex flex-col items-center">
+              <span className="text-[9px] font-bold uppercase text-emerald-400 mb-0.5">Items</span>
+              <span className="text-sm font-bold">{data[hoverIdx].totalItems}</span>
+            </div>
           </div>
           <div className="absolute left-1/2 -bottom-1.5 w-3 h-3 bg-[#1A1C20] rotate-45 transform -translate-x-1/2 border-r border-b border-zinc-700/50"></div>
         </div>
