@@ -110,6 +110,12 @@ export const ProjectMaster: React.FC<Props> = ({ projects, designers, artworkLog
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [activeTab, setActiveTab] = useState<'details' | 'checklist'>('details');
+  const [artworkFilter, setArtworkFilter] = useState<string | null>(null);
+  const [artworkEditingId, setArtworkEditingId] = useState<string | null>(null);
+  const [artworkFormData, setArtworkFormData] = useState<Partial<ArtworkLog>>({
+    artwork_name: '', artwork_type: '2D Design', start_date: '', end_date: '', pic_designer_id: designers[0]?.id || '', revision_count: 0, approval_required: false, notes: ''
+  });
+  const [isAddingArtwork, setIsAddingArtwork] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [newLocInput, setNewLocInput] = useState('');
   const [copySuccess, setCopySuccess] = useState(false);
@@ -139,6 +145,9 @@ export const ProjectMaster: React.FC<Props> = ({ projects, designers, artworkLog
     setEvalEvaluatorName('');
     setAiError(null);
     setEvalSubmitting(false);
+    setArtworkFilter(null);
+    setArtworkEditingId(null);
+    setIsAddingArtwork(false);
   }, [selectedProject?.id]);
 
   // Filters
@@ -335,16 +344,69 @@ IMPORTANT: Extract ALL rows. Return raw JSON only, no explanations.`;
   const handleNotesUpdate = async (newNotes: string) => { if (!selectedProject || !supabase) return; const { error } = await supabase.from('projects').update({ notes: newNotes }).eq('id', selectedProject.id); if (error) { console.error("Failed to save notes:", error.message); } else { setSelectedProject(prev => prev ? { ...prev, notes: newNotes } : null); onUpdate(); } };
 
   // Artwork stats for the selected project
-  const projectArtworkStats = useMemo(() => {
-    if (!selectedProject) return { total: 0, '2D Design': 0, '3D Design': 0, 'Video': 0 };
-    const projectLogs = artworkLogs.filter(l => l.work_context === WorkContext.PROJECT && l.project_id === selectedProject.id);
-    return {
-      total: projectLogs.length,
-      '2D Design': projectLogs.filter(l => l.artwork_type === '2D Design').length,
-      '3D Design': projectLogs.filter(l => l.artwork_type === '3D Design').length,
-      'Video': projectLogs.filter(l => l.artwork_type === 'Video').length,
-    };
+  const projectArtworkLogs = useMemo(() => {
+    if (!selectedProject) return [];
+    return artworkLogs.filter(l => l.work_context === WorkContext.PROJECT && l.project_id === selectedProject.id);
   }, [selectedProject, artworkLogs]);
+
+  const projectArtworkStats = useMemo(() => {
+    return {
+      total: projectArtworkLogs.length,
+      '2D Design': projectArtworkLogs.filter(l => l.artwork_type === '2D Design').length,
+      '3D Design': projectArtworkLogs.filter(l => l.artwork_type === '3D Design').length,
+      'Video': projectArtworkLogs.filter(l => l.artwork_type === 'Video').length,
+    };
+  }, [projectArtworkLogs]);
+
+  const filteredArtworkLogs = useMemo(() => {
+    if (!artworkFilter) return [];
+    if (artworkFilter === 'total') return projectArtworkLogs;
+    return projectArtworkLogs.filter(l => l.artwork_type === artworkFilter);
+  }, [projectArtworkLogs, artworkFilter]);
+
+  const resetArtworkForm = () => {
+    setArtworkFormData({ artwork_name: '', artwork_type: '2D Design', start_date: '', end_date: '', pic_designer_id: designers[0]?.id || '', revision_count: 0, approval_required: false, notes: '' });
+    setArtworkEditingId(null);
+    setIsAddingArtwork(false);
+  };
+
+  const handleSaveArtwork = async () => {
+    if (!supabase || !selectedProject || !artworkFormData.artwork_name?.trim()) return;
+    const payload = {
+      work_context: WorkContext.PROJECT,
+      project_id: selectedProject.id,
+      artwork_name: artworkFormData.artwork_name,
+      artwork_type: artworkFormData.artwork_type || '2D Design',
+      start_date: artworkFormData.start_date || new Date().toISOString().split('T')[0],
+      end_date: artworkFormData.end_date || artworkFormData.start_date || new Date().toISOString().split('T')[0],
+      pic_designer_id: artworkFormData.pic_designer_id || designers[0]?.id || '',
+      revision_count: artworkFormData.revision_count || 0,
+      approval_required: artworkFormData.approval_required || false,
+      notes: artworkFormData.notes || '',
+    };
+    if (artworkEditingId) {
+      const { error } = await supabase.from('artwork_logs').update(payload).eq('id', artworkEditingId);
+      if (error) alert('Error: ' + error.message);
+      else { onUpdate(); resetArtworkForm(); }
+    } else {
+      const { error } = await supabase.from('artwork_logs').insert([payload]);
+      if (error) alert('Error: ' + error.message);
+      else { onUpdate(); resetArtworkForm(); }
+    }
+  };
+
+  const handleEditArtwork = (log: ArtworkLog) => {
+    setArtworkFormData({ ...log });
+    setArtworkEditingId(log.id);
+    setIsAddingArtwork(true);
+  };
+
+  const handleDeleteArtwork = async (id: string) => {
+    if (!supabase || !confirm('Hapus artwork log ini?')) return;
+    const { error } = await supabase.from('artwork_logs').delete().eq('id', id);
+    if (error) alert(error.message);
+    else onUpdate();
+  };
 
   const filteredChecklists = useMemo(() => { if (!selectedProject) return []; return projectChecklists.filter(cl => cl.project_id === selectedProject.id).sort((a, b) => { const dateA = a.created_at || ''; const dateB = b.created_at || ''; const dateCompare = dateA.localeCompare(dateB); if (dateCompare !== 0) return dateCompare; return a.id.localeCompare(b.id); }); }, [selectedProject, projectChecklists]);
   const groupedChecklists = useMemo(() => { const groups: Record<string, ProjectChecklist[]> = {}; const manualItems: ProjectChecklist[] = []; filteredChecklists.forEach(item => { if (item.source_template_id) { if (!groups[item.source_template_id]) groups[item.source_template_id] = []; groups[item.source_template_id].push(item); } else { manualItems.push(item); } }); return { groups, manualItems }; }, [filteredChecklists]);
@@ -490,25 +552,161 @@ IMPORTANT: Extract ALL rows. Return raw JSON only, no explanations.`;
                 <div className="mt-4 pt-4 border-t border-zinc-100">
                   <h4 className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-3">Artwork Summary</h4>
                   <div className="grid grid-cols-2 gap-2">
-                    <div className="bg-zinc-100 rounded-xl p-3 text-center border border-[#EAEAEA]">
-                      <p className="text-2xl font-bold text-zinc-800 leading-none">{projectArtworkStats.total}</p>
-                      <p className="text-[9px] font-bold text-indigo-400 uppercase mt-1 tracking-wider">Total</p>
-                    </div>
-                    <div className="bg-blue-50 rounded-xl p-3 text-center border border-blue-100">
-                      <p className="text-2xl font-bold text-blue-700 leading-none">{projectArtworkStats['2D Design']}</p>
-                      <p className="text-[9px] font-bold text-blue-400 uppercase mt-1 tracking-wider">2D Design</p>
-                    </div>
-                    <div className="bg-emerald-50 rounded-xl p-3 text-center border border-emerald-100">
-                      <p className="text-2xl font-bold text-emerald-700 leading-none">{projectArtworkStats['3D Design']}</p>
-                      <p className="text-[9px] font-bold text-emerald-400 uppercase mt-1 tracking-wider">3D Design</p>
-                    </div>
-                    <div className="bg-rose-50 rounded-xl p-3 text-center border border-rose-100">
-                      <p className="text-2xl font-bold text-rose-700 leading-none">{projectArtworkStats['Video']}</p>
-                      <p className="text-[9px] font-bold text-rose-400 uppercase mt-1 tracking-wider">Video</p>
-                    </div>
+                    {[
+                      { key: 'total', label: 'Total', value: projectArtworkStats.total, bg: 'bg-zinc-100', border: 'border-[#EAEAEA]', text: 'text-zinc-800', subText: 'text-indigo-400', activeBg: 'bg-zinc-200', activeBorder: 'border-zinc-400' },
+                      { key: '2D Design', label: '2D Design', value: projectArtworkStats['2D Design'], bg: 'bg-blue-50', border: 'border-blue-100', text: 'text-blue-700', subText: 'text-blue-400', activeBg: 'bg-blue-100', activeBorder: 'border-blue-400' },
+                      { key: '3D Design', label: '3D Design', value: projectArtworkStats['3D Design'], bg: 'bg-emerald-50', border: 'border-emerald-100', text: 'text-emerald-700', subText: 'text-emerald-400', activeBg: 'bg-emerald-100', activeBorder: 'border-emerald-400' },
+                      { key: 'Video', label: 'Video', value: projectArtworkStats['Video'], bg: 'bg-rose-50', border: 'border-rose-100', text: 'text-rose-700', subText: 'text-rose-400', activeBg: 'bg-rose-100', activeBorder: 'border-rose-400' },
+                    ].map(card => {
+                      const isActive = artworkFilter === card.key;
+                      return (
+                        <div
+                          key={card.key}
+                          onClick={() => { setArtworkFilter(isActive ? null : card.key); resetArtworkForm(); }}
+                          className={`rounded-xl p-3 text-center border cursor-pointer transition-all hover:shadow-sm ${isActive ? `${card.activeBg} ${card.activeBorder} ring-1 ring-offset-1 ring-zinc-300 shadow-sm` : `${card.bg} ${card.border}`
+                            }`}
+                        >
+                          <p className={`text-2xl font-bold leading-none ${card.text}`}>{card.value}</p>
+                          <p className={`text-[9px] font-bold uppercase mt-1 tracking-wider ${card.subText}`}>{card.label}</p>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
+
+              {/* INLINE ARTWORK LIST (shown when filter is active) */}
+              {artworkFilter && (
+                <div className="bg-white p-4 md:p-6 rounded-[20px] border border-[#EAEAEA] shadow-sm lg:col-span-3 animate-in slide-in-from-top-2 duration-300">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-xs font-bold text-zinc-900 uppercase tracking-wider">Artwork Logs</h3>
+                      <span className="text-[9px] font-bold text-zinc-400 uppercase bg-[#F8F9FA] px-2 py-0.5 rounded border border-[#EAEAEA]">{artworkFilter === 'total' ? 'All Types' : artworkFilter} — {filteredArtworkLogs.length} items</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {!isAddingArtwork && (
+                        <button onClick={() => { resetArtworkForm(); setIsAddingArtwork(true); if (artworkFilter !== 'total') setArtworkFormData(prev => ({ ...prev, artwork_type: artworkFilter! })); }} className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 text-white rounded-lg text-[10px] font-bold uppercase tracking-wide hover:bg-black transition-colors shadow-sm">
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
+                          Add Artwork
+                        </button>
+                      )}
+                      <button onClick={() => { setArtworkFilter(null); resetArtworkForm(); }} className="p-1.5 rounded-lg hover:bg-[#F8F9FA] text-zinc-400 hover:text-zinc-700 transition-colors" title="Close">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Add/Edit Form */}
+                  {isAddingArtwork && (
+                    <div className="bg-[#FCFCFC] p-4 rounded-xl border border-[#EAEAEA] mb-4 animate-in fade-in duration-200">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                        <div className="col-span-2">
+                          <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Artwork Name</label>
+                          <input type="text" value={artworkFormData.artwork_name || ''} onChange={e => setArtworkFormData(p => ({ ...p, artwork_name: e.target.value }))} className="w-full rounded-lg border border-zinc-300 text-sm p-2.5 font-semibold outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600" placeholder="Design name..." />
+                        </div>
+                        <div>
+                          <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Type</label>
+                          <select value={artworkFormData.artwork_type || '2D Design'} onChange={e => setArtworkFormData(p => ({ ...p, artwork_type: e.target.value }))} className="w-full rounded-lg border border-zinc-300 text-sm p-2.5 font-semibold outline-none focus:ring-2 focus:ring-indigo-600">
+                            <option value="2D Design">2D Design</option>
+                            <option value="3D Design">3D Design</option>
+                            <option value="Video">Video</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">PIC Designer</label>
+                          <select value={artworkFormData.pic_designer_id || ''} onChange={e => setArtworkFormData(p => ({ ...p, pic_designer_id: e.target.value }))} className="w-full rounded-lg border border-zinc-300 text-sm p-2.5 font-semibold outline-none focus:ring-2 focus:ring-indigo-600">
+                            {designers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                          </select>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-3">
+                        <div>
+                          <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Start Date</label>
+                          <input type="date" value={artworkFormData.start_date || ''} onChange={e => setArtworkFormData(p => ({ ...p, start_date: e.target.value }))} className="w-full rounded-lg border border-zinc-300 text-sm p-2.5 font-semibold outline-none focus:ring-2 focus:ring-indigo-600" />
+                        </div>
+                        <div>
+                          <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">End Date</label>
+                          <input type="date" value={artworkFormData.end_date || ''} onChange={e => setArtworkFormData(p => ({ ...p, end_date: e.target.value }))} className="w-full rounded-lg border border-zinc-300 text-sm p-2.5 font-semibold outline-none focus:ring-2 focus:ring-indigo-600" />
+                        </div>
+                        <div>
+                          <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Revisions</label>
+                          <input type="number" min="0" value={artworkFormData.revision_count || 0} onChange={e => setArtworkFormData(p => ({ ...p, revision_count: parseInt(e.target.value) || 0 }))} onWheel={e => (e.target as HTMLInputElement).blur()} className="w-full rounded-lg border border-zinc-300 text-sm p-2.5 font-semibold outline-none focus:ring-2 focus:ring-indigo-600" />
+                        </div>
+                        <div className="flex items-end pb-1">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" checked={artworkFormData.approval_required || false} onChange={e => setArtworkFormData(p => ({ ...p, approval_required: e.target.checked }))} className="w-4 h-4 rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500" />
+                            <span className="text-[10px] font-bold text-zinc-600 uppercase">Approval Required</span>
+                          </label>
+                        </div>
+                        <div>
+                          <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Notes</label>
+                          <input type="text" value={artworkFormData.notes || ''} onChange={e => setArtworkFormData(p => ({ ...p, notes: e.target.value }))} className="w-full rounded-lg border border-zinc-300 text-sm p-2.5 font-semibold outline-none focus:ring-2 focus:ring-indigo-600" placeholder="Optional notes..." />
+                        </div>
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <button onClick={resetArtworkForm} className="px-4 py-2 text-xs font-bold text-zinc-500 uppercase hover:text-zinc-700 transition-colors">Cancel</button>
+                        <button onClick={handleSaveArtwork} className="px-5 py-2 bg-zinc-900 text-white rounded-lg text-xs font-bold uppercase tracking-wide hover:bg-black transition-colors shadow-sm">{artworkEditingId ? 'Update' : 'Save'}</button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Artwork List Table */}
+                  {filteredArtworkLogs.length === 0 && !isAddingArtwork ? (
+                    <div className="text-center py-8 text-xs font-bold text-zinc-400 italic border border-dashed border-[#EAEAEA] rounded-xl">
+                      No artwork logs found for this filter.
+                    </div>
+                  ) : filteredArtworkLogs.length > 0 && (
+                    <div className="overflow-x-auto rounded-xl border border-[#EAEAEA]">
+                      <table className="w-full text-left text-xs border-collapse min-w-[700px]">
+                        <thead className="bg-[#FCFCFC] border-b border-[#EAEAEA]">
+                          <tr>
+                            <th className="px-3 py-2.5 text-[9px] font-bold text-zinc-500 uppercase tracking-wider">Artwork Name</th>
+                            <th className="px-3 py-2.5 text-[9px] font-bold text-zinc-500 uppercase tracking-wider w-24">Type</th>
+                            <th className="px-3 py-2.5 text-[9px] font-bold text-zinc-500 uppercase tracking-wider">PIC</th>
+                            <th className="px-3 py-2.5 text-[9px] font-bold text-zinc-500 uppercase tracking-wider">Start</th>
+                            <th className="px-3 py-2.5 text-[9px] font-bold text-zinc-500 uppercase tracking-wider">End</th>
+                            <th className="px-3 py-2.5 text-[9px] font-bold text-zinc-500 uppercase tracking-wider text-center w-14">Rev</th>
+                            <th className="px-3 py-2.5 text-[9px] font-bold text-zinc-500 uppercase tracking-wider text-right w-20"></th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {filteredArtworkLogs.map(log => {
+                            const typeBadge = log.artwork_type === '2D Design' ? 'bg-blue-50 text-blue-700 border-blue-200' : log.artwork_type === '3D Design' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200';
+                            return (
+                              <tr key={log.id} className="hover:bg-[#FCFCFC] transition-colors group">
+                                <td className="px-3 py-2.5">
+                                  <span className="font-bold text-zinc-800 text-[11px] uppercase">{log.artwork_name}</span>
+                                  {log.notes && <p className="text-[9px] text-zinc-400 font-medium mt-0.5 italic truncate max-w-[200px]">{log.notes}</p>}
+                                </td>
+                                <td className="px-3 py-2.5">
+                                  <span className={`px-2 py-0.5 rounded-md text-[9px] font-bold uppercase border ${typeBadge}`}>{log.artwork_type === '2D Design' ? '2D' : log.artwork_type === '3D Design' ? '3D' : 'VDO'}</span>
+                                </td>
+                                <td className="px-3 py-2.5 text-[10px] font-bold text-zinc-700 uppercase">{getDesignerName(log.pic_designer_id)}</td>
+                                <td className="px-3 py-2.5 text-[10px] font-bold text-zinc-600">{log.start_date}</td>
+                                <td className="px-3 py-2.5 text-[10px] font-bold text-zinc-600">{log.end_date}</td>
+                                <td className="px-3 py-2.5 text-center">
+                                  <span className="text-[10px] font-bold text-zinc-700">{log.revision_count}</span>
+                                </td>
+                                <td className="px-3 py-2.5 text-right">
+                                  <div className="flex justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button onClick={() => handleEditArtwork(log)} className="p-1 text-zinc-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors" title="Edit">
+                                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-5M16.5 3.5a2.121 2.121 0 113 3L7 19l-4 1 1-4L16.5 3.5z" /></svg>
+                                    </button>
+                                    <button onClick={() => handleDeleteArtwork(log.id)} className="p-1 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors" title="Delete">
+                                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="bg-white p-6 rounded-[20px] border border-[#EAEAEA] shadow-sm h-fit lg:col-span-2 min-h-[350px] flex flex-col"><h3 className="text-xs font-bold text-zinc-900 uppercase tracking-wider mb-4 border-b border-zinc-100 pb-2">Notes & Updates</h3><div className="flex-1 flex flex-col"><SimpleRichTextEditor initialValue={selectedProject.notes || ''} onSave={handleNotesUpdate} placeholder="Write project notes here (bold, lists supported)..." /></div></div>
 
               <div className="bg-white p-6 rounded-[20px] border border-[#EAEAEA] shadow-sm lg:col-span-3">
