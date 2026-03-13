@@ -853,14 +853,12 @@ const Dashboard: React.FC<Props> = ({ state }) => {
             </section>
 
             {/* LEAD DURATION BAR CHART */}
-            <section id="chart-lead-duration" className={cardClass}>
-              <div className="flex flex-col mb-4">
+            <section id="chart-lead-duration" className="bg-white p-3 md:p-4 rounded-[16px] md:rounded-[20px] border border-[#EAEAEA] shadow-sm flex flex-col transition-all hover:shadow-md relative">
+              <div className="flex items-center justify-between mb-2">
                 <h2 className="text-sm font-bold text-zinc-900 uppercase tracking-tight">Lead Duration per Month</h2>
-                <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wide">Avg Processing Days (Lead Artworks)</span>
+                <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wide">Avg Processing Days</span>
               </div>
-              <div className="flex-1 min-h-0 flex flex-col justify-center">
-                <LeadDurationBarChart data={analytics.leadDurationByMonth} />
-              </div>
+              <LeadDurationBarChart data={analytics.leadDurationByMonth} />
             </section>
           </div>
         </div>
@@ -1453,23 +1451,23 @@ const TrendLineChart = ({ data, keys, labels, colors }: any) => {
 const LeadDurationBarChart = ({ data }: { data: { label: string; fullDate: string; avgDays: number; totalItems: number }[] }) => {
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const maxVal = Math.max(...data.map(d => d.avgDays), 1);
-  const width = 400;
-  const height = 200;
-  const paddingLeft = 38;
-  const paddingRight = 16;
-  const paddingTop = 20;
-  const paddingBottom = 30;
+  const width = 700;
+  const height = 110;
+  const paddingLeft = 28;
+  const paddingRight = 10;
+  const paddingTop = 14;
+  const paddingBottom = 18;
   const chartWidth = width - paddingLeft - paddingRight;
   const chartHeight = height - paddingTop - paddingBottom;
   const barCount = data.length;
-  const barGap = 12;
-  const barWidth = Math.min(40, (chartWidth - barGap * (barCount - 1)) / barCount);
+  const barGap = 20;
+  const barWidth = Math.min(48, (chartWidth - barGap * (barCount - 1)) / barCount);
   const totalBarsWidth = barCount * barWidth + (barCount - 1) * barGap;
   const offsetX = paddingLeft + (chartWidth - totalBarsWidth) / 2;
 
-  // Generate nice grid lines
+  // Grid lines (only 3 for compact height)
   const gridLines = [];
-  const gridCount = 4;
+  const gridCount = 3;
   for (let i = 0; i <= gridCount; i++) {
     const val = (maxVal / gridCount) * i;
     const y = paddingTop + chartHeight - (val / maxVal) * chartHeight;
@@ -1477,8 +1475,8 @@ const LeadDurationBarChart = ({ data }: { data: { label: string; fullDate: strin
   }
 
   return (
-    <div className="relative w-full h-auto max-w-full" onMouseLeave={() => setHoverIdx(null)}>
-      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto">
+    <div className="relative w-full h-auto max-w-full overflow-visible" onMouseLeave={() => setHoverIdx(null)}>
+      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto" overflow="visible">
         <defs>
           <linearGradient id="lead-bar-grad" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#6366f1" />
@@ -1488,16 +1486,13 @@ const LeadDurationBarChart = ({ data }: { data: { label: string; fullDate: strin
             <stop offset="0%" stopColor="#818cf8" />
             <stop offset="100%" stopColor="#c4b5fd" />
           </linearGradient>
-          <filter id="bar-shadow">
-            <feDropShadow dx="0" dy="1" stdDeviation="2" floodColor="#6366f1" floodOpacity="0.15" />
-          </filter>
         </defs>
 
         {/* Grid lines */}
         {gridLines.map((g, i) => (
           <g key={i}>
-            <line x1={paddingLeft} y1={g.y} x2={width - paddingRight} y2={g.y} stroke="#f1f5f9" strokeWidth="1" strokeDasharray={i === 0 ? "0" : "4 4"} />
-            <text x={paddingLeft - 6} y={g.y + 3} textAnchor="end" fontSize="8" fontWeight="bold" className="fill-slate-400">
+            <line x1={paddingLeft} y1={g.y} x2={width - paddingRight} y2={g.y} stroke="#f1f5f9" strokeWidth="1" strokeDasharray={i === 0 ? "0" : "3 3"} />
+            <text x={paddingLeft - 4} y={g.y + 3} textAnchor="end" fontSize="7" fontWeight="600" className="fill-slate-400">
               {g.val.toFixed(g.val % 1 === 0 ? 0 : 1)}
             </text>
           </g>
@@ -1512,72 +1507,44 @@ const LeadDurationBarChart = ({ data }: { data: { label: string; fullDate: strin
 
           return (
             <g key={i} onMouseEnter={() => setHoverIdx(i)}>
-              {/* Bar */}
               <rect
                 x={x}
                 y={y}
                 width={barWidth}
                 height={Math.max(barH, 0)}
-                rx={barWidth > 16 ? 6 : 4}
+                rx={4}
                 fill={isHovered ? "url(#lead-bar-grad-hover)" : "url(#lead-bar-grad)"}
-                filter={isHovered ? "url(#bar-shadow)" : undefined}
                 className="transition-all duration-200"
+                style={isHovered ? { filter: 'drop-shadow(0 1px 3px rgba(99,102,241,0.25))' } : undefined}
               />
-              {/* Value label on top */}
               {d.avgDays > 0 && (
-                <text
-                  x={x + barWidth / 2}
-                  y={y - 5}
-                  textAnchor="middle"
-                  fontSize="9"
-                  fontWeight="bold"
-                  className="fill-indigo-600"
-                >
+                <text x={x + barWidth / 2} y={y - 3} textAnchor="middle" fontSize="8" fontWeight="bold" className="fill-indigo-600">
                   {d.avgDays}
                 </text>
               )}
-              {/* Month label at bottom */}
-              <text
-                x={x + barWidth / 2}
-                y={height - 10}
-                textAnchor="middle"
-                fontSize="9"
-                fontWeight="bold"
-                className="fill-slate-400 uppercase"
-              >
+              <text x={x + barWidth / 2} y={height - 4} textAnchor="middle" fontSize="9" fontWeight="bold" className="fill-slate-400 uppercase">
                 {d.label}
               </text>
             </g>
           );
         })}
-
-        {/* Y axis label */}
-        <text x={4} y={paddingTop + chartHeight / 2} textAnchor="middle" fontSize="8" fontWeight="bold" className="fill-slate-400 uppercase" transform={`rotate(-90 4 ${paddingTop + chartHeight / 2})`}>
-          Days
-        </text>
       </svg>
 
       {/* Hover tooltip */}
       {hoverIdx !== null && data[hoverIdx] && (
         <div
-          className="absolute z-10 bg-[#1A1C20]/95 backdrop-blur-sm text-white p-3 rounded-xl shadow-sm pointer-events-none transform -translate-x-1/2 border border-zinc-700/50"
+          className="absolute z-10 bg-[#1A1C20]/95 backdrop-blur-sm text-white px-3 py-2 rounded-lg shadow-sm pointer-events-none transform -translate-x-1/2 border border-zinc-700/50"
           style={{
             left: `${((offsetX + hoverIdx * (barWidth + barGap) + barWidth / 2) / width) * 100}%`,
-            top: '4px',
+            bottom: '100%',
+            marginBottom: '4px',
           }}
         >
-          <p className="text-[10px] font-bold uppercase text-zinc-400 mb-1 tracking-wider text-center border-b border-zinc-700 pb-1">{data[hoverIdx].fullDate}</p>
-          <div className="flex gap-4 items-center justify-center">
-            <div className="flex flex-col items-center">
-              <span className="text-[9px] font-bold uppercase text-indigo-400 mb-0.5">Avg Days</span>
-              <span className="text-sm font-bold">{data[hoverIdx].avgDays || '–'}</span>
-            </div>
-            <div className="flex flex-col items-center">
-              <span className="text-[9px] font-bold uppercase text-emerald-400 mb-0.5">Items</span>
-              <span className="text-sm font-bold">{data[hoverIdx].totalItems}</span>
-            </div>
+          <p className="text-[9px] font-bold uppercase text-zinc-400 mb-1 tracking-wider text-center">{data[hoverIdx].fullDate}</p>
+          <div className="flex gap-3 items-center justify-center">
+            <span className="text-[9px] font-bold text-indigo-400">{data[hoverIdx].avgDays || '–'} <span className="text-zinc-500">days</span></span>
+            <span className="text-[9px] font-bold text-emerald-400">{data[hoverIdx].totalItems} <span className="text-zinc-500">items</span></span>
           </div>
-          <div className="absolute left-1/2 -bottom-1.5 w-3 h-3 bg-[#1A1C20] rotate-45 transform -translate-x-1/2 border-r border-b border-zinc-700/50"></div>
         </div>
       )}
     </div>
