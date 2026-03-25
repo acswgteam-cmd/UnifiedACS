@@ -231,8 +231,7 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
       
       pdf.save(`Report_${isFullYear ? targetYear : `${targetYear}-${targetMonth}`}.pdf`);
     } catch(e) {
-      console.error(e);
-      alert('Error generating PDF. Please check console for details.');
+      alert('Error generating PDF: ' + (e as Error).message);
     }
     setIsGenerating(false);
   };
