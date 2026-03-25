@@ -208,11 +208,16 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
 
   const generatePDF = async () => {
     setIsGenerating(true);
+    
+    // Give React time to flush the "isGenerating" state to the DOM
+    // without this, the old DOM nodes might detach during the capture, causing html2canvas to fail.
+    await new Promise(resolve => setTimeout(resolve, 150));
+
     try {
-      const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
       const slides = document.querySelectorAll('.report-slide');
-      
-      const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+      if (slides.length === 0) throw new Error("No slides found in the document");
+
+      const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
       
       const fixClonedStyles = (clonedDoc: Document) => {
         const allElements = clonedDoc.querySelectorAll('*');
@@ -232,9 +237,6 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
       for (let i = 0; i < slides.length; i++) {
         const el = slides[i] as HTMLElement;
         
-        // Wait a bit fully for the browser to render any pending states
-        await delay(100);
-        
         const canvas = await html2canvas(el, { 
           scale: 2, 
           useCORS: true, 
@@ -247,10 +249,11 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
             const clonedEl = clonedDoc.querySelectorAll('.report-slide')[i] as HTMLElement;
             if (clonedEl) {
                // Use transform scale(1) inside the clone ONLY, avoiding live DOM bugs.
-               // We must reset the margin/scaling to let html2canvas measure strictly its 1280x720 dimension bounds.
                clonedEl.style.transform = 'scale(1)';
                clonedEl.style.transformOrigin = 'top left';
                clonedEl.style.margin = '0';
+               // Give the document some breathing room to reflow if necessary
+               clonedEl.style.position = 'relative';
             }
             fixClonedStyles(clonedDoc);
           }
@@ -259,6 +262,9 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
         const imgData = canvas.toDataURL('image/png', 1.0);
         if (i > 0) pdf.addPage();
         pdf.addImage(imgData, 'PNG', 0, 0, 297, 167.0625);
+        
+        // Brief pause after adding the image to keep browser thread responsive
+        await new Promise(resolve => setTimeout(resolve, 50));
       }
       
       pdf.save(`Report_${isFullYear ? targetYear : `${targetYear}-${targetMonth}`}.pdf`);
