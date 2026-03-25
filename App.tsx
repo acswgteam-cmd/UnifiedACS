@@ -12,6 +12,7 @@ import PublicLeadForm from './pages/PublicLeadForm';
 import PublicInternalForm from './pages/PublicInternalForm';
 import PublicProjectSurvey from './pages/PublicProjectSurvey';
 import Dashboard from './pages/Dashboard';
+import ReportGenerator from './pages/ReportGenerator';
 import { supabase, isSupabaseConfigured } from './lib/supabase';
 import { INITIAL_STATE } from './data/mockData';
 
@@ -163,7 +164,8 @@ const App: React.FC = () => {
     team: <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" /></svg>,
     project: <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M2 5a2 2 0 012-2h8a2 2 0 012 2v10a2 2 0 002 2H4a2 2 0 01-2-2V5zm3 1h6v4H5V6zm6 6H5v2h6v-2z" clipRule="evenodd" /><path d="M15 7h1a2 2 0 012 2v5.5a1.5 1.5 0 01-3 0V7z" /></svg>,
     lead: <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" /></svg>,
-    internal: <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" /></svg>
+    internal: <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" /></svg>,
+    report: <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" /></svg>
   };
 
   return (
@@ -190,6 +192,7 @@ const App: React.FC = () => {
               {/* Nav: Switch overflow based on state to allow tooltips when collapsed */}
               <nav className={`flex-1 px-4 py-6 space-y-1 ${collapsed ? 'overflow-visible' : 'overflow-y-auto scrollbar-hide'}`}>
                 <NavLink to="/admin/dashboard" icon={icons.dashboard} label="Dashboard" collapsed={collapsed} />
+                <NavLink to="/admin/reports" icon={icons.report} label="Report Gen" collapsed={collapsed} />
                 <NavLink to="/admin/artwork-logs" icon={icons.artwork} label="Artwork Logs" collapsed={collapsed} />
 
                 <div className={`mt-10 mb-4 px-3 text-[11px] font-semibold text-zinc-500 uppercase tracking-widest ${collapsed ? 'text-center' : ''}`}>
@@ -209,6 +212,7 @@ const App: React.FC = () => {
                 <Routes>
                   <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
                   <Route path="/dashboard" element={<Dashboard state={state} />} />
+                  <Route path="/reports" element={<ReportGenerator state={state} />} />
                   <Route path="/artwork-logs" element={<ArtworkLogPage state={state} onAdd={handleAddLog} onUpdate={handleUpdateLog} onDelete={handleDeleteLog} />} />
                   <Route path="/masters/departments" element={<DepartmentMaster departments={state.departments} onUpdate={fetchData} />} />
                   <Route path="/masters/designers" element={<DesignerMaster designers={state.designers} onUpdate={fetchData} />} />
@@ -232,6 +236,7 @@ const App: React.FC = () => {
             {/* Mobile Bottom Navbar - Floating Glass */}
             <nav className="md:hidden fixed bottom-3 left-3 right-3 bg-[#1A1C20]/80 backdrop-blur-xl border border-white/10 flex justify-around items-center h-14 z-[100] px-1 rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.4)]">
               <MobileNavLink to="/admin/dashboard" icon={icons.dashboard} label="Home" />
+              <MobileNavLink to="/admin/reports" icon={icons.report} label="Report" />
               <MobileNavLink to="/admin/artwork-logs" icon={icons.artwork} label="Logs" />
               <MobileNavLink to="/admin/masters/projects" icon={icons.project} label="Proj" />
               <MobileNavLink to="/admin/masters/leads" icon={icons.lead} label="Lead" />
