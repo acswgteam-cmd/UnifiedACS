@@ -212,32 +212,69 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
       const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
       const slides = document.querySelectorAll('.report-slide');
       
+      const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+      
+      const fixClonedStyles = (clonedDoc: Document) => {
+        const allElements = clonedDoc.querySelectorAll('*');
+        allElements.forEach(clonedEl => {
+          if (!(clonedEl instanceof HTMLElement)) return;
+          if (clonedEl.classList.contains('text-transparent') || clonedEl.classList.contains('bg-clip-text')) {
+             clonedEl.style.setProperty('-webkit-text-fill-color', '#1e293b', 'important');
+             clonedEl.style.setProperty('-webkit-background-clip', 'initial', 'important');
+             clonedEl.style.setProperty('background-clip', 'initial', 'important');
+             clonedEl.style.setProperty('color', '#1e293b', 'important');
+             clonedEl.style.setProperty('background-image', 'none', 'important');
+             clonedEl.style.setProperty('background', 'none', 'important');
+          }
+        });
+      };
+
       for (let i = 0; i < slides.length; i++) {
         const el = slides[i] as HTMLElement;
-        const originalTransform = el.style.transform;
         
-        // Use a wrapper or unscale locally without breaking layout flow ideally
-        // Since it's absolutely scaled, unscaling it for capture then restoring is fine.
-        el.style.transform = 'scale(1)';
+        // Wait a bit fully for the browser to render any pending states
+        await delay(100);
         
-        const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
-        
-        el.style.transform = originalTransform;
+        const canvas = await html2canvas(el, { 
+          scale: 2, 
+          useCORS: true, 
+          backgroundColor: '#ffffff',
+          logging: false,
+          windowWidth: 1300,
+          windowHeight: 800,
+          onclone: (clonedDoc) => {
+            // Find the exactly matching cloned element
+            const clonedEl = clonedDoc.querySelectorAll('.report-slide')[i] as HTMLElement;
+            if (clonedEl) {
+               // Use transform scale(1) inside the clone ONLY, avoiding live DOM bugs.
+               // We must reset the margin/scaling to let html2canvas measure strictly its 1280x720 dimension bounds.
+               clonedEl.style.transform = 'scale(1)';
+               clonedEl.style.transformOrigin = 'top left';
+               clonedEl.style.margin = '0';
+            }
+            fixClonedStyles(clonedDoc);
+          }
+        });
 
-        const imgData = canvas.toDataURL('image/png');
+        const imgData = canvas.toDataURL('image/png', 1.0);
         if (i > 0) pdf.addPage();
         pdf.addImage(imgData, 'PNG', 0, 0, 297, 167.0625);
       }
       
       pdf.save(`Report_${isFullYear ? targetYear : `${targetYear}-${targetMonth}`}.pdf`);
-    } catch(e) {
-      alert('Error generating PDF: ' + (e as Error).message);
+    } catch(e: any) {
+      console.error(e);
+      let errorMsg = e?.message || e?.toString() || 'Unknown error occurred';
+      if (errorMsg === '[object Object]') {
+        try { errorMsg = JSON.stringify(e); } catch(err) {} 
+      }
+      alert('Error generating PDF: ' + errorMsg);
     }
     setIsGenerating(false);
   };
 
-  const SlideWrapper = ({ children, title }: { children: React.ReactNode, title?: string }) => (
-    <div className="report-slide bg-white relative overflow-hidden flex flex-col items-center justify-center shrink-0 border border-zinc-200 shadow-lg" 
+  const SlideWrapper = ({ children, title, id }: { children: React.ReactNode, title?: string, id?: string }) => (
+    <div id={id} className="report-slide bg-white relative overflow-hidden flex flex-col items-center justify-center shrink-0 border border-zinc-200 shadow-lg" 
          style={{ width: '1280px', height: '720px', transformOrigin: 'top left', transform: 'scale(0.65)', marginBottom: '-240px' }}>
       
       {/* Header */}
@@ -360,7 +397,7 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
         <div className="md:col-span-3 bg-slate-100 rounded-3xl p-8 border border-zinc-200 overflow-x-auto flex flex-col gap-12 items-center" style={{ minHeight: '800px' }}>
           
           {/* SLIDE 1: TITLE */}
-          <SlideWrapper>
+          <SlideWrapper id="slide-1">
              <div className="flex-1 flex flex-col items-center justify-center text-center">
                 <h1 className="text-6xl font-black text-[#123661] uppercase tracking-tighter mb-4">{titleText}</h1>
                 <h2 className="text-3xl font-bold text-zinc-500 uppercase tracking-widest">{isFullYear ? `YEAR ${targetYear}` : `${new Date(parseInt(targetYear), parseInt(targetMonth)-1).toLocaleString('id-ID',{month:'long'})} ${targetYear}`}</h2>
@@ -368,7 +405,7 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
           </SlideWrapper>
 
           {/* SLIDE 2: DIVIDER */}
-          <SlideWrapper>
+          <SlideWrapper id="slide-2">
              <div className="flex-1 flex flex-col items-center justify-center text-center">
                 <div className="w-32 h-2 bg-blue-600 mb-8 rounded-full"></div>
                 <h1 className="text-5xl font-black text-zinc-800 uppercase tracking-tight">{dividerText}</h1>
@@ -376,7 +413,7 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
           </SlideWrapper>
 
           {/* SLIDE 3: GENERAL DASHBOARD */}
-          <SlideWrapper title="GENERAL DASHBOARD">
+          <SlideWrapper id="slide-3" title="GENERAL DASHBOARD">
             <div className="flex-1 flex flex-col gap-4 mt-4 w-full h-[540px]">
                {/* TOP ROW */}
                <div className="flex gap-4 h-[280px]">
@@ -468,7 +505,7 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
 
           {/* SLIDE 4+: TEAM DASHBOARD */}
           {teamChunks.map((chunk, chunkIdx) => (
-            <SlideWrapper key={`team-${chunkIdx}`} title="TEAM DASHBOARD">
+            <SlideWrapper key={`team-${chunkIdx}`} id={`slide-team-${chunkIdx}`} title="TEAM DASHBOARD">
               <div className="flex-1 flex w-full h-[540px] mt-6 relative gap-4">
                 
                 {/* Team Cards Grid */}
