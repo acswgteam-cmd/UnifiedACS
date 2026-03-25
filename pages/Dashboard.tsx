@@ -46,17 +46,30 @@ const Dashboard: React.FC<Props> = ({ state }) => {
     };
 
     // --- Projects Stats (ALL Statuses) ---
-    const allProjects = projects;
+    const allProjects = projects.filter(p => {
+      const startMatch = !filterStart || p.start_date >= filterStart;
+      const endMatch = !filterEnd || p.start_date <= filterEnd;
+      return startMatch && endMatch;
+    });
     const projectPICs = getTopCounts(allProjects, p => designers.find(d => d.id === p.pic_designer_id)?.name || 'Unknown');
     const projectLocs = getTopCounts(allProjects, p => (p as any).locations || (p as any).location || []);
 
     // --- Leads Stats (ALL Statuses) ---
-    const allLeads = leads;
+    const allLeads = leads.filter(l => {
+      const startMatch = !filterStart || l.order_date >= filterStart;
+      const endMatch = !filterEnd || l.order_date <= filterEnd;
+      return startMatch && endMatch;
+    });
     const leadGrades = getTopCounts(allLeads, l => l.lead_grade);
     const leadRequesters = getTopCounts(allLeads, l => l.requester);
 
     // --- Internal Tasks Stats (ALL Statuses) ---
-    const allInternal = internalDesigns;
+    const allInternal = internalDesigns.filter(t => {
+      const targetDate = t.created_at || t.deadline || '';
+      const startMatch = !filterStart || !targetDate || targetDate >= filterStart;
+      const endMatch = !filterEnd || !targetDate || targetDate <= filterEnd;
+      return startMatch && endMatch;
+    });
     const internalDepts = getTopCounts(allInternal, t => departments.find(d => d.id === t.department_id)?.department_name || 'Unknown');
     const internalRequesters = getTopCounts(allInternal, t => t.requester_name);
 
@@ -185,7 +198,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
     const teamStats = designers.map(d => {
       const logs = filteredLogs.filter(l => l.pic_designer_id === d.id);
 
-      const projectsInvolvedCount = projects.filter(p =>
+      const projectsInvolvedCount = allProjects.filter(p =>
         p.pic_designer_id === d.id || (p.support_designer_ids || []).includes(d.id)
       ).length;
 
