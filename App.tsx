@@ -192,7 +192,7 @@ const App: React.FC = () => {
               {/* Nav: Switch overflow based on state to allow tooltips when collapsed */}
               <nav className={`flex-1 px-4 py-6 space-y-1 ${collapsed ? 'overflow-visible' : 'overflow-y-auto scrollbar-hide'}`}>
                 <NavLink to="/admin/dashboard" icon={icons.dashboard} label="Dashboard" collapsed={collapsed} />
-                <NavLink to="/admin/reports" icon={icons.report} label="Report Gen" collapsed={collapsed} />
+                <NavLink to="/admin/reports" icon={icons.report} label="Report Gen" collapsed={collapsed} badge="BETA" />
                 <NavLink to="/admin/artwork-logs" icon={icons.artwork} label="Artwork Logs" collapsed={collapsed} />
 
                 <div className={`mt-10 mb-4 px-3 text-[11px] font-semibold text-zinc-500 uppercase tracking-widest ${collapsed ? 'text-center' : ''}`}>
@@ -262,7 +262,7 @@ const App: React.FC = () => {
   );
 };
 
-const NavLink: React.FC<{ to: string; icon: React.ReactNode; label: string; collapsed: boolean }> = ({ to, icon, label, collapsed }) => {
+const NavLink: React.FC<{ to: string; icon: React.ReactNode; label: string; collapsed: boolean; badge?: string }> = ({ to, icon, label, collapsed, badge }) => {
   const location = useLocation();
   const isActive = location.pathname === to;
   return (
@@ -271,12 +271,20 @@ const NavLink: React.FC<{ to: string; icon: React.ReactNode; label: string; coll
       className={`group relative flex items-center ${collapsed ? 'justify-center px-2' : 'px-3'} py-3 rounded-xl text-sm font-medium transition-all duration-200 ${isActive ? 'bg-white/10 text-white' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}
     >
       <span className="text-xl leading-none flex items-center justify-center">{icon}</span>
-      {!collapsed && <span className="ml-3.5 truncate">{label}</span>}
+      {!collapsed && (
+        <span className="ml-3.5 flex-1 flex items-center justify-between min-w-0">
+          <span className="truncate">{label}</span>
+          {badge && <span className="ml-2 px-1.5 py-0.5 bg-pink-500/20 text-pink-400 text-[9px] font-black rounded uppercase tracking-wider shrink-0">{badge}</span>}
+        </span>
+      )}
 
       {/* Tooltip on Hover when Collapsed */}
       {collapsed && (
         <div className="absolute left-full ml-4 px-3 py-1.5 bg-zinc-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 whitespace-nowrap z-50 shadow-xl border border-zinc-700 font-medium tracking-wide transform translate-x-2 group-hover:translate-x-0">
-          {label}
+          <div className="flex items-center gap-2">
+             <span>{label}</span>
+             {badge && <span className="px-1 bg-pink-500/20 text-pink-400 text-[8px] font-black rounded uppercase">{badge}</span>}
+          </div>
           {/* Arrow */}
           <div className="absolute top-1/2 right-full -mt-1 -mr-[1px] border-4 border-transparent border-r-slate-900"></div>
         </div>

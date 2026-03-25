@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
+import { jsPDF } from 'jspdf';
 import { AppState, WorkContext } from '../types';
 
 interface Props {
@@ -209,18 +209,19 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
   const generatePDF = async () => {
     setIsGenerating(true);
     try {
-      const pdf = new jsPDF('l', 'mm', 'a4'); // 297 x 210
+      const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
       const slides = document.querySelectorAll('.report-slide');
       
       for (let i = 0; i < slides.length; i++) {
-        // Unscale for high-res capture
         const el = slides[i] as HTMLElement;
         const originalTransform = el.style.transform;
+        
+        // Use a wrapper or unscale locally without breaking layout flow ideally
+        // Since it's absolutely scaled, unscaling it for capture then restoring is fine.
         el.style.transform = 'scale(1)';
         
         const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
         
-        // Restore scale
         el.style.transform = originalTransform;
 
         const imgData = canvas.toDataURL('image/png');
@@ -231,7 +232,7 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
       pdf.save(`Report_${isFullYear ? targetYear : `${targetYear}-${targetMonth}`}.pdf`);
     } catch(e) {
       console.error(e);
-      alert('Error generating PDF');
+      alert('Error generating PDF. Please check console for details.');
     }
     setIsGenerating(false);
   };
@@ -242,12 +243,12 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
       
       {/* Header */}
       {title && (
-        <div className="absolute top-6 w-full px-12 z-20 flex justify-between items-start">
-          <div className="flex items-center gap-3 text-zinc-800">
-             <svg className="w-8 h-8 text-blue-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-             <span className="font-bold text-2xl tracking-tight">Werkudara Group</span>
+        <div className="absolute top-8 w-full px-12 z-20 flex justify-between items-start">
+          <div className="flex items-center gap-2.5 text-zinc-800">
+             <svg className="w-6 h-6 text-blue-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+             <span className="font-bold text-lg tracking-tight">Werkudara Group</span>
           </div>
-          <div className="bg-[#123661] text-white px-8 py-2.5 rounded-full font-bold text-xl tracking-tight shadow-md">
+          <div className="bg-[#123661] text-white px-6 py-1.5 rounded-full font-bold text-sm tracking-widest shadow-sm">
             {title}
           </div>
         </div>
@@ -259,17 +260,11 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
       </div>
 
       {/* Footer */}
-      <div className="absolute bottom-6 w-full px-12 z-20 flex justify-between items-end">
-        <div className="text-[11px] font-bold tracking-widest text-[#1a1a1a]">
-          CONFIDENTIAL DOCUMENT, FOR INTERNAL USE ONLY <span className="text-zinc-400 font-normal">| &copy; {new Date().getFullYear()} Werkudara Group. All rights reserved.</span>
-        </div>
-        <div className="text-2xl font-black text-blue-600 tracking-tighter opacity-80">
-          SCALING IMPACT
+      <div className="absolute bottom-8 w-full px-12 z-20 flex justify-between items-end">
+        <div className="text-[10px] font-bold tracking-widest text-zinc-800">
+          CONFIDENTIAL DOCUMENT, FOR INTERNAL USE ONLY <span className="text-zinc-500 font-normal">| &copy; {new Date().getFullYear()} Werkudara Group. All rights reserved.</span>
         </div>
       </div>
-      
-      {/* Decorative subtle texture/shapes in background */}
-      <div className="absolute top-0 right-0 w-1/2 h-full opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cpath d=\'M54.627 0l.83.83v58.34h-58.34l-.83-.83L0 54.628l54.627-54.627z\' fill=\'%23000000\' fill-rule=\'evenodd\'/%3E%3C/svg%3E")', backgroundSize: '100px' }}></div>
     </div>
   );
 
@@ -284,7 +279,10 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
     <div className="space-y-6 animate-in fade-in pb-20">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-3xl font-black text-zinc-900 tracking-tight uppercase">Report Generator</h1>
+          <div className="flex items-center gap-3">
+             <h1 className="text-3xl font-black text-zinc-900 tracking-tight uppercase">Report Generator</h1>
+             <span className="px-2.5 py-1 text-[10px] font-black uppercase tracking-widest bg-pink-100 text-pink-600 border border-pink-200 rounded-md">BETA / EXPERIMENT</span>
+          </div>
           <p className="text-zinc-500 font-medium">Create beautiful PDF reports automatically</p>
         </div>
         <div className="flex gap-3">
@@ -384,35 +382,35 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
                {/* TOP ROW */}
                <div className="flex gap-4 h-[280px]">
                   {/* Total Artworks & PIC */}
-                  <div className="bg-[#2a73af] text-white p-8 rounded-xl flex-1 flex">
-                     <div className="flex-1 border-r border-white/20 pr-8 flex flex-col justify-center relative">
-                        <div className="text-8xl font-black tracking-tighter leading-none mb-4">{analytics.totalArtworks}</div>
-                        <div className="font-bold text-lg tracking-widest uppercase mb-2">TOTAL ARTWORKS</div>
-                        <div className="text-xs uppercase leading-relaxed font-semibold ext-white/80">
-                           ARTWORK PALING BANYAK MUNCUL:<br/><span className="italic">{analytics.topKeywords || '-'}</span>
+                  <div className="bg-[#2a73af] text-white p-6 rounded-xl flex-1 flex">
+                     <div className="flex-1 border-r border-white/20 pr-6 flex flex-col justify-center relative">
+                        <div className="text-6xl font-black tracking-tighter leading-none mb-3">{analytics.totalArtworks}</div>
+                        <div className="font-bold text-sm tracking-widest uppercase mb-2 text-white/90">TOTAL ARTWORKS</div>
+                        <div className="text-[10px] uppercase leading-relaxed font-semibold text-white/80 mt-auto">
+                           ARTWORK PALING BANYAK MUNCUL:<br/><span className="italic text-white">{analytics.topKeywords || '-'}</span>
                         </div>
                      </div>
-                     <div className="flex-1 pl-8 flex flex-col justify-center">
-                        <div className="text-8xl font-black tracking-tighter leading-none mb-4">{analytics.allProjectsCount}</div>
-                        <div className="font-bold text-lg tracking-widest uppercase mb-4">PROJECT INCHARGE</div>
-                        <div className="text-xs uppercase leading-relaxed font-bold grid grid-cols-[100px_1fr] gap-2">
-                           <span className="text-white/70">TOP PIC</span><span>: {analytics.projectPICs || '-'}</span>
-                           <span className="text-white/70">TOP LOCATION</span><span>: {analytics.projectLocs || '-'}</span>
+                     <div className="flex-1 pl-6 flex flex-col justify-center">
+                        <div className="text-6xl font-black tracking-tighter leading-none mb-3">{analytics.allProjectsCount}</div>
+                        <div className="font-bold text-sm tracking-widest uppercase mb-4 text-white/90">PROJECT INCHARGE</div>
+                        <div className="text-[10px] uppercase leading-relaxed font-bold grid grid-cols-[80px_1fr] gap-2 mt-auto">
+                           <span className="text-white/70">TOP PIC</span><span className="text-white">: {analytics.projectPICs || '-'}</span>
+                           <span className="text-white/70">TOP LOCATION</span><span className="text-white">: {analytics.projectLocs || '-'}</span>
                         </div>
                      </div>
                   </div>
                   
                   {/* Heatmap */}
-                  <div className="w-[500px] bg-[#498cc6] text-white p-6 rounded-xl flex flex-col">
-                     <div className="font-bold text-xl uppercase tracking-wider mb-6">GENERAL ARTWORK HEATMAP</div>
+                  <div className="w-[450px] bg-[#498cc6] text-white p-5 rounded-xl flex flex-col">
+                     <div className="font-bold text-sm uppercase tracking-wider mb-4 text-white/90">GENERAL ARTWORK HEATMAP</div>
                      <div className="flex-1 flex flex-col justify-center">
-                       <div className="grid grid-cols-[50px_1fr_1fr_1fr] gap-2 w-full text-center">
+                       <div className="grid grid-cols-[40px_1fr_1fr_1fr] gap-2 w-full text-center">
                          {/* Header implicitly below */}
                          {['2D', '3D', 'VDO'].map(type => (
                            <React.Fragment key={type}>
-                             <div className="flex items-center text-sm font-bold text-white/80 uppercase">{type}</div>
+                             <div className="flex items-center text-xs font-bold text-white/80 uppercase">{type}</div>
                              {analytics.matrix.map((c, i) => (
-                               <div key={i} className={`py-4 rounded font-bold ${c[type as '2D'|'3D'|'VDO'] > 0 ? 'bg-slate-500/80 shadow-inner' : 'bg-slate-300/40 text-white/50'}`}>
+                               <div key={i} className={`py-3 rounded font-bold text-sm ${c[type as '2D'|'3D'|'VDO'] > 0 ? 'bg-slate-500/80 shadow-inner' : 'bg-slate-300/40 text-white/50'}`}>
                                  {c[type as '2D'|'3D'|'VDO'] > 0 ? c[type as '2D'|'3D'|'VDO'] : ''}
                                </div>
                              ))}
@@ -420,9 +418,9 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
                          ))}
                          {/* X-axis labels */}
                          <div></div>
-                         <div className="text-xs font-bold text-white/70 uppercase mt-2">PROJECT</div>
-                         <div className="text-xs font-bold text-white/70 uppercase mt-2">LEAD</div>
-                         <div className="text-xs font-bold text-white/70 uppercase mt-2">INTERNAL</div>
+                         <div className="text-[10px] font-bold text-white/70 uppercase mt-1">PROJECT</div>
+                         <div className="text-[10px] font-bold text-white/70 uppercase mt-1">LEAD</div>
+                         <div className="text-[10px] font-bold text-white/70 uppercase mt-1">INTERNAL</div>
                        </div>
                      </div>
                   </div>
@@ -431,11 +429,11 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
                {/* BOTTOM ROW */}
                <div className="flex gap-4 h-[240px]">
                   {/* LEADS */}
-                  <div className="bg-[#e47e25] text-white p-6 rounded-xl w-[320px] flex flex-col justify-between">
-                     <div className="text-8xl font-black tracking-tighter leading-none mt-2">{analytics.allLeadsCount}</div>
+                  <div className="bg-[#e47e25] text-white p-6 rounded-xl w-[280px] flex flex-col justify-between">
+                     <div className="text-7xl font-black tracking-tighter leading-none mt-2">{analytics.allLeadsCount}</div>
                      <div>
-                        <div className="font-bold text-sm tracking-widest uppercase mb-3">LEADS HANDLED</div>
-                        <div className="text-xs uppercase font-bold grid grid-cols-[60px_1fr] gap-1 leading-relaxed">
+                        <div className="font-bold text-xs tracking-widest uppercase mb-2 text-white/90">LEADS HANDLED</div>
+                        <div className="text-[10px] uppercase font-bold grid grid-cols-[50px_1fr] gap-1 leading-relaxed">
                            <span className="text-white/80">GRADE</span><span className="truncate">: {analytics.leadGrades || '-'}</span>
                            <span className="text-white/80">REQ</span><span className="truncate">: {analytics.leadRequesters || '-'}</span>
                         </div>
@@ -444,23 +442,23 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
 
                   {/* INTERNAL */}
                   <div className="bg-[#ef9c15] text-white p-6 rounded-xl flex-1 flex flex-col justify-between">
-                     <div className="text-8xl font-black tracking-tighter leading-none mt-2">{analytics.allInternalCount}</div>
+                     <div className="text-7xl font-black tracking-tighter leading-none mt-2">{analytics.allInternalCount}</div>
                      <div>
-                        <div className="font-bold text-sm tracking-widest uppercase mb-3">INTERNAL ARTWORKS</div>
-                        <div className="text-xs uppercase font-bold grid grid-cols-[50px_1fr] gap-1 leading-relaxed">
-                           <span className="text-white/80">DEPT</span><span className="truncate">: {analytics.internalDepts || '-'}</span>
+                        <div className="font-bold text-xs tracking-widest uppercase mb-2 text-white/90">INTERNAL ARTWORKS</div>
+                        <div className="text-[10px] uppercase font-bold grid grid-cols-[40px_1fr] gap-1 leading-relaxed">
+                           <span className="text-white/80">DEPT</span><span className="truncate text-white">: {analytics.internalDepts || '-'}</span>
                         </div>
                      </div>
                   </div>
 
                   {/* PENILAIAN */}
-                  <div className="bg-[#cd0057] text-white p-6 rounded-xl w-[340px] flex flex-col justify-between relative overflow-hidden">
-                     <div className="text-8xl font-black tracking-tighter leading-none mt-2 flex items-baseline">
-                        {analytics.globalEvalAverage} <span className="text-4xl text-white/80 ml-1 font-bold">/5</span>
+                  <div className="bg-[#cd0057] text-white p-6 rounded-xl w-[320px] flex flex-col justify-between relative overflow-hidden">
+                     <div className="text-7xl font-black tracking-tighter leading-none mt-2 flex items-baseline">
+                        {analytics.globalEvalAverage} <span className="text-3xl text-white/80 ml-1 font-bold">/5</span>
                      </div>
                      <div>
-                        <div className="font-bold text-sm tracking-widest uppercase mb-3">PENILAIAN TEAM PROJECT (From PM)</div>
-                        <div className="text-xs uppercase font-black tracking-widest border-t border-white/20 pt-3">
+                        <div className="font-bold text-xs tracking-widest uppercase mb-2 text-white/90">PENILAIAN TEAM PROJECT (From PM)</div>
+                        <div className="text-[10px] uppercase font-black tracking-widest border-t border-white/20 pt-2 text-white">
                            {analytics.uniqueEvaluatedProjects} PROJECTS | {analytics.uniqueEvaluatedTeams} TEAM
                         </div>
                      </div>
