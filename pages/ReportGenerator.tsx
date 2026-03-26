@@ -67,6 +67,20 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
         return `${targetYear}-${targetMonth}-${lastDay}`;
       })();
 
+  // Previous period boundaries (for MoM comparison)
+  const prevPeriod = useMemo(() => {
+    if (isFullYear) {
+      const prevYear = parseInt(targetYear) - 1;
+      return { start: `${prevYear}-01-01`, end: `${prevYear}-12-31` };
+    }
+    const d = new Date(parseInt(targetYear), parseInt(targetMonth) - 1, 1);
+    d.setMonth(d.getMonth() - 1);
+    const py = d.getFullYear();
+    const pm = String(d.getMonth() + 1).padStart(2, '0');
+    const lastDay = new Date(py, d.getMonth() + 1, 0).getDate();
+    return { start: `${py}-${pm}-01`, end: `${py}-${pm}-${lastDay}` };
+  }, [isFullYear, targetYear, targetMonth]);
+
   // Core Analytics Logic copied from Dashboard for accurate numbers
   const analytics = useMemo(() => {
     const { artworkLogs, projects, leads, designers, departments, internalDesigns, designerEvaluations } = state;
@@ -195,6 +209,61 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
       uniqueEvaluatedProjects, uniqueEvaluatedTeams
     };
   }, [state, filterStart, filterEnd]);
+
+  // Previous month analytics (for MoM footer)
+  const prevAnalytics = useMemo(() => {
+    const { artworkLogs, projects, leads, internalDesigns, designerEvaluations } = state;
+    const { start, end } = prevPeriod;
+
+    const filteredLogs = artworkLogs.filter(l => l.start_date >= start && l.start_date <= end);
+    const allProjects = projects.filter(p => p.start_date >= start && p.start_date <= end);
+    const allLeads = leads.filter(l => l.order_date >= start && l.order_date <= end);
+    const allInternal = internalDesigns.filter(t => {
+      const d = (t as any).created_at || (t as any).deadline || '';
+      return !d || (d >= start && d <= end);
+    });
+
+    const EVAL_CRITERIA_KEYS = ['inisiatif', 'disiplin', 'penyelesaian_tugas', 'attitude', 'komunikasi', 'respon_masukan'];
+    const globalEvals = designerEvaluations.filter(ev => {
+      const proj = projects.find(p => p.id === ev.project_id);
+      return proj && proj.start_date >= start && proj.start_date <= end;
+    });
+    let gSum = 0, gCount = 0;
+    globalEvals.forEach(ev => {
+      const scores = EVAL_CRITERIA_KEYS.map(k => (ev as any)[k] || 0).filter((v: number) => v > 0);
+      if (scores.length > 0) { gSum += scores.reduce((a, b) => a + b, 0) / scores.length; gCount++; }
+    });
+
+    return {
+      totalArtworks: filteredLogs.length,
+      allProjectsCount: allProjects.length,
+      allLeadsCount: allLeads.length,
+      allInternalCount: allInternal.length,
+      globalEvalAverage: gCount > 0 ? parseFloat((gSum / gCount).toFixed(2)) : 0,
+    };
+  }, [state, prevPeriod]);
+
+  // MoM delta helpers
+  const momDelta = (current: number, prev: number) => {
+    const diff = current - prev;
+    return { diff, up: diff > 0, same: diff === 0 };
+  };
+
+  const MomFooter = ({ current, prev, label }: { current: number; prev: number; label: string }) => {
+    const { diff, up, same } = momDelta(current, prev);
+    const arrow = same ? '●' : up ? '▲' : '▼';
+    const arrowColor = same ? 'text-white/60' : up ? 'text-emerald-300' : 'text-red-300';
+    const diffLabel = same ? 'No change' : `${up ? '+' : ''}${diff} from last month`;
+    return (
+      <div className="flex justify-between items-center px-4 py-2 rounded-b-xl" style={{ background: 'rgba(0,0,0,0.30)' }}>
+        <span className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-1 ${arrowColor}`}>
+          <span>{arrow}</span>
+          <span>{diffLabel}</span>
+        </span>
+        <span className="text-[10px] font-bold text-white/60 uppercase tracking-wider">{prev} {label} last month</span>
+      </div>
+    );
+  };
 
   function getTopCounts(items: any[], keyExtractor: (item: any) => string | string[], limit = 3) {
     const counts: Record<string, number> = {};
@@ -424,22 +493,25 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
                {/* TOP ROW */}
                <div className="flex gap-4 h-[280px]">
                   {/* Total Artworks & PIC */}
-                  <div className="bg-[#2a73af] text-white p-6 rounded-xl flex-1 flex">
-                     <div className="flex-1 border-r border-white/20 pr-6 flex flex-col justify-center relative">
-                        <div className="text-6xl font-black tracking-tighter leading-none mb-3">{analytics.totalArtworks}</div>
-                        <div className="font-bold text-sm tracking-widest uppercase mb-2 text-white/90">TOTAL ARTWORKS</div>
-                        <div className="text-[10px] uppercase leading-relaxed font-semibold text-white/80 mt-auto">
-                           ARTWORK PALING BANYAK MUNCUL:<br/><span className="italic text-white">{analytics.topKeywords || '-'}</span>
+                  <div className="bg-[#2a73af] text-white rounded-xl flex-1 flex flex-col overflow-hidden">
+                     <div className="flex flex-1 p-6">
+                        <div className="flex-1 border-r border-white/20 pr-6 flex flex-col justify-center relative">
+                           <div className="text-6xl font-black tracking-tighter leading-none mb-3">{analytics.totalArtworks}</div>
+                           <div className="font-bold text-sm tracking-widest uppercase mb-2 text-white/90">TOTAL ARTWORKS</div>
+                           <div className="text-[10px] uppercase leading-relaxed font-semibold text-white/80 mt-auto">
+                              ARTWORK PALING BANYAK MUNCUL:<br/><span className="italic text-white">{analytics.topKeywords || '-'}</span>
+                           </div>
+                        </div>
+                        <div className="flex-1 pl-6 flex flex-col justify-center">
+                           <div className="text-6xl font-black tracking-tighter leading-none mb-3">{analytics.allProjectsCount}</div>
+                           <div className="font-bold text-sm tracking-widest uppercase mb-4 text-white/90">PROJECT INCHARGE</div>
+                           <div className="text-[10px] uppercase leading-relaxed font-bold grid grid-cols-[80px_1fr] gap-2 mt-auto">
+                              <span className="text-white/70">TOP PIC</span><span className="text-white">: {analytics.projectPICs || '-'}</span>
+                              <span className="text-white/70">TOP LOCATION</span><span className="text-white">: {analytics.projectLocs || '-'}</span>
+                           </div>
                         </div>
                      </div>
-                     <div className="flex-1 pl-6 flex flex-col justify-center">
-                        <div className="text-6xl font-black tracking-tighter leading-none mb-3">{analytics.allProjectsCount}</div>
-                        <div className="font-bold text-sm tracking-widest uppercase mb-4 text-white/90">PROJECT INCHARGE</div>
-                        <div className="text-[10px] uppercase leading-relaxed font-bold grid grid-cols-[80px_1fr] gap-2 mt-auto">
-                           <span className="text-white/70">TOP PIC</span><span className="text-white">: {analytics.projectPICs || '-'}</span>
-                           <span className="text-white/70">TOP LOCATION</span><span className="text-white">: {analytics.projectLocs || '-'}</span>
-                        </div>
-                     </div>
+                     <MomFooter current={analytics.totalArtworks} prev={prevAnalytics.totalArtworks} label="artworks" />
                   </div>
                   
                   {/* Heatmap */}
@@ -471,39 +543,48 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
                {/* BOTTOM ROW */}
                <div className="flex gap-4 h-[240px]">
                   {/* LEADS */}
-                  <div className="bg-[#e47e25] text-white p-6 rounded-xl w-[280px] flex flex-col justify-between">
-                     <div className="text-7xl font-black tracking-tighter leading-none mt-2">{analytics.allLeadsCount}</div>
-                     <div>
-                        <div className="font-bold text-xs tracking-widest uppercase mb-2 text-white/90">LEADS HANDLED</div>
-                        <div className="text-[10px] uppercase font-bold grid grid-cols-[50px_1fr] gap-1 leading-relaxed">
-                           <span className="text-white/80">GRADE</span><span className="truncate">: {analytics.leadGrades || '-'}</span>
-                           <span className="text-white/80">REQ</span><span className="truncate">: {analytics.leadRequesters || '-'}</span>
+                  <div className="bg-[#e47e25] text-white rounded-xl w-[280px] flex flex-col overflow-hidden">
+                     <div className="flex flex-col justify-between flex-1 p-6">
+                        <div className="text-7xl font-black tracking-tighter leading-none mt-2">{analytics.allLeadsCount}</div>
+                        <div>
+                           <div className="font-bold text-xs tracking-widest uppercase mb-2 text-white/90">LEADS HANDLED</div>
+                           <div className="text-[10px] uppercase font-bold grid grid-cols-[50px_1fr] gap-1 leading-relaxed">
+                              <span className="text-white/80">GRADE</span><span className="truncate">: {analytics.leadGrades || '-'}</span>
+                              <span className="text-white/80">REQ</span><span className="truncate">: {analytics.leadRequesters || '-'}</span>
+                           </div>
                         </div>
                      </div>
+                     <MomFooter current={analytics.allLeadsCount} prev={prevAnalytics.allLeadsCount} label="leads" />
                   </div>
 
                   {/* INTERNAL */}
-                  <div className="bg-[#ef9c15] text-white p-6 rounded-xl flex-1 flex flex-col justify-between">
-                     <div className="text-7xl font-black tracking-tighter leading-none mt-2">{analytics.allInternalCount}</div>
-                     <div>
-                        <div className="font-bold text-xs tracking-widest uppercase mb-2 text-white/90">INTERNAL ARTWORKS</div>
-                        <div className="text-[10px] uppercase font-bold grid grid-cols-[40px_1fr] gap-1 leading-relaxed">
-                           <span className="text-white/80">DEPT</span><span className="truncate text-white">: {analytics.internalDepts || '-'}</span>
+                  <div className="bg-[#ef9c15] text-white rounded-xl flex-1 flex flex-col overflow-hidden">
+                     <div className="flex flex-col justify-between flex-1 p-6">
+                        <div className="text-7xl font-black tracking-tighter leading-none mt-2">{analytics.allInternalCount}</div>
+                        <div>
+                           <div className="font-bold text-xs tracking-widest uppercase mb-2 text-white/90">INTERNAL ARTWORKS</div>
+                           <div className="text-[10px] uppercase font-bold grid grid-cols-[40px_1fr] gap-1 leading-relaxed">
+                              <span className="text-white/80">DEPT</span><span className="truncate text-white">: {analytics.internalDepts || '-'}</span>
+                           </div>
                         </div>
                      </div>
+                     <MomFooter current={analytics.allInternalCount} prev={prevAnalytics.allInternalCount} label="internal" />
                   </div>
 
                   {/* PENILAIAN */}
-                  <div className="bg-[#cd0057] text-white p-6 rounded-xl w-[320px] flex flex-col justify-between relative overflow-hidden">
-                     <div className="text-7xl font-black tracking-tighter leading-none mt-2 flex items-baseline">
-                        {analytics.globalEvalAverage} <span className="text-3xl text-white/80 ml-1 font-bold">/5</span>
-                     </div>
-                     <div>
-                        <div className="font-bold text-xs tracking-widest uppercase mb-2 text-white/90">PENILAIAN TEAM PROJECT (From PM)</div>
-                        <div className="text-[10px] uppercase font-black tracking-widest border-t border-white/20 pt-2 text-white">
-                           {analytics.uniqueEvaluatedProjects} PROJECTS | {analytics.uniqueEvaluatedTeams} TEAM
+                  <div className="bg-[#cd0057] text-white rounded-xl w-[320px] flex flex-col overflow-hidden">
+                     <div className="flex flex-col justify-between flex-1 p-6">
+                        <div className="text-7xl font-black tracking-tighter leading-none mt-2 flex items-baseline">
+                           {analytics.globalEvalAverage} <span className="text-3xl text-white/80 ml-1 font-bold">/5</span>
+                        </div>
+                        <div>
+                           <div className="font-bold text-xs tracking-widest uppercase mb-2 text-white/90">PENILAIAN TEAM PROJECT (From PM)</div>
+                           <div className="text-[10px] uppercase font-black tracking-widest border-t border-white/20 pt-2 text-white">
+                              {analytics.uniqueEvaluatedProjects} PROJECTS | {analytics.uniqueEvaluatedTeams} TEAM
+                           </div>
                         </div>
                      </div>
+                     <MomFooter current={parseFloat(analytics.globalEvalAverage)} prev={prevAnalytics.globalEvalAverage} label="avg score" />
                   </div>
                </div>
             </div>
