@@ -7,6 +7,16 @@ interface Props {
   state: AppState;
 }
 
+type SlideType = 'title' | 'divider' | 'general-dashboard' | 'team-dashboard';
+
+interface Slide {
+  id: string;
+  type: SlideType;
+  title?: string;
+  dividerText?: string;
+  nextMoveText?: string;
+}
+
 const ReportGenerator: React.FC<Props> = ({ state }) => {
   const [targetMonth, setTargetMonth] = useState(String(new Date().getMonth() + 1).padStart(2, '0'));
   const [targetYear, setTargetYear] = useState(String(new Date().getFullYear()));
@@ -20,6 +30,14 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
   // Basic saving functionality via localStorage
   const [savedReports, setSavedReports] = useState<any[]>([]);
 
+  // Slides management
+  const [slides, setSlides] = useState<Slide[]>([
+    { id: 'title', type: 'title', title: titleText },
+    { id: 'divider', type: 'divider', dividerText: dividerText },
+    { id: 'general-dashboard', type: 'general-dashboard' },
+    { id: 'team-dashboard', type: 'team-dashboard', nextMoveText: nextMoveText }
+  ]);
+
   useEffect(() => {
     const saved = localStorage.getItem('acs_saved_reports');
     if (saved) {
@@ -28,6 +46,46 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
       } catch(e) {}
     }
   }, []);
+
+  // Update slides when text changes
+  useEffect(() => {
+    setSlides(prev => prev.map(slide => 
+      slide.type === 'title' ? { ...slide, title: titleText } :
+      slide.type === 'divider' ? { ...slide, dividerText: dividerText } :
+      slide.type === 'team-dashboard' ? { ...slide, nextMoveText: nextMoveText } :
+      slide
+    ));
+  }, [titleText, dividerText, nextMoveText]);
+
+  // Slide management functions
+  const addSlide = (type: SlideType, afterIndex?: number) => {
+    const newSlide: Slide = {
+      id: `${type}-${Date.now()}`,
+      type,
+      ...(type === 'title' && { title: 'CUSTOM TITLE' }),
+      ...(type === 'divider' && { dividerText: 'CUSTOM DIVIDER TEXT' }),
+      ...(type === 'team-dashboard' && { nextMoveText: 'Custom next move text' })
+    };
+    
+    setSlides(prev => {
+      if (afterIndex !== undefined) {
+        const newSlides = [...prev];
+        newSlides.splice(afterIndex + 1, 0, newSlide);
+        return newSlides;
+      }
+      return [...prev, newSlide];
+    });
+  };
+
+  const removeSlide = (slideId: string) => {
+    setSlides(prev => prev.filter(slide => slide.id !== slideId));
+  };
+
+  const updateSlide = (slideId: string, updates: Partial<Slide>) => {
+    setSlides(prev => prev.map(slide => 
+      slide.id === slideId ? { ...slide, ...updates } : slide
+    ));
+  };
 
   const saveReport = () => {
     const newReport = {
@@ -38,6 +96,7 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
       titleText,
       dividerText,
       nextMoveText,
+      slides,
       generatedAt: new Date().toISOString(),
       label: isFullYear ? `Report ${targetYear}` : `Report ${targetMonth}/${targetYear}`
     };
@@ -54,6 +113,9 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
     setTitleText(rep.titleText);
     setDividerText(rep.dividerText);
     setNextMoveText(rep.nextMoveText || '');
+    if (rep.slides) {
+      setSlides(rep.slides);
+    }
   };
 
   const filterStart = isFullYear 
@@ -438,18 +500,71 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
           </div>
 
           <div className="bg-white p-5 rounded-2xl border border-zinc-200 shadow-sm space-y-4">
-            <h3 className="font-bold text-sm tracking-tight uppercase text-zinc-900">Text Config</h3>
-            <div>
-              <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest block mb-1">Title Slide Name</label>
-              <input type="text" value={titleText} onChange={e => setTitleText(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm font-medium" />
+            <h3 className="font-bold text-sm tracking-tight uppercase text-zinc-900">Slide Management</h3>
+            
+            <div className="space-y-2">
+              <button 
+                onClick={() => addSlide('title')} 
+                className="w-full px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg font-medium text-sm transition-colors"
+              >
+                + Add Title Slide
+              </button>
+              <button 
+                onClick={() => addSlide('divider')} 
+                className="w-full px-3 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg font-medium text-sm transition-colors"
+              >
+                + Add Divider Slide
+              </button>
+              <button 
+                onClick={() => addSlide('general-dashboard')} 
+                className="w-full px-3 py-2 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg font-medium text-sm transition-colors"
+              >
+                + Add General Dashboard
+              </button>
+              <button 
+                onClick={() => addSlide('team-dashboard')} 
+                className="w-full px-3 py-2 bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-lg font-medium text-sm transition-colors"
+              >
+                + Add Team Dashboard
+              </button>
             </div>
-            <div>
-              <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest block mb-1">Divider Text</label>
-              <input type="text" value={dividerText} onChange={e => setDividerText(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm font-medium" />
-            </div>
-            <div>
-              <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest block mb-1">Next Move (Team Slide)</label>
-              <textarea value={nextMoveText} onChange={e => setNextMoveText(e.target.value)} rows={4} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm font-medium resize-none"></textarea>
+
+            <div className="border-t border-zinc-200 pt-4">
+              <h4 className="font-bold text-xs tracking-tight uppercase text-zinc-700 mb-3">Current Slides ({slides.length})</h4>
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {slides.map((slide, index) => (
+                  <div key={slide.id} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg border border-slate-200">
+                    <div className="flex-1">
+                      <div className="font-medium text-sm text-zinc-800 capitalize">
+                        {slide.type.replace('-', ' ')}
+                      </div>
+                      {slide.type === 'title' && slide.title && (
+                        <div className="text-xs text-zinc-500 truncate max-w-32">{slide.title}</div>
+                      )}
+                      {slide.type === 'divider' && slide.dividerText && (
+                        <div className="text-xs text-zinc-500 truncate max-w-32">{slide.dividerText}</div>
+                      )}
+                    </div>
+                    <div className="flex gap-1">
+                      <button 
+                        onClick={() => addSlide(slide.type, index)}
+                        className="px-2 py-1 bg-zinc-200 hover:bg-zinc-300 text-zinc-600 rounded text-xs font-medium"
+                        title="Duplicate"
+                      >
+                        +
+                      </button>
+                      <button 
+                        onClick={() => removeSlide(slide.id)}
+                        disabled={slides.length <= 1}
+                        className="px-2 py-1 bg-red-100 hover:bg-red-200 text-red-600 rounded text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Remove"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -471,24 +586,38 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
         {/* Right side: slides preview */}
         <div className="md:col-span-3 bg-slate-100 rounded-3xl p-8 border border-zinc-200 overflow-x-auto flex flex-col gap-12 items-center" style={{ minHeight: '800px' }}>
           
-          {/* SLIDE 1: TITLE */}
-          <SlideWrapper id="slide-1">
-             <div className="flex-1 flex flex-col items-center justify-center text-center">
-                <h1 className="text-6xl font-black text-[#123661] uppercase tracking-tighter mb-4">{titleText}</h1>
-                <h2 className="text-3xl font-bold text-zinc-500 uppercase tracking-widest">{isFullYear ? `YEAR ${targetYear}` : `${new Date(parseInt(targetYear), parseInt(targetMonth)-1).toLocaleString('id-ID',{month:'long'})} ${targetYear}`}</h2>
-             </div>
-          </SlideWrapper>
+          {slides.map((slide, index) => {
+            if (slide.type === 'title') {
+              return (
+                <SlideWrapper key={slide.id} id={`slide-${index}`}>
+                  <div className="flex-1 flex flex-col items-center justify-center text-center">
+                    <h1 className="text-6xl font-black text-[#123661] uppercase tracking-tighter mb-4">
+                      {slide.title || titleText}
+                    </h1>
+                    <h2 className="text-3xl font-bold text-zinc-500 uppercase tracking-widest">
+                      {isFullYear ? `YEAR ${targetYear}` : `${new Date(parseInt(targetYear), parseInt(targetMonth)-1).toLocaleString('id-ID',{month:'long'})} ${targetYear}`}
+                    </h2>
+                  </div>
+                </SlideWrapper>
+              );
+            }
 
-          {/* SLIDE 2: DIVIDER */}
-          <SlideWrapper id="slide-2">
-             <div className="flex-1 flex flex-col items-center justify-center text-center">
-                <div className="w-32 h-2 bg-blue-600 mb-8 rounded-full"></div>
-                <h1 className="text-5xl font-black text-zinc-800 uppercase tracking-tight">{dividerText}</h1>
-             </div>
-          </SlideWrapper>
+            if (slide.type === 'divider') {
+              return (
+                <SlideWrapper key={slide.id} id={`slide-${index}`}>
+                  <div className="flex-1 flex flex-col items-center justify-center text-center">
+                    <div className="w-32 h-2 bg-blue-600 mb-8 rounded-full"></div>
+                    <h1 className="text-5xl font-black text-zinc-800 uppercase tracking-tight">
+                      {slide.dividerText || dividerText}
+                    </h1>
+                  </div>
+                </SlideWrapper>
+              );
+            }
 
-          {/* SLIDE 3: GENERAL DASHBOARD */}
-          <SlideWrapper id="slide-3" title="GENERAL DASHBOARD">
+            if (slide.type === 'general-dashboard') {
+              return (
+                <SlideWrapper key={slide.id} id={`slide-${index}`} title="GENERAL DASHBOARD">
             <div className="flex-1 flex flex-col gap-4 mt-4 w-full h-[540px]">
                {/* TOP ROW */}
                <div className="flex gap-4 h-[280px]">
@@ -589,73 +718,79 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
                </div>
             </div>
           </SlideWrapper>
+            );
+            }
 
-          {/* SLIDE 4+: TEAM DASHBOARD */}
-          {teamChunks.map((chunk, chunkIdx) => (
-            <SlideWrapper key={`team-${chunkIdx}`} id={`slide-team-${chunkIdx}`} title="TEAM DASHBOARD">
-              <div className="flex-1 flex w-full h-[540px] mt-6 relative gap-4">
-                
-                {/* Team Cards Grid */}
-                <div className="grid grid-cols-4 grid-rows-2 gap-4 w-[980px] h-full">
-                  {chunk.map((ds: any, idx: number) => (
-                    <div key={idx} className="bg-[#f0f2f1] rounded-2xl relative flex flex-col p-4 pt-12 shadow-sm border border-black/5">
-                      {/* Avatar Overlapping Top */}
-                      <div className="absolute -top-6 left-6 w-[52px] h-[52px] rounded-full bg-gradient-to-br from-indigo-400 to-blue-600 text-white flex items-center justify-center font-black text-xl shadow-lg border-2 border-white">
-                        {ds.name.charAt(0)}
-                      </div>
-                      
-                      {/* Name placeholder if wanted, but screenshot leaves it off and relies on data? Let's add name for usability */}
-                      <div className="absolute top-2 right-4 text-[10px] font-black uppercase text-zinc-400 max-w-[100px] text-right truncate">{ds.name}</div>
+            if (slide.type === 'team-dashboard') {
+              return teamChunks.map((chunk, chunkIdx) => (
+                <SlideWrapper key={`${slide.id}-chunk-${chunkIdx}`} id={`slide-${index}-team-${chunkIdx}`} title="TEAM DASHBOARD">
+                  <div className="flex-1 flex w-full h-[540px] mt-6 relative gap-4">
+                    
+                    {/* Team Cards Grid */}
+                    <div className="grid grid-cols-4 grid-rows-2 gap-4 w-[980px] h-full">
+                      {chunk.map((ds: any, idx: number) => (
+                        <div key={idx} className="bg-[#f0f2f1] rounded-2xl relative flex flex-col p-4 pt-12 shadow-sm border border-black/5">
+                          {/* Avatar Overlapping Top */}
+                          <div className="absolute -top-6 left-6 w-[52px] h-[52px] rounded-full bg-gradient-to-br from-indigo-400 to-blue-600 text-white flex items-center justify-center font-black text-xl shadow-lg border-2 border-white">
+                            {ds.name.charAt(0)}
+                          </div>
+                          
+                          {/* Name placeholder if wanted, but screenshot leaves it off and relies on data? Let's add name for usability */}
+                          <div className="absolute top-2 right-4 text-[10px] font-black uppercase text-zinc-400 max-w-[100px] text-right truncate">{ds.name}</div>
 
-                      <div className="space-y-2 text-xs font-bold text-zinc-800 mt-2">
-                        <div className="flex justify-between border-b border-black/5 pb-1"><span className="w-6">{ds.projInvCount}</span> <span className="text-zinc-500 font-medium">PROJECTS</span></div>
-                        <div className="flex justify-between border-b border-black/5 pb-1"><span className="w-6">{ds.uniqueLeads}</span> <span className="text-zinc-500 font-medium">LEADS</span></div>
-                        <div className="flex justify-between border-b border-black/5 pb-1 items-center">
-                           <span><span className="w-6 inline-block">{ds.avgLeadDur}</span> <span className="text-zinc-500 font-medium">DAYS LEAD DELIVERY</span></span>
-                           {parseFloat(ds.avgLeadDur) < 2.0 && parseFloat(ds.avgLeadDur) > 0 && 
-                             <div className="w-4 h-4 bg-emerald-500 text-white rounded-full flex items-center justify-center text-[10px]">★</div>
-                           }
-                        </div>
-                        <div className="flex justify-between border-b border-black/5 pb-1"><span className="w-6">{ds.totalArtworks}</span> <span className="text-zinc-500 font-medium">ARTWORKS</span></div>
-                        
-                        <div className="text-[10px] font-black bg-zinc-200/50 p-1.5 rounded-md text-center border-b border-black/5 pb-1 mt-2">
-                          PRO: {ds.pro} | LEAD: {ds.lead} | INT: {ds.int}
-                        </div>
+                          <div className="space-y-2 text-xs font-bold text-zinc-800 mt-2">
+                            <div className="flex justify-between border-b border-black/5 pb-1"><span className="w-6">{ds.projInvCount}</span> <span className="text-zinc-500 font-medium">PROJECTS</span></div>
+                            <div className="flex justify-between border-b border-black/5 pb-1"><span className="w-6">{ds.uniqueLeads}</span> <span className="text-zinc-500 font-medium">LEADS</span></div>
+                            <div className="flex justify-between border-b border-black/5 pb-1 items-center">
+                               <span><span className="w-6 inline-block">{ds.avgLeadDur}</span> <span className="text-zinc-500 font-medium">DAYS LEAD DELIVERY</span></span>
+                               {parseFloat(ds.avgLeadDur) < 2.0 && parseFloat(ds.avgLeadDur) > 0 && 
+                                 <div className="w-4 h-4 bg-emerald-500 text-white rounded-full flex items-center justify-center text-[10px]">★</div>
+                               }
+                            </div>
+                            <div className="flex justify-between border-b border-black/5 pb-1"><span className="w-6">{ds.totalArtworks}</span> <span className="text-zinc-500 font-medium">ARTWORKS</span></div>
+                            
+                            <div className="text-[10px] font-black bg-zinc-200/50 p-1.5 rounded-md text-center border-b border-black/5 pb-1 mt-2">
+                              PRO: {ds.pro} | LEAD: {ds.lead} | INT: {ds.int}
+                            </div>
 
-                        <div className="flex justify-between py-1 items-center pt-2">
-                          <span><span className="w-6 inline-block">{ds.avgRating}</span> <span className="text-zinc-500 font-medium tracking-tight">PROJECT EVALUATION</span></span>
-                          {parseFloat(ds.avgRating) >= 4.0 && 
-                             <div className="w-4 h-4 bg-emerald-500 text-white rounded-full flex items-center justify-center text-[10px]">★</div>
-                           }
-                        </div>
-                      </div>
+                            <div className="flex justify-between py-1 items-center pt-2">
+                              <span><span className="w-6 inline-block">{ds.avgRating}</span> <span className="text-zinc-500 font-medium tracking-tight">PROJECT EVALUATION</span></span>
+                              {parseFloat(ds.avgRating) >= 4.0 && 
+                                 <div className="w-4 h-4 bg-emerald-500 text-white rounded-full flex items-center justify-center text-[10px]">★</div>
+                               }
+                            </div>
+                          </div>
 
-                      {/* Detailed scores pop down (Only render if there's detailedScores and to match the visual) */}
-                      {ds.detailedScores && (
-                        <div className="absolute -bottom-2 translate-y-full left-0 w-full bg-[#1c1d1a] text-white rounded-b-xl p-3 z-30 shadow-xl grid grid-cols-3 gap-y-2 gap-x-1 border-t border-black/10 transition-opacity">
-                           <div className="text-center"><div className="text-[6px] text-zinc-400 uppercase font-bold tracking-widest mb-0.5">INISIATIF</div><div className="text-[11px] font-black text-emerald-400">{ds.detailedScores.inisiatif}</div></div>
-                           <div className="text-center"><div className="text-[6px] text-zinc-400 uppercase font-bold tracking-widest mb-0.5">DISIPLIN</div><div className="text-[11px] font-black text-emerald-400">{ds.detailedScores.disiplin}</div></div>
-                           <div className="text-center"><div className="text-[6px] text-zinc-400 uppercase font-bold tracking-widest mb-0.5">TUGAS</div><div className="text-[11px] font-black text-emerald-400">{ds.detailedScores.tugas}</div></div>
-                           <div className="text-center"><div className="text-[6px] text-zinc-400 uppercase font-bold tracking-widest mb-0.5">ATTITUDE</div><div className="text-[11px] font-black text-emerald-400">{ds.detailedScores.attitude}</div></div>
-                           <div className="text-center"><div className="text-[6px] text-zinc-400 uppercase font-bold tracking-widest mb-0.5">KOMUNIKASI</div><div className="text-[11px] font-black text-red-400">{ds.detailedScores.komunikasi}</div></div>
-                           <div className="text-center"><div className="text-[6px] text-zinc-400 uppercase font-bold tracking-widest mb-0.5">RESPON</div><div className="text-[11px] font-black text-emerald-400">{ds.detailedScores.respon}</div></div>
+                          {/* Detailed scores pop down (Only render if there's detailedScores and to match the visual) */}
+                          {ds.detailedScores && (
+                            <div className="absolute -bottom-2 translate-y-full left-0 w-full bg-[#1c1d1a] text-white rounded-b-xl p-3 z-30 shadow-xl grid grid-cols-3 gap-y-2 gap-x-1 border-t border-black/10 transition-opacity">
+                               <div className="text-center"><div className="text-[6px] text-zinc-400 uppercase font-bold tracking-widest mb-0.5">INISIATIF</div><div className="text-[11px] font-black text-emerald-400">{ds.detailedScores.inisiatif}</div></div>
+                               <div className="text-center"><div className="text-[6px] text-zinc-400 uppercase font-bold tracking-widest mb-0.5">DISIPLIN</div><div className="text-[11px] font-black text-emerald-400">{ds.detailedScores.disiplin}</div></div>
+                               <div className="text-center"><div className="text-[6px] text-zinc-400 uppercase font-bold tracking-widest mb-0.5">TUGAS</div><div className="text-[11px] font-black text-emerald-400">{ds.detailedScores.tugas}</div></div>
+                               <div className="text-center"><div className="text-[6px] text-zinc-400 uppercase font-bold tracking-widest mb-0.5">ATTITUDE</div><div className="text-[11px] font-black text-emerald-400">{ds.detailedScores.attitude}</div></div>
+                               <div className="text-center"><div className="text-[6px] text-zinc-400 uppercase font-bold tracking-widest mb-0.5">KOMUNIKASI</div><div className="text-[11px] font-black text-red-400">{ds.detailedScores.komunikasi}</div></div>
+                               <div className="text-center"><div className="text-[6px] text-zinc-400 uppercase font-bold tracking-widest mb-0.5">RESPON</div><div className="text-[11px] font-black text-emerald-400">{ds.detailedScores.respon}</div></div>
+                            </div>
+                          )}
                         </div>
-                      )}
+                      ))}
                     </div>
-                  ))}
-                </div>
 
-                {/* Right Column: Next Move Text Area */}
-                <div className="flex-1 pl-4 flex flex-col pr-8">
-                   <h3 className="text-lg font-black uppercase text-zinc-900 tracking-wider mb-4">NEXT MOVE:</h3>
-                   <div className="text-sm font-semibold text-zinc-800 leading-loose whitespace-pre-wrap">
-                     {nextMoveText}
-                   </div>
-                </div>
+                    {/* Right Column: Next Move Text Area */}
+                    <div className="flex-1 pl-4 flex flex-col pr-8">
+                       <h3 className="text-lg font-black uppercase text-zinc-900 tracking-wider mb-4">NEXT MOVE:</h3>
+                       <div className="text-sm font-semibold text-zinc-800 leading-loose whitespace-pre-wrap">
+                         {slide.nextMoveText || nextMoveText}
+                       </div>
+                    </div>
 
-              </div>
-            </SlideWrapper>
-          ))}
+                  </div>
+                </SlideWrapper>
+              ));
+            }
+
+            return null;
+          })}
           
         </div>
       </div>
