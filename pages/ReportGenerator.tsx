@@ -17,9 +17,35 @@ interface Slide {
   nextMoveText?: string;
 }
 
+class ReportGeneratorErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean; error?: any}> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false, error: undefined };
+  }
+
+  static getDerivedStateFromError(error: any) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: any, info: any) {
+    console.error('ReportGenerator caught error:', error, info);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-8 bg-white text-red-700 text-base">
+          Terjadi kesalahan pada halaman laporan. Silakan refresh atau kontak admin.
+          <pre className="mt-2 text-xs text-red-500">{String(this.state.error)}</pre>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 const ReportGenerator: React.FC<Props> = ({ state }) => {
-  const [targetMonth, setTargetMonth] = useState(String(new Date().getMonth() + 1).padStart(2, '0'));
-  const [targetYear, setTargetYear] = useState(String(new Date().getFullYear()));
+  const [targetMonth, setTargetMonth] = useState(String(new Date().getMonth() + 1).padStart(2, '0'));  const [targetYear, setTargetYear] = useState(String(new Date().getFullYear()));
   const [isFullYear, setIsFullYear] = useState(false);
   const [titleText, setTitleText] = useState('WORK MANAGEMENT REPORT');
   const [dividerText, setDividerText] = useState('MONTHLY PERFORMANCE SUMMARY');
@@ -155,7 +181,8 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
     const projectLocs = getTopCounts(allProjects, p => (p as any).locations || (p as any).location || [], 3);
 
     const allLeads = leads.filter(l => l.order_date >= filterStart && l.order_date <= filterEnd);
-    const leadGrades = getTopCounts(allLeads, l => l.lead_grade, 3);
+    const leadGradesMap = getCountMap(allLeads, l => l.lead_grade || 'Unknown');
+    const leadGrades = Object.entries(leadGradesMap).sort((a,b)=>b[1]-a[1]).map(([label, count]) => `${label}: ${count}`).join(', ');
     const leadRequesters = getTopCounts(allLeads, l => l.requester, 3);
 
     const allInternal = internalDesigns.filter(t => {
@@ -179,6 +206,9 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
         "3D": filteredLogs.filter(l => l.work_context === WorkContext.INTERNAL && l.artwork_type === "3D Design").length,
         "VDO": filteredLogs.filter(l => l.work_context === WorkContext.INTERNAL && l.artwork_type === "Video").length },
     ];
+    const heatmapNumbers = matrix.flatMap(r => [r["2D"], r["3D"], r["VDO"]]);
+    const heatmapMin = heatmapNumbers.length ? Math.min(...heatmapNumbers) : 0;
+    const heatmapMax = heatmapNumbers.length ? Math.max(...heatmapNumbers) : 0;
 
     // Top Keywords
     const wordCounts: Record<string, number> = {};
@@ -265,8 +295,9 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
     return {
       totalArtworks, projectPICs, projectLocs, allProjectsCount: allProjects.length,
       allLeadsCount: allLeads.length, leadGrades, leadRequesters,
-      allInternalCount: allInternal.length, internalDepts,
+      leadGradesMap, allInternalCount: allInternal.length, internalDepts,
       matrix, topKeywords, teamStats,
+      heatmapMin, heatmapMax,
       globalEvalAverage: gCount > 0 ? (gSum / gCount).toFixed(2) : '0.00',
       uniqueEvaluatedProjects, uniqueEvaluatedTeams
     };
@@ -314,15 +345,14 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
   const MomFooter = ({ current, prev, label }: { current: number; prev: number; label: string }) => {
     const { diff, up, same } = momDelta(current, prev);
     const arrow = same ? '●' : up ? '▲' : '▼';
-    const arrowColor = same ? 'text-white/60' : up ? 'text-emerald-300' : 'text-red-300';
-    const diffLabel = same ? 'No change' : `${up ? '+' : ''}${diff} from last month`;
+    const arrowColor = same ? 'text-slate-300' : up ? 'text-emerald-400' : 'text-rose-300';
+    const formattedDiff = Math.abs(diff) < 1 && diff !== 0 ? diff.toFixed(2) : diff.toString();
+    const changeText = same ? 'No change' : `${up ? '+' : ''}${formattedDiff}`;
     return (
-      <div className="flex justify-between items-center px-4 py-2 rounded-b-xl" style={{ background: 'rgba(0,0,0,0.30)' }}>
-        <span className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-1 ${arrowColor}`}>
-          <span>{arrow}</span>
-          <span>{diffLabel}</span>
+      <div className="px-4 py-2 rounded-b-xl" style={{ background: 'rgba(0,0,0,0.30)' }}>
+        <span className={`text-[10px] font-semibold uppercase tracking-wide ${arrowColor}`}>
+          {arrow} {changeText} {label} vs last month
         </span>
-        <span className="text-[10px] font-bold text-white/60 uppercase tracking-wider">{prev} {label} last month</span>
       </div>
     );
   };
@@ -335,6 +365,16 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
       keys.forEach(k => { if (k) counts[k] = (counts[k] || 0) + 1; });
     });
     return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, limit).map(([label]) => label).join(', ');
+  }
+
+  function getCountMap(items: any[], keyExtractor: (item: any) => string | string[]) {
+    const counts: Record<string, number> = {};
+    items.forEach(item => {
+      const keyOrKeys = keyExtractor(item);
+      const keys = Array.isArray(keyOrKeys) ? keyOrKeys : [keyOrKeys];
+      keys.forEach(k => { if (k) counts[k] = (counts[k] || 0) + 1; });
+    });
+    return counts;
   }
 
   const generatePDF = async () => {
@@ -411,7 +451,7 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
   };
 
   const SlideWrapper = ({ children, title, id }: { children: React.ReactNode, title?: string, id?: string }) => (
-    <div id={id} className="report-slide bg-white relative overflow-hidden flex flex-col items-center justify-center shrink-0 border border-zinc-200 shadow-lg" 
+    <div id={id} className="report-slide bg-gradient-to-br from-slate-50 via-sky-50 to-white relative overflow-hidden flex flex-col items-center justify-center shrink-0 border border-zinc-200 shadow-xl" 
          style={{ width: '1280px', height: '720px', transformOrigin: 'top left', transform: 'scale(0.65)', marginBottom: '-240px' }}>
       
       {/* Header */}
@@ -591,7 +631,7 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
               return (
                 <SlideWrapper key={slide.id} id={`slide-${index}`}>
                   <div className="flex-1 flex flex-col items-center justify-center text-center">
-                    <h1 className="text-6xl font-black text-[#123661] uppercase tracking-tighter mb-4">
+                    <h1 className="text-6xl font-semibold text-[#123661] uppercase tracking-tight mb-4">
                       {slide.title || titleText}
                     </h1>
                     <h2 className="text-3xl font-bold text-zinc-500 uppercase tracking-widest">
@@ -607,7 +647,7 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
                 <SlideWrapper key={slide.id} id={`slide-${index}`}>
                   <div className="flex-1 flex flex-col items-center justify-center text-center">
                     <div className="w-32 h-2 bg-blue-600 mb-8 rounded-full"></div>
-                    <h1 className="text-5xl font-black text-zinc-800 uppercase tracking-tight">
+                    <h1 className="text-5xl font-semibold text-zinc-800 uppercase tracking-tight">
                       {slide.dividerText || dividerText}
                     </h1>
                   </div>
@@ -622,29 +662,44 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
                {/* TOP ROW */}
                <div className="flex gap-4 h-[280px]">
                   {/* Total Artworks & PIC */}
-                  <div className="bg-[#2a73af] text-white rounded-xl flex-1 flex flex-col overflow-hidden">
+                  <div className="bg-gradient-to-br from-blue-600 via-blue-500 to-sky-500 text-white rounded-xl flex-1 flex flex-col overflow-hidden">
                      <div className="flex flex-1 p-6">
                         <div className="flex-1 border-r border-white/20 pr-6 flex flex-col justify-center relative">
-                           <div className="text-6xl font-black tracking-tighter leading-none mb-3">{analytics.totalArtworks}</div>
+                           <div className="text-6xl font-semibold tracking-tight leading-none mb-3">{analytics.totalArtworks}</div>
                            <div className="font-bold text-sm tracking-widest uppercase mb-2 text-white/90">TOTAL ARTWORKS</div>
                            <div className="text-[10px] uppercase leading-relaxed font-semibold text-white/80 mt-auto">
                               ARTWORK PALING BANYAK MUNCUL:<br/><span className="italic text-white">{analytics.topKeywords || '-'}</span>
                            </div>
                         </div>
                         <div className="flex-1 pl-6 flex flex-col justify-center">
-                           <div className="text-6xl font-black tracking-tighter leading-none mb-3">{analytics.allProjectsCount}</div>
+                           <div className="text-6xl font-semibold tracking-tight leading-none mb-3">{analytics.allProjectsCount}</div>
                            <div className="font-bold text-sm tracking-widest uppercase mb-4 text-white/90">PROJECT INCHARGE</div>
-                           <div className="text-[10px] uppercase leading-relaxed font-bold grid grid-cols-[80px_1fr] gap-2 mt-auto">
-                              <span className="text-white/70">TOP PIC</span><span className="text-white">: {analytics.projectPICs || '-'}</span>
-                              <span className="text-white/70">TOP LOCATION</span><span className="text-white">: {analytics.projectLocs || '-'}</span>
+                           <div className="text-[10px] uppercase leading-relaxed font-bold space-y-1 mt-auto">
+                             <div className="flex flex-col gap-1">
+                               <div className="flex items-start gap-2">
+                                 <span className="text-white/70 min-w-[70px]">TOP PIC:</span>
+                                 <span className="text-white break-words">{analytics.projectPICs || '-'}</span>
+                               </div>
+                               <div className="flex items-start gap-2">
+                                 <span className="text-white/70 min-w-[70px]">TOP LOCATION:</span>
+                                 <span className="text-white break-words">{analytics.projectLocs || '-'}</span>
+                               </div>
+                             </div>
                            </div>
                         </div>
                      </div>
-                     <MomFooter current={analytics.totalArtworks} prev={prevAnalytics.totalArtworks} label="artworks" />
+                     <div className="bg-slate-900/30 text-white text-sm font-semibold px-4 py-3 flex items-center justify-between">
+                        {analytics.totalArtworks !== undefined && prevAnalytics.totalArtworks !== undefined ? (
+                          <span>{analytics.totalArtworks - prevAnalytics.totalArtworks >= 0 ? '▲' : '▼'} {Math.abs(analytics.totalArtworks - prevAnalytics.totalArtworks)} artworks vs last month</span>
+                        ) : <span>- artworks vs last month</span>}
+                        {analytics.allProjectsCount !== undefined && prevAnalytics.allProjectsCount !== undefined ? (
+                          <span>{analytics.allProjectsCount - prevAnalytics.allProjectsCount >= 0 ? '▲' : '▼'} {Math.abs(analytics.allProjectsCount - prevAnalytics.allProjectsCount)} projects vs last month</span>
+                        ) : <span>- projects vs last month</span>}
+                     </div>
                   </div>
                   
                   {/* Heatmap */}
-                  <div className="w-[450px] bg-[#498cc6] text-white p-5 rounded-xl flex flex-col">
+                  <div className="w-[450px] bg-gradient-to-br from-sky-500 via-blue-500 to-cyan-500 text-white p-5 rounded-xl flex flex-col">
                      <div className="font-bold text-sm uppercase tracking-wider mb-4 text-white/90">GENERAL ARTWORK HEATMAP</div>
                      <div className="flex-1 flex flex-col justify-center">
                        <div className="grid grid-cols-[40px_1fr_1fr_1fr] gap-2 w-full text-center">
@@ -652,11 +707,17 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
                          {['2D', '3D', 'VDO'].map(type => (
                            <React.Fragment key={type}>
                              <div className="flex items-center text-xs font-bold text-white/80 uppercase">{type}</div>
-                             {analytics.matrix.map((c, i) => (
-                               <div key={i} className={`py-3 rounded font-bold text-sm ${c[type as '2D'|'3D'|'VDO'] > 0 ? 'bg-slate-500/80 shadow-inner' : 'bg-slate-300/40 text-white/50'}`}>
-                                 {c[type as '2D'|'3D'|'VDO'] > 0 ? c[type as '2D'|'3D'|'VDO'] : ''}
-                               </div>
-                             ))}
+                             {analytics.matrix.map((c, i) => {
+                               const value = c[type as '2D'|'3D'|'VDO'];
+                               const isMax = value === analytics.heatmapMax;
+                               const isMin = value === analytics.heatmapMin;
+                               const cellClass = isMax ? 'bg-emerald-500/80 text-white' : isMin ? 'bg-red-500/70 text-white' : 'bg-slate-500/80 text-white/80';
+                               return (
+                                 <div key={i} className={`py-3 rounded font-bold text-sm ${cellClass}`}>
+                                   {value > 0 ? value : ''}
+                                 </div>
+                               );
+                             })}
                            </React.Fragment>
                          ))}
                          {/* X-axis labels */}
@@ -672,13 +733,18 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
                {/* BOTTOM ROW */}
                <div className="flex gap-4 h-[240px]">
                   {/* LEADS */}
-                  <div className="bg-[#e47e25] text-white rounded-xl w-[280px] flex flex-col overflow-hidden">
+                  <div className="bg-gradient-to-br from-orange-500 via-amber-500 to-orange-400 text-white rounded-xl w-[280px] flex flex-col overflow-hidden">
                      <div className="flex flex-col justify-between flex-1 p-6">
-                        <div className="text-7xl font-black tracking-tighter leading-none mt-2">{analytics.allLeadsCount}</div>
+                        <div className="text-7xl font-semibold tracking-tight leading-none mt-2">{analytics.allLeadsCount}</div>
                         <div>
                            <div className="font-bold text-xs tracking-widest uppercase mb-2 text-white/90">LEADS HANDLED</div>
                            <div className="text-[10px] uppercase font-bold grid grid-cols-[50px_1fr] gap-1 leading-relaxed">
-                              <span className="text-white/80">GRADE</span><span className="truncate">: {analytics.leadGrades || '-'}</span>
+                              <span className="text-white/80">GRADE</span>
+                              <span className="truncate">
+                                {analytics.leadGradesMap ? Object.entries(analytics.leadGradesMap).map(([grade, count], i) => (
+                                  <span key={grade}>{grade}: {count}{i < Object.keys(analytics.leadGradesMap).length - 1 ? ', ' : ''}</span>
+                                )) : '-'}
+                              </span>
                               <span className="text-white/80">REQ</span><span className="truncate">: {analytics.leadRequesters || '-'}</span>
                            </div>
                         </div>
@@ -687,9 +753,9 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
                   </div>
 
                   {/* INTERNAL */}
-                  <div className="bg-[#ef9c15] text-white rounded-xl flex-1 flex flex-col overflow-hidden">
+                  <div className="bg-gradient-to-br from-yellow-500 via-amber-500 to-orange-400 text-white rounded-xl flex-1 flex flex-col overflow-hidden">
                      <div className="flex flex-col justify-between flex-1 p-6">
-                        <div className="text-7xl font-black tracking-tighter leading-none mt-2">{analytics.allInternalCount}</div>
+                        <div className="text-7xl font-semibold tracking-tight leading-none mt-2">{analytics.allInternalCount}</div>
                         <div>
                            <div className="font-bold text-xs tracking-widest uppercase mb-2 text-white/90">INTERNAL ARTWORKS</div>
                            <div className="text-[10px] uppercase font-bold grid grid-cols-[40px_1fr] gap-1 leading-relaxed">
@@ -701,14 +767,14 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
                   </div>
 
                   {/* PENILAIAN */}
-                  <div className="bg-[#cd0057] text-white rounded-xl w-[320px] flex flex-col overflow-hidden">
+                  <div className="bg-gradient-to-br from-fuchsia-600 via-pink-600 to-rose-600 text-white rounded-xl w-[320px] flex flex-col overflow-hidden">
                      <div className="flex flex-col justify-between flex-1 p-6">
-                        <div className="text-7xl font-black tracking-tighter leading-none mt-2 flex items-baseline">
+                        <div className="text-7xl font-semibold tracking-tight leading-none mt-2 flex items-baseline">
                            {analytics.globalEvalAverage} <span className="text-3xl text-white/80 ml-1 font-bold">/5</span>
                         </div>
                         <div>
                            <div className="font-bold text-xs tracking-widest uppercase mb-2 text-white/90">PENILAIAN TEAM PROJECT (From PM)</div>
-                           <div className="text-[10px] uppercase font-black tracking-widest border-t border-white/20 pt-2 text-white">
+                           <div className="text-[10px] uppercase font-medium tracking-widest border-t border-white/20 pt-2 text-white">
                               {analytics.uniqueEvaluatedProjects} PROJECTS | {analytics.uniqueEvaluatedTeams} TEAM
                            </div>
                         </div>
@@ -736,7 +802,7 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
                           </div>
                           
                           {/* Name placeholder if wanted, but screenshot leaves it off and relies on data? Let's add name for usability */}
-                          <div className="absolute top-2 right-4 text-[10px] font-black uppercase text-zinc-400 max-w-[100px] text-right truncate">{ds.name}</div>
+                          <div className="absolute top-2 right-4 text-[13px] font-extrabold uppercase text-zinc-900 max-w-[120px] text-right truncate">{ds.name}</div>
 
                           <div className="space-y-2 text-xs font-bold text-zinc-800 mt-2">
                             <div className="flex justify-between border-b border-black/5 pb-1"><span className="w-6">{ds.projInvCount}</span> <span className="text-zinc-500 font-medium">PROJECTS</span></div>
@@ -761,28 +827,12 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
                             </div>
                           </div>
 
-                          {/* Detailed scores pop down (Only render if there's detailedScores and to match the visual) */}
-                          {ds.detailedScores && (
-                            <div className="absolute -bottom-2 translate-y-full left-0 w-full bg-[#1c1d1a] text-white rounded-b-xl p-3 z-30 shadow-xl grid grid-cols-3 gap-y-2 gap-x-1 border-t border-black/10 transition-opacity">
-                               <div className="text-center"><div className="text-[6px] text-zinc-400 uppercase font-bold tracking-widest mb-0.5">INISIATIF</div><div className="text-[11px] font-black text-emerald-400">{ds.detailedScores.inisiatif}</div></div>
-                               <div className="text-center"><div className="text-[6px] text-zinc-400 uppercase font-bold tracking-widest mb-0.5">DISIPLIN</div><div className="text-[11px] font-black text-emerald-400">{ds.detailedScores.disiplin}</div></div>
-                               <div className="text-center"><div className="text-[6px] text-zinc-400 uppercase font-bold tracking-widest mb-0.5">TUGAS</div><div className="text-[11px] font-black text-emerald-400">{ds.detailedScores.tugas}</div></div>
-                               <div className="text-center"><div className="text-[6px] text-zinc-400 uppercase font-bold tracking-widest mb-0.5">ATTITUDE</div><div className="text-[11px] font-black text-emerald-400">{ds.detailedScores.attitude}</div></div>
-                               <div className="text-center"><div className="text-[6px] text-zinc-400 uppercase font-bold tracking-widest mb-0.5">KOMUNIKASI</div><div className="text-[11px] font-black text-red-400">{ds.detailedScores.komunikasi}</div></div>
-                               <div className="text-center"><div className="text-[6px] text-zinc-400 uppercase font-bold tracking-widest mb-0.5">RESPON</div><div className="text-[11px] font-black text-emerald-400">{ds.detailedScores.respon}</div></div>
-                            </div>
-                          )}
+                          {/* Hapus detailed score hitam */}
                         </div>
                       ))}
                     </div>
 
-                    {/* Right Column: Next Move Text Area */}
-                    <div className="flex-1 pl-4 flex flex-col pr-8">
-                       <h3 className="text-lg font-black uppercase text-zinc-900 tracking-wider mb-4">NEXT MOVE:</h3>
-                       <div className="text-sm font-semibold text-zinc-800 leading-loose whitespace-pre-wrap">
-                         {slide.nextMoveText || nextMoveText}
-                       </div>
-                    </div>
+                    {/* Next Move dihapus */}
 
                   </div>
                 </SlideWrapper>
@@ -798,4 +848,8 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
   );
 };
 
-export default ReportGenerator;
+export default (props: Props) => (
+  <ReportGeneratorErrorBoundary>
+    <ReportGenerator {...props} />
+  </ReportGeneratorErrorBoundary>
+);
