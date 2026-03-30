@@ -7,7 +7,7 @@ interface Props {
   state: AppState;
 }
 
-type SlideType = 'title' | 'divider' | 'general-dashboard' | 'team-dashboard' | 'project-dashboard';
+type SlideType = 'title' | 'divider' | 'general-dashboard' | 'team-dashboard' | 'project-dashboard' | 'lead-dashboard' | 'lead-team-dashboard' | 'project-chart';
 
 interface Slide {
   id: string;
@@ -59,9 +59,12 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
   // Slides management
   const [slides, setSlides] = useState<Slide[]>([
     { id: 'title', type: 'title', title: titleText },
-    { id: 'divider', type: 'divider', dividerText: dividerText },
     { id: 'general-dashboard', type: 'general-dashboard' },
-    { id: 'team-dashboard', type: 'team-dashboard', nextMoveText: nextMoveText }
+    { id: 'team-dashboard', type: 'team-dashboard', nextMoveText: nextMoveText },
+    { id: 'project-dashboard', type: 'project-dashboard' },
+    { id: 'lead-dashboard', type: 'lead-dashboard' },
+    { id: 'lead-team-dashboard', type: 'lead-team-dashboard' },
+    { id: 'project-chart', type: 'project-chart' }
   ]);
 
   useEffect(() => {
@@ -71,7 +74,22 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
         setSavedReports(JSON.parse(saved));
       } catch(e) {}
     }
+    // Restore last-used slide config
+    const savedSlides = localStorage.getItem('acs_active_slides');
+    if (savedSlides) {
+      try {
+        const parsed = JSON.parse(savedSlides);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setSlides(parsed);
+        }
+      } catch(e) {}
+    }
   }, []);
+
+  // Auto-persist slides whenever they change
+  useEffect(() => {
+    localStorage.setItem('acs_active_slides', JSON.stringify(slides));
+  }, [slides]);
 
   // Update slides when text changes
   useEffect(() => {
@@ -105,6 +123,17 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
 
   const removeSlide = (slideId: string) => {
     setSlides(prev => prev.filter(slide => slide.id !== slideId));
+  };
+  
+  const moveSlide = (index: number, direction: 'up' | 'down') => {
+    setSlides(prev => {
+      const newSlides = [...prev];
+      const targetIndex = direction === 'up' ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= newSlides.length) return prev;
+      const [moved] = newSlides.splice(index, 1);
+      newSlides.splice(targetIndex, 0, moved);
+      return newSlides;
+    });
   };
 
   const updateSlide = (slideId: string, updates: Partial<Slide>) => {
@@ -339,6 +368,55 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
       ? projectStats.reduce((a, b) => a.teamSize >= b.teamSize ? a : b)
       : null;
 
+    // ---- Monthly project data (last 12 months from filter end) ----
+    const monthlyProjectData = (() => {
+      const months: { label: string; key: string; projects: number; artworks: number }[] = [];
+      const endDate = new Date(filterEnd);
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(endDate.getFullYear(), endDate.getMonth() - i, 1);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const key = `${y}-${m}`;
+        const label = d.toLocaleString('id-ID', { month: 'short' }).toUpperCase();
+        const monthProjects = projects.filter(p => p.start_date.startsWith(key));
+        const monthArtworks = artworkLogs.filter(
+          l => l.work_context === WorkContext.PROJECT && l.start_date.startsWith(key)
+        );
+        months.push({ label, key, projects: monthProjects.length, artworks: monthArtworks.length });
+      }
+      return months;
+    })();
+
+    // ---- Lead Dashboard Specific Analytics ----
+    const leadStats = allLeads.map(l => {
+      const leadLogs = filteredLogs.filter(log => log.work_context === WorkContext.LEAD && log.lead_id === l.id);
+      const artworkCount = leadLogs.length;
+      const dates = leadLogs.flatMap(log => [log.start_date, log.end_date].filter(Boolean) as string[]);
+      let workDays = 0;
+      if (dates.length >= 2) {
+        const minDate = dates.reduce((a, b) => a < b ? a : b);
+        const maxDate = dates.reduce((a, b) => a > b ? a : b);
+        workDays = Math.max(0, Math.round((new Date(maxDate).getTime() - new Date(minDate).getTime()) / 86400000) + 1);
+      } else if (dates.length === 1) {
+        workDays = 1;
+      }
+      const totalRevisions = leadLogs.reduce((s, log) => s + (log.revision_count || 0), 0);
+      return { lead: l, artworkCount, workDays, totalRevisions };
+    });
+
+    const totalLeadArtworks = filteredLogs.filter(l => l.work_context === WorkContext.LEAD).length;
+    const avgLeadWorkDays = allLeads.length > 0 
+      ? (leadStats.reduce((s, ls) => s + ls.workDays, 0) / allLeads.length)
+      : 0;
+    const avgLeadRevisions = totalLeadArtworks > 0
+      ? (leadStats.reduce((s, ls) => s + ls.totalRevisions, 0) / totalLeadArtworks)
+      : 0;
+
+    const leadDurationData = leadStats.slice(0, 12).map(ls => ({
+      label: ls.lead.lead_name || 'Lead',
+      duration: ls.workDays
+    }));
+
     return {
       totalArtworks, projectPICs, projectLocs, allProjectsCount: allProjects.length,
       allLeadsCount: allLeads.length, leadGrades, leadRequesters,
@@ -355,6 +433,13 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
       mostArtworkProj,
       longestDurProj,
       mostTeamProj,
+      // Project chart
+      monthlyProjectData,
+      // Lead dashboard
+      totalLeadArtworks,
+      avgLeadWorkDays,
+      avgLeadRevisions,
+      leadDurationData
     };
   }, [state, filterStart, filterEnd]);
 
@@ -382,12 +467,59 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
       if (scores.length > 0) { gSum += scores.reduce((a, b) => a + b, 0) / scores.length; gCount++; }
     });
 
+    // Prev period project-specific stats
+    const prevProjectStats = allProjects.map(proj => {
+      const projLogs = filteredLogs.filter(l => l.work_context === WorkContext.PROJECT && l.project_id === proj.id);
+      const teamIds = new Set<string>();
+      if (proj.pic_designer_id) teamIds.add(proj.pic_designer_id);
+      (proj.support_designer_ids || []).forEach((id: string) => teamIds.add(id));
+      const teamSize = teamIds.size;
+      const dates = projLogs.flatMap(l => [l.start_date, l.end_date].filter(Boolean) as string[]);
+      if (proj.end_date) dates.push(proj.end_date);
+      if (proj.start_date) dates.push(proj.start_date);
+      let workDays = 0;
+      if (dates.length >= 2) {
+        const minDate = dates.reduce((a, b) => a < b ? a : b);
+        const maxDate = dates.reduce((a, b) => a > b ? a : b);
+        workDays = Math.max(0, Math.round((new Date(maxDate).getTime() - new Date(minDate).getTime()) / 86400000) + 1);
+      }
+      return { artworkCount: projLogs.length, teamSize, workDays };
+    });
+    const prevTotalProjectArtworks = prevProjectStats.reduce((s, ps) => s + ps.artworkCount, 0);
+    const prevAvgTeamSize = prevProjectStats.length > 0
+      ? prevProjectStats.reduce((s, ps) => s + ps.teamSize, 0) / prevProjectStats.length : 0;
+    const prevAvgWorkDays = prevProjectStats.length > 0
+      ? prevProjectStats.reduce((s, ps) => s + ps.workDays, 0) / prevProjectStats.length : 0;
+
+    // Prev period lead-specific stats
+    const prevLeadLogs = filteredLogs.filter(l => l.work_context === WorkContext.LEAD);
+    const prevTotalLeadArtworks = prevLeadLogs.length;
+    const prevTotalLeadRevisions = prevLeadLogs.reduce((s, l) => s + (l.revision_count || 0), 0);
+    const prevAvgLeadRevisions = prevTotalLeadArtworks > 0 ? prevTotalLeadRevisions / prevTotalLeadArtworks : 0;
+
     return {
       totalArtworks: filteredLogs.length,
       allProjectsCount: allProjects.length,
       allLeadsCount: allLeads.length,
       allInternalCount: allInternal.length,
       globalEvalAverage: gCount > 0 ? parseFloat((gSum / gCount).toFixed(2)) : 0,
+      totalProjectArtworks: prevTotalProjectArtworks,
+      avgTeamSize: prevAvgTeamSize,
+      avgWorkDays: prevAvgWorkDays,
+      totalLeadArtworks: prevTotalLeadArtworks,
+      avgLeadWorkDays: allLeads.length > 0 
+        ? allLeads.reduce((acc, l) => {
+            const logs = filteredLogs.filter(log => log.work_context === WorkContext.LEAD && log.lead_id === l.id);
+            const dates = logs.flatMap(log => [log.start_date, log.end_date].filter(Boolean) as string[]);
+            if (dates.length >= 2) {
+              const min = dates.reduce((a, b) => a < b ? a : b);
+              const max = dates.reduce((a, b) => a > b ? a : b);
+              return acc + (Math.max(0, Math.round((new Date(max).getTime() - new Date(min).getTime()) / 86400000) + 1));
+            }
+            return acc + (dates.length === 1 ? 1 : 0);
+          }, 0) / allLeads.length 
+        : 0,
+      avgLeadRevisions: prevAvgLeadRevisions
     };
   }, [state, prevPeriod]);
 
@@ -401,7 +533,7 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
     const { diff, up, same } = momDelta(current, prev);
     const arrow = same ? '●' : up ? '▲' : '▼';
     const arrowColor = same ? 'text-slate-300' : up ? 'text-emerald-400' : 'text-rose-300';
-    const formattedDiff = Math.abs(diff) < 1 && diff !== 0 ? diff.toFixed(2) : diff.toString();
+    const formattedDiff = parseFloat(Math.abs(diff).toFixed(2)).toString();
     const changeText = same ? 'No change' : `${up ? '+' : ''}${formattedDiff}`;
     return (
       <div className="px-4 py-2 rounded-b-xl" style={{ background: 'rgba(0,0,0,0.30)' }}>
@@ -598,36 +730,31 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
             <h3 className="font-bold text-sm tracking-tight uppercase text-zinc-900">Slide Management</h3>
             
             <div className="space-y-2">
-              <button 
-                onClick={() => addSlide('title')} 
-                className="w-full px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg font-medium text-sm transition-colors"
-              >
-                + Add Title Slide
-              </button>
-              <button 
-                onClick={() => addSlide('divider')} 
-                className="w-full px-3 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg font-medium text-sm transition-colors"
-              >
-                + Add Divider Slide
-              </button>
-              <button 
-                onClick={() => addSlide('general-dashboard')} 
-                className="w-full px-3 py-2 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg font-medium text-sm transition-colors"
-              >
-                + Add General Dashboard
-              </button>
-              <button 
-                onClick={() => addSlide('team-dashboard')} 
-                className="w-full px-3 py-2 bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-lg font-medium text-sm transition-colors"
-              >
-                + Add Team Dashboard
-              </button>
-              <button 
-                onClick={() => addSlide('project-dashboard')} 
-                className="w-full px-3 py-2 bg-teal-50 hover:bg-teal-100 text-teal-700 rounded-lg font-medium text-sm transition-colors"
-              >
-                + Add Project Dashboard
-              </button>
+              {(
+                [
+                  { type: 'title' as SlideType, label: '+ Add Title Slide', cls: 'bg-blue-50 hover:bg-blue-100 text-blue-700 disabled:bg-slate-50 disabled:text-slate-300 disabled:cursor-not-allowed' },
+                  { type: 'divider' as SlideType, label: '+ Add Divider Slide', cls: 'bg-purple-50 hover:bg-purple-100 text-purple-700' },
+                  { type: 'general-dashboard' as SlideType, label: '+ Add General Dashboard', cls: 'bg-green-50 hover:bg-green-100 text-green-700 disabled:bg-slate-50 disabled:text-slate-300 disabled:cursor-not-allowed' },
+                  { type: 'team-dashboard' as SlideType, label: '+ Add Team Dashboard', cls: 'bg-orange-50 hover:bg-orange-100 text-orange-700 disabled:bg-slate-50 disabled:text-slate-300 disabled:cursor-not-allowed' },
+                  { type: 'project-dashboard' as SlideType, label: '+ Add Project Dashboard', cls: 'bg-teal-50 hover:bg-teal-100 text-teal-700 disabled:bg-slate-50 disabled:text-slate-300 disabled:cursor-not-allowed' },
+                  { type: 'lead-dashboard' as SlideType, label: '+ Add Lead Summary', cls: 'bg-amber-50 hover:bg-amber-100 text-amber-700 disabled:bg-slate-50 disabled:text-slate-300 disabled:cursor-not-allowed' },
+                  { type: 'lead-team-dashboard' as SlideType, label: '+ Add Lead Team', cls: 'bg-orange-50 hover:bg-orange-100 text-orange-700 disabled:bg-slate-50 disabled:text-slate-300 disabled:cursor-not-allowed' },
+                  { type: 'project-chart' as SlideType, label: '+ Add Project Chart', cls: 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 disabled:bg-slate-50 disabled:text-slate-300 disabled:cursor-not-allowed' },
+                ] as { type: SlideType; label: string; cls: string }[]
+              ).map(({ type, label, cls }) => {
+                const isOnce = type !== 'divider';
+                const alreadyAdded = isOnce && slides.some(s => s.type === type);
+                return (
+                  <button
+                    key={type}
+                    onClick={() => !alreadyAdded && addSlide(type)}
+                    disabled={alreadyAdded}
+                    className={`w-full px-3 py-2 rounded-lg font-medium text-sm transition-colors ${cls} ${alreadyAdded ? 'opacity-40 cursor-not-allowed' : ''}`}
+                  >
+                    {alreadyAdded ? `✓ ${label.replace('+ ', '')}` : label}
+                  </button>
+                );
+              })}
             </div>
 
             <div className="border-t border-zinc-200 pt-4">
@@ -648,8 +775,24 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
                     </div>
                     <div className="flex gap-1">
                       <button 
+                        onClick={() => moveSlide(index, 'up')}
+                        disabled={index === 0}
+                        className="px-2 py-1 bg-zinc-100 hover:bg-zinc-200 text-zinc-500 rounded text-xs disabled:opacity-30 disabled:cursor-not-allowed"
+                        title="Move Up"
+                      >
+                        ↑
+                      </button>
+                      <button 
+                        onClick={() => moveSlide(index, 'down')}
+                        disabled={index === slides.length - 1}
+                        className="px-2 py-1 bg-zinc-100 hover:bg-zinc-200 text-zinc-500 rounded text-xs disabled:opacity-30 disabled:cursor-not-allowed"
+                        title="Move Down"
+                      >
+                        ↓
+                      </button>
+                      <button 
                         onClick={() => addSlide(slide.type, index)}
-                        className="px-2 py-1 bg-zinc-200 hover:bg-zinc-300 text-zinc-600 rounded text-xs font-medium"
+                        className="px-2 py-1 bg-zinc-100 hover:bg-zinc-200 text-zinc-500 rounded text-xs font-medium"
                         title="Duplicate"
                       >
                         +
@@ -674,10 +817,23 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
               <h3 className="font-bold text-sm tracking-tight uppercase text-zinc-900">Saved Reports</h3>
               <div className="space-y-2 max-h-40 overflow-y-auto">
                 {savedReports.map(rp => (
-                  <button key={rp.id} onClick={() => loadReport(rp)} className="w-full text-left p-2 hover:bg-indigo-50 rounded-lg border border-transparent hover:border-indigo-100 transition-colors">
-                    <div className="font-bold text-sm text-zinc-800">{rp.label}</div>
-                    <div className="text-xs text-zinc-500 truncate">{new Date(rp.generatedAt).toLocaleDateString()}</div>
-                  </button>
+                  <div key={rp.id} className="flex items-center gap-2 p-2 hover:bg-indigo-50 rounded-lg border border-transparent hover:border-indigo-100 transition-colors group">
+                    <button onClick={() => loadReport(rp)} className="flex-1 text-left">
+                      <div className="font-bold text-sm text-zinc-800">{rp.label}</div>
+                      <div className="text-xs text-zinc-500 truncate">{new Date(rp.generatedAt).toLocaleDateString()}</div>
+                    </button>
+                    <button
+                      onClick={() => {
+                        const updated = savedReports.filter(r => r.id !== rp.id);
+                        setSavedReports(updated);
+                        localStorage.setItem('acs_saved_reports', JSON.stringify(updated));
+                      }}
+                      className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-md bg-red-100 hover:bg-red-200 text-red-500 text-xs font-black opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="Hapus"
+                    >
+                      ×
+                    </button>
+                  </div>
                 ))}
               </div>
             </div>
@@ -722,125 +878,171 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
             <div className="flex-1 flex flex-col gap-4 mt-4 w-full h-[540px]">
                {/* TOP ROW */}
                <div className="flex gap-4 h-[280px]">
-                  {/* Total Artworks & PIC */}
-                  <div className="bg-gradient-to-br from-blue-600 via-blue-500 to-sky-500 text-white rounded-xl flex-1 flex flex-col overflow-hidden">
-                     <div className="flex flex-1 p-6">
-                        <div className="flex-1 border-r border-white/20 pr-6 flex flex-col justify-center relative">
-                           <div className="text-6xl font-semibold tracking-tight leading-none mb-3">{analytics.totalArtworks}</div>
-                           <div className="font-bold text-sm tracking-widest uppercase mb-2 text-white/90">TOTAL ARTWORKS</div>
-                           <div className="text-[10px] uppercase leading-relaxed font-semibold text-white/80 mt-auto">
-                              ARTWORK PALING BANYAK MUNCUL:<br/><span className="italic text-white">{analytics.topKeywords || '-'}</span>
+                  {/* Total Artworks & Projects — white card */}
+                  <div className="bg-white rounded-xl flex-1 flex flex-col overflow-hidden shadow-sm border border-slate-100">
+                     <div className="flex flex-1 p-6 gap-6">
+                        {/* Artworks */}
+                        <div className="flex-1 border-r border-slate-100 pr-6 flex flex-col justify-between">
+                           <div>
+                             <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Total Artworks</div>
+                             <div className="flex items-baseline gap-3">
+                               <div className="text-6xl font-semibold tracking-tight leading-none text-blue-600">{analytics.totalArtworks}</div>
+                               {(() => {
+                                 const diff = analytics.totalArtworks - prevAnalytics.totalArtworks;
+                                 const color = diff > 0 ? 'text-emerald-500' : diff < 0 ? 'text-red-500' : 'text-slate-400';
+                                 const arrow = diff > 0 ? '▲' : diff < 0 ? '▼' : '●';
+                                 return <span className={`text-sm font-black ${color}`}>{arrow} {Math.abs(diff)}</span>;
+                               })()}
+                             </div>
+                           </div>
+                           <div className="mt-3">
+                             <div className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1">Top Keywords</div>
+                             <div className="text-[12px] font-bold text-slate-700 leading-relaxed">{analytics.topKeywords || '-'}</div>
                            </div>
                         </div>
-                        <div className="flex-1 pl-6 flex flex-col justify-center">
-                           <div className="text-6xl font-semibold tracking-tight leading-none mb-3">{analytics.allProjectsCount}</div>
-                           <div className="font-bold text-sm tracking-widest uppercase mb-4 text-white/90">PROJECT INCHARGE</div>
-                           <div className="text-[10px] uppercase leading-relaxed font-bold space-y-1 mt-auto">
-                             <div className="flex flex-col gap-1">
-                               <div className="flex items-start gap-2">
-                                 <span className="text-white/70 min-w-[70px]">TOP PIC:</span>
-                                 <span className="text-white break-words">{analytics.projectPICs || '-'}</span>
-                               </div>
-                               <div className="flex items-start gap-2">
-                                 <span className="text-white/70 min-w-[70px]">TOP LOCATION:</span>
-                                 <span className="text-white break-words">{analytics.projectLocs || '-'}</span>
-                               </div>
+                        {/* Projects */}
+                        <div className="flex-1 flex flex-col justify-between">
+                           <div>
+                             <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Projects In-Charge</div>
+                             <div className="flex items-baseline gap-3">
+                               <div className="text-6xl font-semibold tracking-tight leading-none text-indigo-600">{analytics.allProjectsCount}</div>
+                               {(() => {
+                                 const diff = analytics.allProjectsCount - prevAnalytics.allProjectsCount;
+                                 const color = diff > 0 ? 'text-emerald-500' : diff < 0 ? 'text-red-500' : 'text-slate-400';
+                                 const arrow = diff > 0 ? '▲' : diff < 0 ? '▼' : '●';
+                                 return <span className={`text-sm font-black ${color}`}>{arrow} {Math.abs(diff)}</span>;
+                               })()}
+                             </div>
+                           </div>
+                           <div className="mt-3 space-y-2">
+                             <div>
+                               <div className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">Top PIC</div>
+                               <div className="text-[12px] font-bold text-slate-700 leading-relaxed">{analytics.projectPICs || '-'}</div>
+                             </div>
+                             <div>
+                               <div className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">Top Location</div>
+                               <div className="text-[12px] font-bold text-slate-700 leading-relaxed">{analytics.projectLocs || '-'}</div>
                              </div>
                            </div>
                         </div>
                      </div>
-                     <div className="bg-slate-900/30 text-white text-sm font-semibold px-4 py-3 flex items-center justify-between">
-                        {analytics.totalArtworks !== undefined && prevAnalytics.totalArtworks !== undefined ? (
-                          <span>{analytics.totalArtworks - prevAnalytics.totalArtworks >= 0 ? '▲' : '▼'} {Math.abs(analytics.totalArtworks - prevAnalytics.totalArtworks)} artworks vs last month</span>
-                        ) : <span>- artworks vs last month</span>}
-                        {analytics.allProjectsCount !== undefined && prevAnalytics.allProjectsCount !== undefined ? (
-                          <span>{analytics.allProjectsCount - prevAnalytics.allProjectsCount >= 0 ? '▲' : '▼'} {Math.abs(analytics.allProjectsCount - prevAnalytics.allProjectsCount)} projects vs last month</span>
-                        ) : <span>- projects vs last month</span>}
-                     </div>
                   </div>
                   
-                  {/* Heatmap */}
-                  <div className="w-[450px] bg-gradient-to-br from-sky-500 via-blue-500 to-cyan-500 text-white p-5 rounded-xl flex flex-col">
-                     <div className="font-bold text-sm uppercase tracking-wider mb-4 text-white/90">GENERAL ARTWORK HEATMAP</div>
+                  {/* Heatmap — white bg, single-hue blue scale */}
+                  <div className="w-[420px] bg-white rounded-xl p-5 flex flex-col shadow-sm border border-slate-100">
+                     <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4">Artwork Distribution Heatmap</div>
                      <div className="flex-1 flex flex-col justify-center">
-                       <div className="grid grid-cols-[40px_1fr_1fr_1fr] gap-2 w-full text-center">
-                         {/* Header implicitly below */}
+                       <div className="grid grid-cols-[36px_1fr_1fr_1fr] gap-2 w-full text-center">
                          {['2D', '3D', 'VDO'].map(type => (
                            <React.Fragment key={type}>
-                             <div className="flex items-center text-xs font-bold text-white/80 uppercase">{type}</div>
+                             <div className="flex items-center text-xs font-black text-slate-500 uppercase">{type}</div>
                              {analytics.matrix.map((c, i) => {
                                const value = c[type as '2D'|'3D'|'VDO'];
-                               const isMax = value === analytics.heatmapMax;
-                               const isMin = value === analytics.heatmapMin;
-                               const cellClass = isMax ? 'bg-emerald-500/80 text-white' : isMin ? 'bg-red-500/70 text-white' : 'bg-slate-500/80 text-white/80';
+                               const ratio = analytics.heatmapMax > 0 ? value / analytics.heatmapMax : 0;
+                               const bg = ratio === 0 ? '#f8fafc'
+                                 : ratio < 0.25 ? '#dbeafe'
+                                 : ratio < 0.5 ? '#93c5fd'
+                                 : ratio < 0.75 ? '#3b82f6'
+                                 : '#1d4ed8';
+                               const textColor = ratio >= 0.5 ? '#ffffff' : '#1e3a8a';
                                return (
-                                 <div key={i} className={`py-3 rounded font-bold text-sm ${cellClass}`}>
+                                 <div key={i}
+                                   className="py-3 rounded-lg font-black text-sm"
+                                   style={{ background: bg, color: textColor }}>
                                    {value > 0 ? value : ''}
                                  </div>
                                );
                              })}
                            </React.Fragment>
                          ))}
-                         {/* X-axis labels */}
                          <div></div>
-                         <div className="text-[10px] font-bold text-white/70 uppercase mt-1">PROJECT</div>
-                         <div className="text-[10px] font-bold text-white/70 uppercase mt-1">LEAD</div>
-                         <div className="text-[10px] font-bold text-white/70 uppercase mt-1">INTERNAL</div>
+                         <div className="text-[10px] font-black text-slate-400 uppercase mt-1.5">Project</div>
+                         <div className="text-[10px] font-black text-slate-400 uppercase mt-1.5">Lead</div>
+                         <div className="text-[10px] font-black text-slate-400 uppercase mt-1.5">Internal</div>
                        </div>
                      </div>
                   </div>
                </div>
 
                {/* BOTTOM ROW */}
-               <div className="flex gap-4 h-[240px]">
+               <div className="flex gap-4 h-[232px]">
                   {/* LEADS */}
-                  <div className="bg-gradient-to-br from-orange-500 via-amber-500 to-orange-400 text-white rounded-xl w-[280px] flex flex-col overflow-hidden">
-                     <div className="flex flex-col justify-between flex-1 p-6">
-                        <div className="text-7xl font-semibold tracking-tight leading-none mt-2">{analytics.allLeadsCount}</div>
+                  <div className="bg-white rounded-xl w-[280px] flex flex-col overflow-hidden shadow-sm border border-slate-100">
+                     <div className="flex flex-col justify-between flex-1 p-5">
                         <div>
-                           <div className="font-bold text-xs tracking-widest uppercase mb-2 text-white/90">LEADS HANDLED</div>
-                           <div className="text-[10px] uppercase font-bold grid grid-cols-[50px_1fr] gap-1 leading-relaxed">
-                              <span className="text-white/80">GRADE</span>
-                              <span className="truncate">
-                                {analytics.leadGradesMap ? Object.entries(analytics.leadGradesMap).map(([grade, count], i) => (
-                                  <span key={grade}>{grade}: {count}{i < Object.keys(analytics.leadGradesMap).length - 1 ? ', ' : ''}</span>
-                                )) : '-'}
-                              </span>
-                              <span className="text-white/80">REQ</span><span className="truncate">: {analytics.leadRequesters || '-'}</span>
-                           </div>
+                          <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Leads Handled</div>
+                          <div className="flex items-baseline gap-3">
+                            <div className="text-6xl font-semibold tracking-tight leading-none text-amber-500">{analytics.allLeadsCount}</div>
+                            {(() => {
+                              const diff = analytics.allLeadsCount - prevAnalytics.allLeadsCount;
+                              const color = diff > 0 ? 'text-emerald-500' : diff < 0 ? 'text-red-500' : 'text-slate-400';
+                              const arrow = diff > 0 ? '▲' : diff < 0 ? '▼' : '●';
+                              return <span className={`text-sm font-black ${color}`}>{arrow} {Math.abs(diff)}</span>;
+                            })()}
+                          </div>
+                        </div>
+                        <div className="mt-2 space-y-1.5">
+                          <div>
+                            <div className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">Grade Breakdown</div>
+                            <div className="text-[12px] font-bold text-slate-700 leading-relaxed">
+                              {analytics.leadGradesMap ? Object.entries(analytics.leadGradesMap).map(([g, c], i) => (
+                                <span key={g}>{g}: {c}{i < Object.keys(analytics.leadGradesMap).length - 1 ? ' · ' : ''}</span>
+                              )) : '-'}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">Top Requester</div>
+                            <div className="text-[12px] font-bold text-slate-700 truncate">{analytics.leadRequesters || '-'}</div>
+                          </div>
                         </div>
                      </div>
-                     <MomFooter current={analytics.allLeadsCount} prev={prevAnalytics.allLeadsCount} label="leads" />
                   </div>
 
                   {/* INTERNAL */}
-                  <div className="bg-gradient-to-br from-yellow-500 via-amber-500 to-orange-400 text-white rounded-xl flex-1 flex flex-col overflow-hidden">
-                     <div className="flex flex-col justify-between flex-1 p-6">
-                        <div className="text-7xl font-semibold tracking-tight leading-none mt-2">{analytics.allInternalCount}</div>
+                  <div className="bg-white rounded-xl flex-1 flex flex-col overflow-hidden shadow-sm border border-slate-100">
+                     <div className="flex flex-col justify-between flex-1 p-5">
                         <div>
-                           <div className="font-bold text-xs tracking-widest uppercase mb-2 text-white/90">INTERNAL ARTWORKS</div>
-                           <div className="text-[10px] uppercase font-bold grid grid-cols-[40px_1fr] gap-1 leading-relaxed">
-                              <span className="text-white/80">DEPT</span><span className="truncate text-white">: {analytics.internalDepts || '-'}</span>
-                           </div>
+                          <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Internal Artworks</div>
+                          <div className="flex items-baseline gap-3">
+                            <div className="text-6xl font-semibold tracking-tight leading-none text-yellow-500">{analytics.allInternalCount}</div>
+                            {(() => {
+                              const diff = analytics.allInternalCount - prevAnalytics.allInternalCount;
+                              const color = diff > 0 ? 'text-emerald-500' : diff < 0 ? 'text-red-500' : 'text-slate-400';
+                              const arrow = diff > 0 ? '▲' : diff < 0 ? '▼' : '●';
+                              return <span className={`text-sm font-black ${color}`}>{arrow} {Math.abs(diff)}</span>;
+                            })()}
+                          </div>
+                        </div>
+                        <div className="mt-2">
+                          <div className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">Top Department</div>
+                          <div className="text-[12px] font-bold text-slate-700 leading-relaxed">{analytics.internalDepts || '-'}</div>
                         </div>
                      </div>
-                     <MomFooter current={analytics.allInternalCount} prev={prevAnalytics.allInternalCount} label="internal" />
                   </div>
 
-                  {/* PENILAIAN */}
-                  <div className="bg-gradient-to-br from-fuchsia-600 via-pink-600 to-rose-600 text-white rounded-xl w-[320px] flex flex-col overflow-hidden">
-                     <div className="flex flex-col justify-between flex-1 p-6">
-                        <div className="text-7xl font-semibold tracking-tight leading-none mt-2 flex items-baseline">
-                           {analytics.globalEvalAverage} <span className="text-3xl text-white/80 ml-1 font-bold">/5</span>
-                        </div>
+                  {/* PROJECT EVALUATION */}
+                  <div className="bg-white rounded-xl w-[300px] flex flex-col overflow-hidden shadow-sm border border-slate-100">
+                     <div className="flex flex-col justify-between flex-1 p-5">
                         <div>
-                           <div className="font-bold text-xs tracking-widest uppercase mb-2 text-white/90">PENILAIAN TEAM PROJECT (From PM)</div>
-                           <div className="text-[10px] uppercase font-medium tracking-widest border-t border-white/20 pt-2 text-white">
-                              {analytics.uniqueEvaluatedProjects} PROJECTS | {analytics.uniqueEvaluatedTeams} TEAM
-                           </div>
+                          <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Project Evaluation (PM)</div>
+                          <div className="flex items-baseline gap-3">
+                            <div className="text-6xl font-semibold tracking-tight leading-none text-fuchsia-600 flex items-baseline">
+                              {analytics.globalEvalAverage}<span className="text-2xl text-slate-400 ml-1 font-bold">/5</span>
+                            </div>
+                            {(() => {
+                              const diff = parseFloat(analytics.globalEvalAverage) - prevAnalytics.globalEvalAverage;
+                              const color = diff > 0 ? 'text-emerald-500' : diff < 0 ? 'text-red-500' : 'text-slate-400';
+                              const arrow = diff > 0 ? '▲' : diff < 0 ? '▼' : '●';
+                              return <span className={`text-sm font-black ${color}`}>{arrow} {parseFloat(Math.abs(diff).toFixed(2))}</span>;
+                            })()}
+                          </div>
+                        </div>
+                        <div className="mt-2 pt-2 border-t border-slate-100">
+                          <div className="text-[12px] font-bold text-slate-600 uppercase tracking-widest">
+                            {analytics.uniqueEvaluatedProjects} Projects · {analytics.uniqueEvaluatedTeams} Team Members
+                          </div>
                         </div>
                      </div>
-                     <MomFooter current={parseFloat(analytics.globalEvalAverage)} prev={prevAnalytics.globalEvalAverage} label="avg score" />
                   </div>
                </div>
             </div>
@@ -900,40 +1102,159 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
               ));
             }
 
+            if (slide.type === 'lead-team-dashboard') {
+              const leadDesigners = analytics.teamStats.filter(t => t.uniqueLeads > 0 || t.lead > 0);
+
+              return (
+                <SlideWrapper key={slide.id} id={`slide-${index}`} title="LEAD TEAM PERFORMANCE SUMMARY">
+                  <div className="flex-1 flex flex-col gap-4 mt-6 w-full h-[540px]">
+                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="bg-slate-50 border-b border-slate-100">
+                             <th className="py-4 px-6 text-[11px] font-black uppercase tracking-widest text-slate-400">Team Member</th>
+                             <th className="py-4 px-6 text-[11px] font-black uppercase tracking-widest text-slate-400 text-center">Leads Handled</th>
+                             <th className="py-4 px-6 text-[11px] font-black uppercase tracking-widest text-slate-400 text-center">Lead Artworks</th>
+                             <th className="py-4 px-6 text-[11px] font-black uppercase tracking-widest text-slate-400 text-center">Avg Duration</th>
+                             <th className="py-4 px-6 text-[11px] font-black uppercase tracking-widest text-slate-400 text-right">Efficiency</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {leadDesigners.map((d, dIdx) => (
+                            <tr key={dIdx} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50 transition-colors">
+                              <td className="py-3 px-6">
+                                <div className="flex items-center gap-3">
+                                   <div className="w-8 h-8 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center font-black text-sm uppercase shadow-sm">
+                                     {d.name.charAt(0)}
+                                   </div>
+                                   <div className="flex flex-col">
+                                      <span className="font-black text-slate-800 text-sm tracking-tight leading-none uppercase">{d.name}</span>
+                                      <span className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider">{d.role || 'Personnel'}</span>
+                                   </div>
+                                </div>
+                              </td>
+                              <td className="py-3 px-6 text-center">
+                                <span className="font-black text-orange-500 text-lg">{d.uniqueLeads}</span>
+                              </td>
+                              <td className="py-3 px-6 text-center">
+                                <span className="font-black text-amber-500 text-lg">{d.lead}</span>
+                              </td>
+                              <td className="py-3 px-6 text-center">
+                                <div className="flex flex-col items-center">
+                                   <span className="font-black text-yellow-600 text-lg leading-none">{d.avgLeadDur}<span className="text-[10px] text-slate-400 ml-0.5">d</span></span>
+                                   <span className="text-[9px] font-bold text-slate-300 uppercase tracking-tighter mt-1">delivery avg</span>
+                                </div>
+                              </td>
+                              <td className="py-3 px-6 text-right">
+                                {parseFloat(d.avgLeadDur) > 0 && parseFloat(d.avgLeadDur) <= 1.5 ? (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-600 rounded-lg text-[9px] font-black uppercase tracking-widest">
+                                     <span className="text-xs">⚡</span> OPTIMIZED
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 text-slate-400 rounded-lg text-[9px] font-black uppercase tracking-widest">
+                                     STANDARD
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      {leadDesigners.length === 0 && (
+                        <div className="py-20 flex flex-col items-center justify-center text-slate-300 gap-2">
+                          <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center text-xl opacity-50 text-slate-200">∅</div>
+                          <div className="font-black uppercase tracking-[0.2em] text-[10px]">No activity in Lead context</div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </SlideWrapper>
+              );
+            }
+
             if (slide.type === 'project-dashboard') {
               return (
                 <SlideWrapper key={slide.id} id={`slide-${index}`} title="PROJECT DASHBOARD">
-                  <div className="flex-1 flex flex-col gap-5 mt-4 w-full h-[540px]">
+                  <div className="flex-1 flex flex-col gap-4 mt-4 w-full h-[540px]">
 
-                    {/* TOP ROW — 5 KPI Stats */}
-                    <div className="flex gap-4 h-[190px]">
+                    {/* TOP ROW — 4 KPI Stats (taller) */}
+                    <div className="flex gap-4" style={{ height: '280px' }}>
 
-                      {/* 1. Jumlah Project */}
-                      <div className="bg-gradient-to-br from-indigo-600 to-blue-500 text-white rounded-xl flex-1 flex flex-col justify-between p-5 overflow-hidden">
-                        <div className="text-[10px] font-black uppercase tracking-widest text-white/70">Jumlah Project</div>
-                        <div className="text-7xl font-semibold tracking-tight leading-none">{analytics.allProjectsCount}</div>
-                        <div className="text-[10px] font-bold uppercase text-white/60">event / project terdaftar</div>
+                      {/* 1. Total Projects */}
+
+                      <div className="bg-white rounded-xl flex-1 flex flex-col overflow-hidden shadow-sm border border-slate-100">
+                        <div className="flex flex-col justify-between flex-1 p-5">
+                          <div className="text-xs font-black uppercase tracking-widest text-slate-400">Total Projects</div>
+                          <div>
+                            <div className="flex items-baseline gap-3">
+                              <div className="text-8xl font-semibold tracking-tight leading-none text-indigo-600">{analytics.allProjectsCount}</div>
+                              {(() => {
+                                const diff = analytics.allProjectsCount - prevAnalytics.allProjectsCount;
+                                const color = diff > 0 ? 'text-emerald-500' : diff < 0 ? 'text-red-500' : 'text-slate-400';
+                                const arrow = diff > 0 ? '▲' : diff < 0 ? '▼' : '●';
+                                return <span className={`text-base font-black ${color}`}>{arrow} {Math.abs(diff)}</span>;
+                              })()}
+                            </div>
+                            <div className="text-[11px] font-bold uppercase text-slate-400 mt-1">registered projects</div>
+                          </div>
+                        </div>
                       </div>
 
-                      {/* 2. Jumlah Artwork khusus Project */}
-                      <div className="bg-gradient-to-br from-sky-500 to-cyan-400 text-white rounded-xl flex-1 flex flex-col justify-between p-5 overflow-hidden">
-                        <div className="text-[10px] font-black uppercase tracking-widest text-white/70">Artwork Project</div>
-                        <div className="text-7xl font-semibold tracking-tight leading-none">{analytics.totalProjectArtworks}</div>
-                        <div className="text-[10px] font-bold uppercase text-white/60">total artwork konteks project</div>
+                      {/* 2. Project Artworks */}
+                      <div className="bg-white rounded-xl flex-1 flex flex-col overflow-hidden shadow-sm border border-slate-100">
+                        <div className="flex flex-col justify-between flex-1 p-5">
+                          <div className="text-xs font-black uppercase tracking-widest text-slate-400">Project Artworks</div>
+                          <div>
+                            <div className="flex items-baseline gap-3">
+                              <div className="text-8xl font-semibold tracking-tight leading-none text-sky-500">{analytics.totalProjectArtworks}</div>
+                              {(() => {
+                                const diff = analytics.totalProjectArtworks - prevAnalytics.totalProjectArtworks;
+                                const color = diff > 0 ? 'text-emerald-500' : diff < 0 ? 'text-red-500' : 'text-slate-400';
+                                const arrow = diff > 0 ? '▲' : diff < 0 ? '▼' : '●';
+                                return <span className={`text-base font-black ${color}`}>{arrow} {Math.abs(diff)}</span>;
+                              })()}
+                            </div>
+                            <div className="text-[11px] font-bold uppercase text-slate-400 mt-1">total project-context artworks</div>
+                          </div>
+                        </div>
                       </div>
 
-                      {/* 3. Rata-rata Tim ACS */}
-                      <div className="bg-gradient-to-br from-violet-600 to-fuchsia-500 text-white rounded-xl flex-1 flex flex-col justify-between p-5 overflow-hidden">
-                        <div className="text-[10px] font-black uppercase tracking-widest text-white/70">Rata-rata Tim ACS</div>
-                        <div className="text-7xl font-semibold tracking-tight leading-none">{analytics.avgTeamSize.toFixed(1)}</div>
-                        <div className="text-[10px] font-bold uppercase text-white/60">orang / project</div>
+                      {/* 3. Avg Team Size */}
+                      <div className="bg-white rounded-xl flex-1 flex flex-col overflow-hidden shadow-sm border border-slate-100">
+                        <div className="flex flex-col justify-between flex-1 p-5">
+                          <div className="text-xs font-black uppercase tracking-widest text-slate-400">Avg Team Size</div>
+                          <div>
+                            <div className="flex items-baseline gap-3">
+                              <div className="text-8xl font-semibold tracking-tight leading-none text-violet-600">{parseFloat(analytics.avgTeamSize.toFixed(2)).toString()}</div>
+                              {(() => {
+                                const diff = analytics.avgTeamSize - prevAnalytics.avgTeamSize;
+                                const color = diff > 0 ? 'text-emerald-500' : diff < 0 ? 'text-red-500' : 'text-slate-400';
+                                const arrow = diff > 0 ? '▲' : diff < 0 ? '▼' : '●';
+                                return <span className={`text-base font-black ${color}`}>{arrow} {parseFloat(Math.abs(diff).toFixed(2))}</span>;
+                              })()}
+                            </div>
+                            <div className="text-[11px] font-bold uppercase text-slate-400 mt-1">members / project</div>
+                          </div>
+                        </div>
                       </div>
 
-                      {/* 4. Rata-rata Hari Kerja */}
-                      <div className="bg-gradient-to-br from-rose-500 to-pink-500 text-white rounded-xl flex-1 flex flex-col justify-between p-5 overflow-hidden">
-                        <div className="text-[10px] font-black uppercase tracking-widest text-white/70">Rata-rata Hari Kerja</div>
-                        <div className="text-7xl font-semibold tracking-tight leading-none">{analytics.avgWorkDays.toFixed(1)}</div>
-                        <div className="text-[10px] font-bold uppercase text-white/60">hari / project</div>
+                      {/* 4. Avg Workdays */}
+                      <div className="bg-white rounded-xl flex-1 flex flex-col overflow-hidden shadow-sm border border-slate-100">
+                        <div className="flex flex-col justify-between flex-1 p-5">
+                          <div className="text-xs font-black uppercase tracking-widest text-slate-400">Avg Workdays</div>
+                          <div>
+                            <div className="flex items-baseline gap-3">
+                              <div className="text-8xl font-semibold tracking-tight leading-none text-rose-500">{parseFloat(analytics.avgWorkDays.toFixed(2)).toString()}</div>
+                              {(() => {
+                                const diff = analytics.avgWorkDays - prevAnalytics.avgWorkDays;
+                                const color = diff > 0 ? 'text-emerald-500' : diff < 0 ? 'text-red-500' : 'text-slate-400';
+                                const arrow = diff > 0 ? '▲' : diff < 0 ? '▼' : '●';
+                                return <span className={`text-base font-black ${color}`}>{arrow} {parseFloat(Math.abs(diff).toFixed(2))}</span>;
+                              })()}
+                            </div>
+                            <div className="text-[11px] font-bold uppercase text-slate-400 mt-1">days / project</div>
+                          </div>
+                        </div>
                       </div>
 
                     </div>
@@ -941,60 +1262,352 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
                     {/* BOTTOM ROW — 3 Insight Cards */}
                     <div className="flex gap-4 flex-1">
 
-                      {/* Insight 1: Event with most artworks */}
-                      <div className="bg-gradient-to-br from-amber-500 to-orange-400 text-white rounded-xl flex-1 flex flex-col justify-between p-5 overflow-hidden relative">
-                        <div className="absolute top-3 right-3 bg-white/20 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-widest">🏆 Terbanyak</div>
-                        <div className="text-[10px] font-black uppercase tracking-widest text-white/70 mb-2">Event Artwork Terbanyak</div>
-                        <div className="text-2xl font-black leading-tight mb-1 break-words">
-                          {analytics.mostArtworkProj ? analytics.mostArtworkProj.proj.project_name : '-'}
-                        </div>
-                        <div className="flex items-end justify-between mt-auto">
+                      {/* Insight 1: Most Artworks */}
+                      <div className="bg-white rounded-xl flex-1 flex flex-col overflow-hidden shadow-sm border border-slate-100">
+                        <div className="flex flex-col justify-between flex-1 p-4">
                           <div>
-                            <div className="text-4xl font-black leading-none">{analytics.mostArtworkProj ? analytics.mostArtworkProj.artworkCount : 0}</div>
-                            <div className="text-[10px] font-bold uppercase text-white/70">artworks</div>
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Most Artwork Event</div>
+                              <div className="bg-amber-100 text-amber-600 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-widest">🏆 Top</div>
+                            </div>
+                            <div className="text-base font-black leading-tight text-slate-800 break-words">
+                              {analytics.mostArtworkProj ? analytics.mostArtworkProj.proj.project_name : '-'}
+                            </div>
                           </div>
-                          <div className="text-right text-[10px] text-white/70 font-semibold uppercase">
-                            <div>{analytics.mostArtworkProj ? analytics.mostArtworkProj.proj.start_date : '-'}</div>
-                            <div>{analytics.mostArtworkProj ? (analytics.mostArtworkProj.proj.locations || []).join(', ') || '-' : '-'}</div>
+                          <div className="flex items-end justify-between mt-3">
+                            <div>
+                              <div className="text-4xl font-black leading-none text-amber-500">{analytics.mostArtworkProj ? analytics.mostArtworkProj.artworkCount : 0}</div>
+                              <div className="text-[11px] font-bold uppercase text-slate-400 mt-0.5">artworks</div>
+                            </div>
+                            <div className="text-right space-y-0.5">
+                              <div className="text-[11px] font-bold text-slate-500">{analytics.mostArtworkProj ? analytics.mostArtworkProj.proj.start_date : '-'}</div>
+                              <div className="text-[11px] font-bold text-slate-500">{analytics.mostArtworkProj ? (analytics.mostArtworkProj.proj.locations || []).join(', ') || '-' : '-'}</div>
+                            </div>
                           </div>
                         </div>
                       </div>
 
-                      {/* Insight 2: Event with longest duration */}
-                      <div className="bg-gradient-to-br from-teal-600 to-emerald-500 text-white rounded-xl flex-1 flex flex-col justify-between p-5 overflow-hidden relative">
-                        <div className="absolute top-3 right-3 bg-white/20 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-widest">⏱ Terlama</div>
-                        <div className="text-[10px] font-black uppercase tracking-widest text-white/70 mb-2">Event Durasi Kerja Terlama</div>
-                        <div className="text-2xl font-black leading-tight mb-1 break-words">
-                          {analytics.longestDurProj ? analytics.longestDurProj.proj.project_name : '-'}
-                        </div>
-                        <div className="flex items-end justify-between mt-auto">
+                      {/* Insight 2: Longest Duration */}
+                      <div className="bg-white rounded-xl flex-1 flex flex-col overflow-hidden shadow-sm border border-slate-100">
+                        <div className="flex flex-col justify-between flex-1 p-4">
                           <div>
-                            <div className="text-4xl font-black leading-none">{analytics.longestDurProj ? analytics.longestDurProj.workDays : 0}</div>
-                            <div className="text-[10px] font-bold uppercase text-white/70">hari kerja</div>
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Longest Duration Event</div>
+                              <div className="bg-teal-100 text-teal-600 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-widest">⏱ Longest</div>
+                            </div>
+                            <div className="text-base font-black leading-tight text-slate-800 break-words">
+                              {analytics.longestDurProj ? analytics.longestDurProj.proj.project_name : '-'}
+                            </div>
                           </div>
-                          <div className="text-right text-[10px] text-white/70 font-semibold uppercase">
-                            <div>{analytics.longestDurProj ? analytics.longestDurProj.proj.start_date : '-'}</div>
-                            <div>{analytics.longestDurProj ? (analytics.longestDurProj.proj.locations || []).join(', ') || '-' : '-'}</div>
+                          <div className="flex items-end justify-between mt-3">
+                            <div>
+                              <div className="text-4xl font-black leading-none text-teal-500">{analytics.longestDurProj ? analytics.longestDurProj.workDays : 0}</div>
+                              <div className="text-[11px] font-bold uppercase text-slate-400 mt-0.5">workdays</div>
+                            </div>
+                            <div className="text-right space-y-0.5">
+                              <div className="text-[11px] font-bold text-slate-500">{analytics.longestDurProj ? analytics.longestDurProj.proj.start_date : '-'}</div>
+                              <div className="text-[11px] font-bold text-slate-500">{analytics.longestDurProj ? (analytics.longestDurProj.proj.locations || []).join(', ') || '-' : '-'}</div>
+                            </div>
                           </div>
                         </div>
                       </div>
 
-                      {/* Insight 3: Event with most team */}
-                      <div className="bg-gradient-to-br from-slate-700 to-zinc-600 text-white rounded-xl flex-1 flex flex-col justify-between p-5 overflow-hidden relative">
-                        <div className="absolute top-3 right-3 bg-white/20 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-widest">👥 Terbesar</div>
-                        <div className="text-[10px] font-black uppercase tracking-widest text-white/70 mb-2">Event Tim ACS Terbanyak</div>
-                        <div className="text-2xl font-black leading-tight mb-1 break-words">
-                          {analytics.mostTeamProj ? analytics.mostTeamProj.proj.project_name : '-'}
-                        </div>
-                        <div className="flex items-end justify-between mt-auto">
+                      {/* Insight 3: Largest Team */}
+                      <div className="bg-white rounded-xl flex-1 flex flex-col overflow-hidden shadow-sm border border-slate-100">
+                        <div className="flex flex-col justify-between flex-1 p-4">
                           <div>
-                            <div className="text-4xl font-black leading-none">{analytics.mostTeamProj ? analytics.mostTeamProj.teamSize : 0}</div>
-                            <div className="text-[10px] font-bold uppercase text-white/70">anggota tim ACS</div>
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Largest Team Event</div>
+                              <div className="bg-slate-100 text-slate-600 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-widest">👥 Biggest</div>
+                            </div>
+                            <div className="text-base font-black leading-tight text-slate-800 break-words">
+                              {analytics.mostTeamProj ? analytics.mostTeamProj.proj.project_name : '-'}
+                            </div>
                           </div>
-                          <div className="text-right text-[10px] text-white/70 font-semibold uppercase">
-                            <div>{analytics.mostTeamProj ? analytics.mostTeamProj.proj.start_date : '-'}</div>
-                            <div>{analytics.mostTeamProj ? (analytics.mostTeamProj.proj.locations || []).join(', ') || '-' : '-'}</div>
+                          <div className="flex items-end justify-between mt-3">
+                            <div>
+                              <div className="text-4xl font-black leading-none text-slate-600">{analytics.mostTeamProj ? analytics.mostTeamProj.teamSize : 0}</div>
+                              <div className="text-[11px] font-bold uppercase text-slate-400 mt-0.5">team members</div>
+                            </div>
+                            <div className="text-right space-y-0.5">
+                              <div className="text-[11px] font-bold text-slate-500">{analytics.mostTeamProj ? analytics.mostTeamProj.proj.start_date : '-'}</div>
+                              <div className="text-[11px] font-bold text-slate-500">{analytics.mostTeamProj ? (analytics.mostTeamProj.proj.locations || []).join(', ') || '-' : '-'}</div>
+                            </div>
                           </div>
+                        </div>
+                      </div>
+
+                    </div>
+
+                  </div>
+                </SlideWrapper>
+              );
+            }
+
+            if (slide.type === 'lead-dashboard') {
+              const LeadBarChart = ({ data }: { data: { label: string; duration: number }[] }) => {
+                const maxVal = Math.max(...data.map(d => d.duration), 1);
+                const colors = ['#f97316', '#fb923c', '#fdba74', '#fed7aa']; // Amber/Orange
+                const W = 1100, H = 220;
+                const padL = 60, padR = 20, padTop = 30, padBot = 40;
+                const chartW = W - padL - padR;
+                const chartH = H - padTop - padBot;
+                const barWidth = (chartW / data.length) * 0.6;
+                const gap = chartW / data.length;
+
+                return (
+                  <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`}>
+                    <defs>
+                      <linearGradient id="leadGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#f59e0b" />
+                        <stop offset="100%" stopColor="#fbbf24" />
+                      </linearGradient>
+                    </defs>
+                    {/* Gridlines */}
+                    {[0, 1, 2, 3].map(i => {
+                      const gv = (maxVal * i) / 3;
+                      const y = padTop + chartH - (gv / maxVal) * chartH;
+                      return (
+                        <g key={i}>
+                          <line x1={padL} y1={y} x2={W - padR} y2={y} stroke="#f1f5f9" strokeWidth="1" strokeDasharray="4 2" />
+                          <text x={padL - 8} y={y + 4} textAnchor="end" fontSize="10" fill="#94a3b8" fontWeight="600">{Math.round(gv)}d</text>
+                        </g>
+                      );
+                    })}
+                    {data.map((d, i) => {
+                      const bh = (d.duration / maxVal) * chartH;
+                      const bx = padL + i * gap + (gap - barWidth) / 2;
+                      const by = padTop + chartH - bh;
+                      return (
+                        <g key={i}>
+                          {d.duration > 0 && <rect x={bx} y={by} width={barWidth} height={bh} rx="6" fill="url(#leadGrad)" />}
+                          {d.duration > 0 && <text x={bx + barWidth / 2} y={by - 5} textAnchor="middle" fontSize="11" fill="#ea580c" fontWeight="800">{d.duration}</text>}
+                          <text x={bx + barWidth / 2} y={padTop + chartH + 18} textAnchor="middle" fontSize="10" fill="#64748b" fontWeight="700" transform={`rotate(10, ${bx + barWidth / 2}, ${padTop + chartH + 18})`}>
+                            {d.label.length > 15 ? d.label.substring(0, 13) + '..' : d.label}
+                          </text>
+                        </g>
+                      );
+                    })}
+                    <line x1={padL} y1={padTop+chartH} x2={W-padR} y2={padTop+chartH} stroke="#e2e8f0" strokeWidth="2" />
+                  </svg>
+                );
+              };
+
+              return (
+                <SlideWrapper key={slide.id} id={`slide-${index}`} title="LEAD DASHBOARD">
+                  <div className="flex-1 flex flex-col gap-4 mt-4 w-full h-[540px]">
+                    {/* TOP ROW — 4 KPI Stats */}
+                    <div className="flex gap-4" style={{ height: '220px' }}>
+                      <div className="bg-white rounded-xl flex-1 flex flex-col overflow-hidden shadow-sm border border-slate-100 p-5 justify-between">
+                         <div className="text-xs font-black uppercase tracking-widest text-slate-400">Total Leads</div>
+                         <div>
+                            <div className="flex items-baseline gap-3">
+                               <div className="text-7xl font-semibold tracking-tight text-orange-500">{analytics.allLeadsCount}</div>
+                               {(() => {
+                                 const diff = analytics.allLeadsCount - prevAnalytics.allLeadsCount;
+                                 const color = diff > 0 ? 'text-emerald-500' : diff < 0 ? 'text-red-500' : 'text-slate-400';
+                                 return <span className={`text-base font-black ${color}`}>{diff > 0 ? '▲' : diff < 0 ? '▼' : '●'} {Math.abs(diff)}</span>;
+                               })()}
+                            </div>
+                            <div className="text-[11px] font-bold uppercase text-slate-400 mt-1">lead requests / period</div>
+                         </div>
+                      </div>
+
+                      <div className="bg-white rounded-xl flex-1 flex flex-col overflow-hidden shadow-sm border border-slate-100 p-5 justify-between">
+                         <div className="text-xs font-black uppercase tracking-widest text-slate-400">Lead Artworks</div>
+                         <div>
+                            <div className="flex items-baseline gap-3">
+                               <div className="text-7xl font-semibold tracking-tight text-amber-500">{analytics.totalLeadArtworks}</div>
+                               {(() => {
+                                 const diff = analytics.totalLeadArtworks - prevAnalytics.totalLeadArtworks;
+                                 const color = diff > 0 ? 'text-emerald-500' : diff < 0 ? 'text-red-500' : 'text-slate-400';
+                                 return <span className={`text-base font-black ${color}`}>{diff > 0 ? '▲' : diff < 0 ? '▼' : '●'} {Math.abs(diff)}</span>;
+                               })()}
+                            </div>
+                            <div className="text-[11px] font-bold uppercase text-slate-400 mt-1">total artwork count</div>
+                         </div>
+                      </div>
+
+                      <div className="bg-white rounded-xl flex-1 flex flex-col overflow-hidden shadow-sm border border-slate-100 p-5 justify-between">
+                         <div className="text-xs font-black uppercase tracking-widest text-slate-400">Avg Workdays</div>
+                         <div>
+                            <div className="flex items-baseline gap-3">
+                               <div className="text-7xl font-semibold tracking-tight text-yellow-500">{parseFloat(analytics.avgLeadWorkDays.toFixed(2)).toString()}</div>
+                               {(() => {
+                                 const diff = analytics.avgLeadWorkDays - (prevAnalytics.avgLeadWorkDays || 0);
+                                 const color = diff > 0 ? 'text-red-500' : diff < 0 ? 'text-emerald-500' : 'text-slate-400';
+                                 return <span className={`text-base font-black ${color}`}>{diff > 0 ? '▲' : diff < 0 ? '▼' : '●'} {parseFloat(Math.abs(diff).toFixed(2))}</span>;
+                               })()}
+                            </div>
+                            <div className="text-[11px] font-bold uppercase text-slate-400 mt-1">days / lead processing</div>
+                         </div>
+                      </div>
+
+                      <div className="bg-white rounded-xl flex-1 flex flex-col overflow-hidden shadow-sm border border-slate-100 p-5 justify-between">
+                         <div className="text-xs font-black uppercase tracking-widest text-slate-400">Avg Lead Revisions</div>
+                         <div>
+                            <div className="flex items-baseline gap-3">
+                               <div className="text-7xl font-semibold tracking-tight text-rose-500">{parseFloat(analytics.avgLeadRevisions.toFixed(2)).toString()}</div>
+                               {(() => {
+                                 const diff = analytics.avgLeadRevisions - (prevAnalytics.avgLeadRevisions || 0);
+                                 const color = diff > 0 ? 'text-red-500' : diff < 0 ? 'text-emerald-500' : 'text-slate-400';
+                                 return <span className={`text-base font-black ${color}`}>{diff > 0 ? '▲' : diff < 0 ? '▼' : '●'} {parseFloat(Math.abs(diff).toFixed(2))}</span>;
+                               })()}
+                            </div>
+                            <div className="text-[11px] font-bold uppercase text-slate-400 mt-1">revisions / artwork</div>
+                         </div>
+                      </div>
+                    </div>
+
+                    {/* Chart Per Lead Duration */}
+                    <div className="flex-1 bg-white rounded-2xl border border-slate-100 shadow-sm flex flex-col p-6 overflow-hidden">
+                       <div className="mb-4">
+                          <div className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Processing Time per Lead</div>
+                          <div className="text-xl font-black text-slate-800 leading-tight">Lead Duration (Days)</div>
+                       </div>
+                       <div className="flex-1 flex items-end">
+                          <LeadBarChart data={analytics.leadDurationData} />
+                       </div>
+                    </div>
+                  </div>
+                </SlideWrapper>
+              );
+            }
+
+            if (slide.type === 'project-chart') {
+              // SVG bar chart helper
+              const SvgBarChart = ({
+                data,
+                valueKey,
+                colorFrom,
+                colorTo,
+                labelColor,
+                gradId,
+              }: {
+                data: { label: string; key: string; projects: number; artworks: number }[];
+                valueKey: 'projects' | 'artworks';
+                colorFrom: string;
+                colorTo: string;
+                labelColor: string;
+                gradId: string;
+              }) => {
+                const values = data.map(d => d[valueKey]);
+                const maxVal = Math.max(...values, 1);
+                const W = 560, H = 280;
+                const padL = 44, padR = 16, padTop = 36, padBot = 36;
+                const chartW = W - padL - padR;
+                const chartH = H - padTop - padBot;
+                const barW = (chartW / data.length) * 0.55;
+                const gap = chartW / data.length;
+
+                // Y gridlines (0, 1/3, 2/3, max)
+                const gridLines = [0, 1, 2, 3].map(i => maxVal * i / 3);
+
+                return (
+                  <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ overflow: 'visible' }}>
+                    <defs>
+                      <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={colorFrom} />
+                        <stop offset="100%" stopColor={colorTo} />
+                      </linearGradient>
+                    </defs>
+
+                    {/* Grid lines + Y labels */}
+                    {gridLines.map((gv, gi) => {
+                      const y = padTop + chartH - (gv / maxVal) * chartH;
+                      return (
+                        <g key={gi}>
+                          <line x1={padL} y1={y} x2={W - padR} y2={y}
+                            stroke="#cbd5e1" strokeWidth="1" strokeDasharray="4 3" />
+                          <text x={padL - 6} y={y + 4} textAnchor="end"
+                            fontSize="11" fill="#94a3b8" fontWeight="600">
+                            {parseFloat(gv.toFixed(1)) % 1 === 0 ? Math.round(gv) : parseFloat(gv.toFixed(1))}
+                          </text>
+                        </g>
+                      );
+                    })}
+
+                    {/* Bars + value labels + X labels */}
+                    {data.map((d, i) => {
+                      const val = d[valueKey];
+                      const bh = val > 0 ? Math.max(4, (val / maxVal) * chartH) : 0;
+                      const bx = padL + i * gap + (gap - barW) / 2;
+                      const by = padTop + chartH - bh;
+                      return (
+                        <g key={i}>
+                          {/* Bar */}
+                          {val > 0 && (
+                            <rect x={bx} y={by} width={barW} height={bh}
+                              rx="6" ry="6" fill={`url(#${gradId})`} />
+                          )}
+                          {/* Value label above bar */}
+                          {val > 0 && (
+                            <text x={bx + barW / 2} y={by - 6}
+                              textAnchor="middle" fontSize="12"
+                              fill={labelColor} fontWeight="800">
+                              {val}
+                            </text>
+                          )}
+                          {/* X label */}
+                          <text x={bx + barW / 2} y={padTop + chartH + 20}
+                            textAnchor="middle" fontSize="11"
+                            fill={val > 0 ? '#64748b' : '#cbd5e1'} fontWeight="700">
+                            {d.label}
+                          </text>
+                        </g>
+                      );
+                    })}
+
+                    {/* Baseline */}
+                    <line x1={padL} y1={padTop + chartH} x2={W - padR} y2={padTop + chartH}
+                      stroke="#e2e8f0" strokeWidth="1.5" />
+                  </svg>
+                );
+              };
+
+              return (
+                <SlideWrapper key={slide.id} id={`slide-${index}`} title="PROJECT DASHBOARD">
+                  <div className="flex-1 flex flex-col gap-6 mt-4 w-full h-[540px]">
+
+                    <div className="flex gap-6 flex-1">
+
+                      {/* Chart 1: Jumlah Project per Bulan */}
+                      <div className="flex-1 bg-white rounded-2xl border border-slate-100 shadow-sm flex flex-col p-5 overflow-hidden">
+                        <div className="mb-3">
+                          <div className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Projects per Month</div>
+                          <div className="text-xl font-black text-slate-800 leading-tight">
+                            Total Projects
+                          </div>
+                        </div>
+                        <div className="flex-1 flex items-end">
+                          <SvgBarChart
+                            data={analytics.monthlyProjectData}
+                            valueKey="projects"
+                            colorFrom="#818cf8"
+                            colorTo="#c4b5fd"
+                            labelColor="#4f46e5"
+                            gradId="grad-projects"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Chart 2: Jumlah Artwork Project per Bulan */}
+                      <div className="flex-1 bg-white rounded-2xl border border-slate-100 shadow-sm flex flex-col p-5 overflow-hidden">
+                        <div className="mb-3">
+                          <div className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Artworks per Month</div>
+                          <div className="text-xl font-black text-slate-800 leading-tight">
+                            Total Project Artworks
+                          </div>
+                        </div>
+                        <div className="flex-1 flex items-end">
+                          <SvgBarChart
+                            data={analytics.monthlyProjectData}
+                            valueKey="artworks"
+                            colorFrom="#38bdf8"
+                            colorTo="#818cf8"
+                            labelColor="#0ea5e9"
+                            gradId="grad-artworks"
+                          />
                         </div>
                       </div>
 
