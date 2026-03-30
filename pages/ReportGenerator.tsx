@@ -7,7 +7,7 @@ interface Props {
   state: AppState;
 }
 
-type SlideType = 'title' | 'divider' | 'general-dashboard' | 'team-dashboard';
+type SlideType = 'title' | 'divider' | 'general-dashboard' | 'team-dashboard' | 'project-dashboard';
 
 interface Slide {
   id: string;
@@ -292,6 +292,53 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
       }
     });
 
+    // ---- Project Dashboard Analytics ----
+    // Per-project: artwork count, team size (unique designers), workday duration
+    const projectStats = allProjects.map(proj => {
+      const projLogs = filteredLogs.filter(l => l.work_context === WorkContext.PROJECT && l.project_id === proj.id);
+      const artworkCount = projLogs.length;
+
+      // Unique ACS team members (PIC + support)
+      const teamIds = new Set<string>();
+      if (proj.pic_designer_id) teamIds.add(proj.pic_designer_id);
+      (proj.support_designer_ids || []).forEach((id: string) => teamIds.add(id));
+      const teamSize = teamIds.size;
+
+      // Workdays: from earliest log start_date to latest log end_date (or project end_date)
+      const dates = projLogs.flatMap(l => [l.start_date, l.end_date].filter(Boolean) as string[]);
+      if (proj.end_date) dates.push(proj.end_date);
+      if (proj.start_date) dates.push(proj.start_date);
+      let workDays = 0;
+      if (dates.length >= 2) {
+        const minDate = dates.reduce((a, b) => a < b ? a : b);
+        const maxDate = dates.reduce((a, b) => a > b ? a : b);
+        workDays = Math.max(0, Math.round((new Date(maxDate).getTime() - new Date(minDate).getTime()) / 86400000) + 1);
+      }
+
+      return { proj, artworkCount, teamSize, workDays };
+    });
+
+    const totalProjectArtworks = projectStats.reduce((s, ps) => s + ps.artworkCount, 0);
+    const avgTeamSize = projectStats.length > 0
+      ? (projectStats.reduce((s, ps) => s + ps.teamSize, 0) / projectStats.length)
+      : 0;
+    const avgWorkDays = projectStats.length > 0
+      ? (projectStats.reduce((s, ps) => s + ps.workDays, 0) / projectStats.length)
+      : 0;
+
+    // Insight: event with most artworks
+    const mostArtworkProj = projectStats.length > 0
+      ? projectStats.reduce((a, b) => a.artworkCount >= b.artworkCount ? a : b)
+      : null;
+    // Insight: event with longest duration
+    const longestDurProj = projectStats.length > 0
+      ? projectStats.reduce((a, b) => a.workDays >= b.workDays ? a : b)
+      : null;
+    // Insight: event with most team members
+    const mostTeamProj = projectStats.length > 0
+      ? projectStats.reduce((a, b) => a.teamSize >= b.teamSize ? a : b)
+      : null;
+
     return {
       totalArtworks, projectPICs, projectLocs, allProjectsCount: allProjects.length,
       allLeadsCount: allLeads.length, leadGrades, leadRequesters,
@@ -299,7 +346,15 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
       matrix, topKeywords, teamStats,
       heatmapMin, heatmapMax,
       globalEvalAverage: gCount > 0 ? (gSum / gCount).toFixed(2) : '0.00',
-      uniqueEvaluatedProjects, uniqueEvaluatedTeams
+      uniqueEvaluatedProjects, uniqueEvaluatedTeams,
+      // Project dashboard
+      projectStats,
+      totalProjectArtworks,
+      avgTeamSize,
+      avgWorkDays,
+      mostArtworkProj,
+      longestDurProj,
+      mostTeamProj,
     };
   }, [state, filterStart, filterEnd]);
 
@@ -566,6 +621,12 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
                 className="w-full px-3 py-2 bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-lg font-medium text-sm transition-colors"
               >
                 + Add Team Dashboard
+              </button>
+              <button 
+                onClick={() => addSlide('project-dashboard')} 
+                className="w-full px-3 py-2 bg-teal-50 hover:bg-teal-100 text-teal-700 rounded-lg font-medium text-sm transition-colors"
+              >
+                + Add Project Dashboard
               </button>
             </div>
 
@@ -837,6 +898,111 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
                   </div>
                 </SlideWrapper>
               ));
+            }
+
+            if (slide.type === 'project-dashboard') {
+              return (
+                <SlideWrapper key={slide.id} id={`slide-${index}`} title="PROJECT DASHBOARD">
+                  <div className="flex-1 flex flex-col gap-5 mt-4 w-full h-[540px]">
+
+                    {/* TOP ROW — 5 KPI Stats */}
+                    <div className="flex gap-4 h-[190px]">
+
+                      {/* 1. Jumlah Project */}
+                      <div className="bg-gradient-to-br from-indigo-600 to-blue-500 text-white rounded-xl flex-1 flex flex-col justify-between p-5 overflow-hidden">
+                        <div className="text-[10px] font-black uppercase tracking-widest text-white/70">Jumlah Project</div>
+                        <div className="text-7xl font-semibold tracking-tight leading-none">{analytics.allProjectsCount}</div>
+                        <div className="text-[10px] font-bold uppercase text-white/60">event / project terdaftar</div>
+                      </div>
+
+                      {/* 2. Jumlah Artwork khusus Project */}
+                      <div className="bg-gradient-to-br from-sky-500 to-cyan-400 text-white rounded-xl flex-1 flex flex-col justify-between p-5 overflow-hidden">
+                        <div className="text-[10px] font-black uppercase tracking-widest text-white/70">Artwork Project</div>
+                        <div className="text-7xl font-semibold tracking-tight leading-none">{analytics.totalProjectArtworks}</div>
+                        <div className="text-[10px] font-bold uppercase text-white/60">total artwork konteks project</div>
+                      </div>
+
+                      {/* 3. Rata-rata Tim ACS */}
+                      <div className="bg-gradient-to-br from-violet-600 to-fuchsia-500 text-white rounded-xl flex-1 flex flex-col justify-between p-5 overflow-hidden">
+                        <div className="text-[10px] font-black uppercase tracking-widest text-white/70">Rata-rata Tim ACS</div>
+                        <div className="text-7xl font-semibold tracking-tight leading-none">{analytics.avgTeamSize.toFixed(1)}</div>
+                        <div className="text-[10px] font-bold uppercase text-white/60">orang / project</div>
+                      </div>
+
+                      {/* 4. Rata-rata Hari Kerja */}
+                      <div className="bg-gradient-to-br from-rose-500 to-pink-500 text-white rounded-xl flex-1 flex flex-col justify-between p-5 overflow-hidden">
+                        <div className="text-[10px] font-black uppercase tracking-widest text-white/70">Rata-rata Hari Kerja</div>
+                        <div className="text-7xl font-semibold tracking-tight leading-none">{analytics.avgWorkDays.toFixed(1)}</div>
+                        <div className="text-[10px] font-bold uppercase text-white/60">hari / project</div>
+                      </div>
+
+                    </div>
+
+                    {/* BOTTOM ROW — 3 Insight Cards */}
+                    <div className="flex gap-4 flex-1">
+
+                      {/* Insight 1: Event with most artworks */}
+                      <div className="bg-gradient-to-br from-amber-500 to-orange-400 text-white rounded-xl flex-1 flex flex-col justify-between p-5 overflow-hidden relative">
+                        <div className="absolute top-3 right-3 bg-white/20 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-widest">🏆 Terbanyak</div>
+                        <div className="text-[10px] font-black uppercase tracking-widest text-white/70 mb-2">Event Artwork Terbanyak</div>
+                        <div className="text-2xl font-black leading-tight mb-1 break-words">
+                          {analytics.mostArtworkProj ? analytics.mostArtworkProj.proj.project_name : '-'}
+                        </div>
+                        <div className="flex items-end justify-between mt-auto">
+                          <div>
+                            <div className="text-4xl font-black leading-none">{analytics.mostArtworkProj ? analytics.mostArtworkProj.artworkCount : 0}</div>
+                            <div className="text-[10px] font-bold uppercase text-white/70">artworks</div>
+                          </div>
+                          <div className="text-right text-[10px] text-white/70 font-semibold uppercase">
+                            <div>{analytics.mostArtworkProj ? analytics.mostArtworkProj.proj.start_date : '-'}</div>
+                            <div>{analytics.mostArtworkProj ? (analytics.mostArtworkProj.proj.locations || []).join(', ') || '-' : '-'}</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Insight 2: Event with longest duration */}
+                      <div className="bg-gradient-to-br from-teal-600 to-emerald-500 text-white rounded-xl flex-1 flex flex-col justify-between p-5 overflow-hidden relative">
+                        <div className="absolute top-3 right-3 bg-white/20 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-widest">⏱ Terlama</div>
+                        <div className="text-[10px] font-black uppercase tracking-widest text-white/70 mb-2">Event Durasi Kerja Terlama</div>
+                        <div className="text-2xl font-black leading-tight mb-1 break-words">
+                          {analytics.longestDurProj ? analytics.longestDurProj.proj.project_name : '-'}
+                        </div>
+                        <div className="flex items-end justify-between mt-auto">
+                          <div>
+                            <div className="text-4xl font-black leading-none">{analytics.longestDurProj ? analytics.longestDurProj.workDays : 0}</div>
+                            <div className="text-[10px] font-bold uppercase text-white/70">hari kerja</div>
+                          </div>
+                          <div className="text-right text-[10px] text-white/70 font-semibold uppercase">
+                            <div>{analytics.longestDurProj ? analytics.longestDurProj.proj.start_date : '-'}</div>
+                            <div>{analytics.longestDurProj ? (analytics.longestDurProj.proj.locations || []).join(', ') || '-' : '-'}</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Insight 3: Event with most team */}
+                      <div className="bg-gradient-to-br from-slate-700 to-zinc-600 text-white rounded-xl flex-1 flex flex-col justify-between p-5 overflow-hidden relative">
+                        <div className="absolute top-3 right-3 bg-white/20 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-widest">👥 Terbesar</div>
+                        <div className="text-[10px] font-black uppercase tracking-widest text-white/70 mb-2">Event Tim ACS Terbanyak</div>
+                        <div className="text-2xl font-black leading-tight mb-1 break-words">
+                          {analytics.mostTeamProj ? analytics.mostTeamProj.proj.project_name : '-'}
+                        </div>
+                        <div className="flex items-end justify-between mt-auto">
+                          <div>
+                            <div className="text-4xl font-black leading-none">{analytics.mostTeamProj ? analytics.mostTeamProj.teamSize : 0}</div>
+                            <div className="text-[10px] font-bold uppercase text-white/70">anggota tim ACS</div>
+                          </div>
+                          <div className="text-right text-[10px] text-white/70 font-semibold uppercase">
+                            <div>{analytics.mostTeamProj ? analytics.mostTeamProj.proj.start_date : '-'}</div>
+                            <div>{analytics.mostTeamProj ? (analytics.mostTeamProj.proj.locations || []).join(', ') || '-' : '-'}</div>
+                          </div>
+                        </div>
+                      </div>
+
+                    </div>
+
+                  </div>
+                </SlideWrapper>
+              );
             }
 
             return null;
