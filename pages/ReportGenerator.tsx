@@ -1,11 +1,12 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { AppState, WorkContext } from '../types';
 
 interface Props {
   state: AppState;
 }
 
-type SlideType = 'title' | 'divider' | 'general-dashboard' | 'team-dashboard' | 'project-dashboard' | 'lead-dashboard' | 'lead-team-dashboard' | 'project-chart' | 'internal-dashboard' | 'internal-chart' | 'team-project-chart';
+type SlideType = 'title' | 'divider' | 'general-dashboard' | 'team-dashboard' | 'project-dashboard' | 'lead-dashboard' | 'lead-team-dashboard' | 'project-chart' | 'internal-dashboard' | 'internal-chart' | 'team-project-chart' | 'google-ads';
 
 interface Slide {
   id: string;
@@ -13,6 +14,7 @@ interface Slide {
   title?: string;
   dividerText?: string;
   nextMoveText?: string;
+  spreadsheetUrl?: string;
 }
 
 class ReportGeneratorErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean; error?: any}> {
@@ -41,6 +43,277 @@ class ReportGeneratorErrorBoundary extends React.Component<{children: React.Reac
     return this.props.children;
   }
 }
+
+
+const GoogleAdsSummaryContent: React.FC<{ url?: string }> = ({ url }) => {
+    const defaultUrl = "https://docs.google.com/spreadsheets/d/1TJX3LrTiqhFTpK52UaV_G6Wr5b37mPkVZxB0ezAHNTQ/gviz/tq?tqx=out:csv&sheet=KeywordData";
+    const fetchUrl = url || defaultUrl;
+    const [data, setData] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
+
+    const fetchData = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            // Deteksi jika link adalah tipe "edit" atau "sharing" dan ubah menjadi format CSV otomatis
+            let targetUrl = fetchUrl;
+            if (targetUrl.includes('/edit')) {
+                // Mengubah /edit... menjadi /gviz/tq?tqx=out:csv agar dapat dibaca sebagai data
+                targetUrl = targetUrl.replace(/\/edit.*$/, '/gviz/tq?tqx=out:csv');
+            }
+
+            const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(targetUrl);
+            const resp = await fetch(proxyUrl);
+            if (!resp.ok) throw new Error("Gagal mengambil data melalui proxy. Pastikan link CSV benar dan sheet publik.");
+            const csvText = await resp.text();
+
+            // Cek jika yang didapat adalah halaman login/HTML alih-alih data CSV
+            if (csvText.trim().startsWith('<!DOCTYPE') || csvText.trim().startsWith('<html')) {
+                throw new Error("Link yang dimasukkan bukan data CSV mentah. Pastikan spreadsheet diatur ke 'Anyone with the link can view'.");
+            }
+            
+            // Robust CSV Parsing with Header Normalization
+            const lines = csvText.split(/\r?\n/).filter(line => line.trim() !== "");
+            if (lines.length > 0) {
+                const rawHeaders = lines[0].split(",").map(h => h.trim().replace(/^"|"$/g, ''));
+                
+                // Melakukan normalisasi header agar tahan terhadap perbedaan huruf besar/kecil atau spasi
+                const headerMap: Record<string, string> = {};
+                rawHeaders.forEach(h => {
+                    const normalized = h.toLowerCase().replace(/[^a-z]/g, '');
+                    if (normalized.includes('keyword')) headerMap[h] = 'keyword';
+                    else if (normalized.includes('date')) headerMap[h] = 'date';
+                    else if (normalized.includes('clicks')) headerMap[h] = 'clicks';
+                    else if (normalized.includes('impressions')) headerMap[h] = 'impressions';
+                    else if (normalized.includes('cost')) headerMap[h] = 'cost';
+                    else if (normalized.includes('conversions')) headerMap[h] = 'conversions';
+                    else headerMap[h] = h;
+                });
+
+                const parsed = lines.slice(1).map(line => {
+                    let row: string[] = [];
+                    let cell = "";
+                    let inQuotes = false;
+                    for (let i = 0; i < line.length; i++) {
+                        const char = line[i];
+                        if (char === '"') inQuotes = !inQuotes;
+                        else if (char === "," && !inQuotes) {
+                            row.push(cell.trim());
+                            cell = "";
+                        } else cell += char;
+                    }
+                    row.push(cell.trim());
+                    
+                    let obj: any = {};
+                    rawHeaders.forEach((h, i) => {
+                        let val = row[i]?.replace(/^"|"$/g, '') || '';
+                        const targetKey = headerMap[h];
+                        
+                        // Membersihkan angka dari simbol mata uang, koma pemisah ribuan, atau spasi
+                        if (['clicks', 'impressions', 'cost', 'conversions'].includes(targetKey)) {
+                            // Hapus semua karakter kecuali angka, titik desimal, dan tanda minus
+                            const cleanNum = val.replace(/[^0-9.\-]/g, '');
+                            obj[targetKey] = parseFloat(cleanNum) || 0;
+                        } else if (targetKey === 'keyword') {
+                            obj['keyword'] = val;
+                        } else if (targetKey === 'date') {
+                            obj['date'] = val;
+                        } else {
+                            obj[h] = val; // fallback ke header asli
+                        }
+                    });
+                    return obj;
+                });
+                setData(parsed);
+            }
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => { fetchData(); }, [fetchUrl]);
+
+    const totals = useMemo(() => {
+        return data.reduce((acc, curr) => ({
+            clicks: acc.clicks + (curr.clicks || 0),
+            impressions: acc.impressions + (curr.impressions || 0),
+            cost: acc.cost + (curr.cost || 0),
+            conversions: acc.conversions + (curr.conversions || 0),
+        }), { clicks: 0, impressions: 0, cost: 0, conversions: 0 });
+    }, [data]);
+
+    const chartData = useMemo(() => {
+        const grouped: Record<string, any> = {};
+        data.forEach(item => {
+            const dateStr = item.date;
+            if (!dateStr) return;
+            if (!grouped[dateStr]) grouped[dateStr] = { date: dateStr, clicks: 0, conversions: 0 };
+            grouped[dateStr].clicks += item.clicks;
+            grouped[dateStr].conversions += item.conversions;
+        });
+        return Object.values(grouped).sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    }, [data]);
+
+    const filteredData = useMemo(() => {
+        let result = data.filter(item => 
+            (item.keyword || "").toLowerCase().includes(searchTerm.toLowerCase())
+        );
+        if (sortConfig) {
+            result.sort((a,b) => {
+                const aVal = a[sortConfig.key];
+                const bVal = b[sortConfig.key];
+                if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+                if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+        }
+        return result;
+    }, [data, searchTerm, sortConfig]);
+
+    const requestSort = (key: string) => {
+        let direction: 'asc' | 'desc' = 'asc';
+        if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc';
+        setSortConfig({ key, direction });
+    };
+
+    if (loading) return (
+        <div className="flex-1 flex flex-col items-center justify-center h-[540px]">
+            <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-indigo-600 mb-6"></div>
+            <div className="text-xl font-black uppercase tracking-widest text-slate-400">Loading Ads Performance...</div>
+        </div>
+    );
+
+    if (error) return (
+        <div className="flex-1 flex flex-col items-center justify-center h-[540px] text-center p-20 bg-rose-50/30 rounded-3xl border-2 border-dashed border-rose-200">
+            <div className="text-rose-500 text-6xl mb-6">🚫</div>
+            <div className="text-2xl font-black text-slate-800 uppercase tracking-tight">Syncing Service Failed</div>
+            <div className="text-slate-500 font-medium max-w-sm mt-2">{error}</div>
+            <button onClick={fetchData} className="mt-8 px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black shadow-lg transition-all active:scale-95">RETRY CONNECTION</button>
+        </div>
+    );
+
+    return (
+        <div className="flex-1 flex flex-col gap-5 mt-4 w-full h-[540px]">
+             {/* Scorecards */}
+             <div className="grid grid-cols-4 gap-4">
+                {[
+                  { label: "Total Clicks", val: (totals.clicks || 0).toLocaleString('id-ID'), color: "text-blue-500", icon: "🖱️" },
+                  { label: "Total Impressions", val: (totals.impressions || 0).toLocaleString('id-ID'), color: "text-indigo-500", icon: "👁️" },
+                  { label: "Total Cost", val: "Rp " + Math.floor(totals.cost || 0).toLocaleString('id-ID'), color: "text-emerald-500", icon: "💰" },
+                  { label: "Total Conversions", val: (totals.conversions || 0).toLocaleString('id-ID'), color: "text-rose-500", icon: "🎯" },
+                ].map((s, i) => (
+                  <div key={i} className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col justify-between h-[110px] overflow-hidden">
+                     <div className="flex justify-between items-start">
+                        <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">{s.label}</div>
+                        <span className="text-base opacity-80">{s.icon}</span>
+                     </div>
+                     <div className={`text-2xl font-black tracking-tight leading-none truncate ${s.color}`} title={s.val}>{s.val}</div>
+                     <div className="text-[8px] font-bold uppercase text-slate-300 mt-1">performance metric</div>
+                  </div>
+                ))}
+             </div>
+
+             <div className="grid grid-cols-12 gap-5 flex-1 min-h-0">
+                {/* Chart */}
+                <div className="col-span-5 bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col overflow-hidden">
+                   <div className="flex justify-between items-end mb-6">
+                      <div>
+                         <div className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1">Conversion Trend</div>
+                         <div className="text-xl font-black text-slate-800 tracking-tight leading-none">Activity vs Results</div>
+                      </div>
+                      <button onClick={fetchData} className="text-[9px] font-black uppercase tracking-wider text-indigo-600 bg-indigo-50/50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg border border-indigo-100/50 transition-colors">⟳ REFRESH</button>
+                   </div>
+                   <div className="flex-1 w-full -ml-4">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={chartData}>
+                        <defs>
+                          <linearGradient id="colorAdsClicks" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.15}/>
+                            <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                        <XAxis dataKey="date" fontSize={9} axisLine={false} tickLine={false} tick={{fill: '#94a3b8'}} hide />
+                        <YAxis fontSize={9} axisLine={false} tickLine={false} tick={{fill: '#94a3b8'}} />
+                        <RechartsTooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '10px', fontWeight: 'bold'}} />
+                        <Legend iconType="circle" wrapperStyle={{fontSize: "9px", fontWeight: "900", textTransform: "uppercase", paddingTop: "15px"}} />
+                        <Area type="monotone" dataKey="clicks" stroke="#6366f1" fillOpacity={1} fill="url(#colorAdsClicks)" strokeWidth={3} />
+                        <Area type="monotone" dataKey="conversions" stroke="#f43f5e" fillOpacity={0} strokeWidth={3} strokeDasharray="5 5" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                   </div>
+                </div>
+
+                {/* Table */}
+                <div className="col-span-7 bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col overflow-hidden">
+                   <div className="p-4 px-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
+                      <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Search Keywords Breakdown</div>
+                      <div className="relative">
+                        <input 
+                          type="text" 
+                          placeholder="Search Keywords..." 
+                          value={searchTerm}
+                          onChange={e => setSearchTerm(e.target.value)}
+                          className="bg-white border border-slate-200 rounded-xl py-1.5 pl-3 pr-8 text-[11px] font-bold w-56 outline-none focus:border-indigo-400 shadow-sm transition-all"
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 opacity-30 text-[12px]">🔍</span>
+                      </div>
+                   </div>
+                   <div className="flex-1 overflow-auto">
+                      <table className="w-full text-left text-[11px] border-collapse">
+                         <thead className="bg-[#fcfdfe] sticky top-0 z-10 border-b border-slate-100">
+                            <tr>
+                               {[
+                                 { label: "Search Keyword", key: "keyword" },
+                                 { label: "Clicks", key: "clicks" },
+                                 { label: "Impressions", key: "impressions" },
+                                 { label: "Cost", key: "cost" },
+                                 { label: "Conversions", key: "conversions" },
+                               ].map(h => (
+                                 <th 
+                                   key={h.key} 
+                                   onClick={() => requestSort(h.key)}
+                                   className="px-6 py-4 font-black uppercase tracking-widest text-slate-400 cursor-pointer hover:text-indigo-600 transition-colors group"
+                                 >
+                                   <div className="flex items-center gap-1.5 justify-between">
+                                      {h.label}
+                                      <span className={`transition-opacity ${sortConfig?.key === h.key ? 'opacity-100' : 'opacity-20 group-hover:opacity-50'}`}>
+                                        {sortConfig?.key === h.key ? (sortConfig.direction === 'asc' ? '↑' : '↓') : '↕'}
+                                      </span>
+                                   </div>
+                                 </th>
+                               ))}
+                            </tr>
+                         </thead>
+                         <tbody className="divide-y divide-slate-50">
+                            {filteredData.map((row, idx) => (
+                               <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
+                                  <td className="px-6 py-3.5 text-slate-800 font-black uppercase tracking-tight">{row.keyword || '-'}</td>
+                                  <td className="px-6 py-3.5 font-bold text-slate-600">{(row.clicks || 0).toLocaleString('id-ID')}</td>
+                                  <td className="px-6 py-3.5 font-bold text-slate-500">{(row.impressions || 0).toLocaleString('id-ID')}</td>
+                                  <td className="px-6 py-3.5 font-black text-emerald-600">Rp {Math.floor(row.cost || 0).toLocaleString('id-ID')}</td>
+                                  <td className="px-6 py-3.5 text-rose-500 font-extrabold">{(row.conversions || 0).toLocaleString('id-ID')}</td>
+                               </tr>
+                            ))}
+                         </tbody>
+                      </table>
+                      {filteredData.length === 0 && (
+                        <div className="p-16 flex flex-col items-center justify-center opacity-30">
+                           <span className="text-4xl mb-2">🔎</span>
+                           <div className="text-[10px] font-black uppercase tracking-widest">No matching results</div>
+                        </div>
+                      )}
+                   </div>
+                </div>
+             </div>
+        </div>
+    );
+};
 
 const ReportGenerator: React.FC<Props> = ({ state }) => {
   const [targetMonth, setTargetMonth] = useState(String(new Date().getMonth() + 1).padStart(2, '0'));  const [targetYear, setTargetYear] = useState(String(new Date().getFullYear()));
@@ -106,9 +379,10 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
     const newSlide: Slide = {
       id: `${type}-${Date.now()}`,
       type,
-      ...(type === 'title' && { title: 'CUSTOM TITLE' }),
-      ...(type === 'divider' && { dividerText: 'CUSTOM DIVIDER TEXT' }),
-      ...(type === 'team-dashboard' && { nextMoveText: 'Custom next move text' })
+      ...(type === 'title' && { title: titleText }),
+      ...(type === 'divider' && { dividerText: dividerText }),
+      ...(type === 'team-dashboard' && { nextMoveText: nextMoveText }),
+      ...(type === 'google-ads' && { spreadsheetUrl: 'https://docs.google.com/spreadsheets/d/1TJX3LrTiqhFTpK52UaV_G6Wr5b37mPkVZxB0ezAHNTQ/gviz/tq?tqx=out:csv&sheet=KeywordData' })
     };
     
     setSlides(prev => {
@@ -840,7 +1114,7 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         
         {/* left sidebar settings */}
-        <div className="md:col-span-1 space-y-6">
+        <div className="md:col-span-1 space-y-6 sticky top-6 self-start">
           <div className="bg-white p-5 rounded-2xl border border-zinc-200 shadow-sm space-y-4">
             <h3 className="font-bold text-sm tracking-tight uppercase text-zinc-900">Period Settings</h3>
             
@@ -885,6 +1159,7 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
                   { type: 'internal-chart' as SlideType, label: 'Internal Trend', cls: 'bg-pink-50 hover:bg-pink-100 text-pink-700 disabled:bg-slate-50 disabled:text-slate-300 disabled:cursor-not-allowed' },
                   { type: 'team-project-chart' as SlideType, label: 'Team Project Engagement', cls: 'bg-sky-50 hover:bg-sky-100 text-sky-700 disabled:bg-slate-50 disabled:text-slate-300 disabled:cursor-not-allowed' },
                   { type: 'project-chart' as SlideType, label: 'Project Chart', cls: 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 disabled:bg-slate-50 disabled:text-slate-300 disabled:cursor-not-allowed' },
+                  { type: 'google-ads' as SlideType, label: 'Google Ads Summary', cls: 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700' },
                 ] as { type: SlideType; label: string; cls: string }[]
               ).map(({ type, label, cls }) => {
                 const isOnce = type !== 'divider';
@@ -911,11 +1186,32 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
                       <div className="font-black text-[11px] text-zinc-800 uppercase truncate">
                         {slide.type.replace(/-/g, ' ')}
                       </div>
-                      {slide.type === 'title' && slide.title && (
-                        <div className="text-[10px] font-bold text-zinc-400 truncate">{slide.title}</div>
+                      {slide.type === 'title' && (
+                        <input 
+                          className="text-[10px] font-bold text-zinc-500 bg-transparent border-none focus:ring-0 focus:outline-none w-full p-0"
+                          value={slide.title || ''}
+                          onChange={(e) => updateSlide(slide.id, { title: e.target.value })}
+                          placeholder="Edit title..."
+                        />
                       )}
-                      {slide.type === 'divider' && slide.dividerText && (
-                        <div className="text-[10px] font-bold text-zinc-400 truncate">{slide.dividerText}</div>
+                      {slide.type === 'divider' && (
+                        <input 
+                          className="text-[10px] font-bold text-zinc-500 bg-transparent border-none focus:ring-0 focus:outline-none w-full p-0"
+                          value={slide.dividerText || ''}
+                          onChange={(e) => updateSlide(slide.id, { dividerText: e.target.value })}
+                          placeholder="Edit divider text..."
+                        />
+                      )}
+                      {slide.type === 'google-ads' && (
+                        <div className="mt-1 flex flex-col gap-1">
+                           <label className="text-[8px] font-black uppercase text-zinc-400">Sheet Link (CSV)</label>
+                           <input 
+                             className="text-[9px] font-bold text-indigo-600 bg-indigo-50/50 rounded px-1.5 py-1 border border-indigo-100/50 focus:ring-1 focus:ring-indigo-300 focus:outline-none w-full truncate"
+                             value={slide.spreadsheetUrl || ''}
+                             onChange={(e) => updateSlide(slide.id, { spreadsheetUrl: e.target.value })}
+                             placeholder="Paste CSV link here..."
+                           />
+                        </div>
                       )}
                     </div>
                     <div className="flex gap-1 shrink-0 opacity-40 group-hover:opacity-100 transition-opacity">
@@ -2083,6 +2379,14 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
                     </div>
 
                   </div>
+                </SlideWrapper>
+              );
+            }
+
+            if (slide.type === 'google-ads') {
+              return (
+                <SlideWrapper key={slide.id} id={`slide-${index}`} title="SEARCH TERM PERFORMANCE">
+                  <GoogleAdsSummaryContent url={slide.spreadsheetUrl} />
                 </SlideWrapper>
               );
             }
