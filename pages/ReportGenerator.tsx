@@ -1,13 +1,11 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import html2canvas from 'html2canvas';
-import { jsPDF } from 'jspdf';
 import { AppState, WorkContext } from '../types';
 
 interface Props {
   state: AppState;
 }
 
-type SlideType = 'title' | 'divider' | 'general-dashboard' | 'team-dashboard' | 'project-dashboard' | 'lead-dashboard' | 'lead-team-dashboard' | 'project-chart';
+type SlideType = 'title' | 'divider' | 'general-dashboard' | 'team-dashboard' | 'project-dashboard' | 'lead-dashboard' | 'lead-team-dashboard' | 'project-chart' | 'internal-dashboard' | 'internal-chart' | 'team-project-chart';
 
 interface Slide {
   id: string;
@@ -56,32 +54,35 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
   // Basic saving functionality via localStorage
   const [savedReports, setSavedReports] = useState<any[]>([]);
 
-  // Slides management
-  const [slides, setSlides] = useState<Slide[]>([
-    { id: 'title', type: 'title', title: titleText },
-    { id: 'general-dashboard', type: 'general-dashboard' },
-    { id: 'team-dashboard', type: 'team-dashboard', nextMoveText: nextMoveText },
-    { id: 'project-dashboard', type: 'project-dashboard' },
-    { id: 'lead-dashboard', type: 'lead-dashboard' },
-    { id: 'lead-team-dashboard', type: 'lead-team-dashboard' },
-    { id: 'project-chart', type: 'project-chart' }
-  ]);
+  // Core Slide Management
+  const [slides, setSlides] = useState<Slide[]>(() => {
+    if (typeof window === 'undefined') return [];
+    const saved = localStorage.getItem('acs_active_slides');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch(e) {}
+    }
+    return [
+      { id: 'title', type: 'title', title: 'WORK MANAGEMENT REPORT' },
+      { id: 'general-dashboard', type: 'general-dashboard' },
+      { id: 'team-dashboard', type: 'team-dashboard', nextMoveText: '1. Evaluasi singkat hasil dari penilaian project\n2. Pemantauan kriteria poin terendah project untuk ditingkatkan' },
+      { id: 'project-dashboard', type: 'project-dashboard' },
+      { id: 'lead-dashboard', type: 'lead-dashboard' },
+      { id: 'lead-team-dashboard', type: 'lead-team-dashboard' },
+      { id: 'internal-dashboard', type: 'internal-dashboard' },
+      { id: 'internal-chart', type: 'internal-chart' },
+      { id: 'team-project-chart', type: 'team-project-chart' },
+      { id: 'project-chart', type: 'project-chart' }
+    ];
+  });
 
   useEffect(() => {
     const saved = localStorage.getItem('acs_saved_reports');
     if (saved) {
       try {
         setSavedReports(JSON.parse(saved));
-      } catch(e) {}
-    }
-    // Restore last-used slide config
-    const savedSlides = localStorage.getItem('acs_active_slides');
-    if (savedSlides) {
-      try {
-        const parsed = JSON.parse(savedSlides);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setSlides(parsed);
-        }
       } catch(e) {}
     }
   }, []);
@@ -91,15 +92,14 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
     localStorage.setItem('acs_active_slides', JSON.stringify(slides));
   }, [slides]);
 
-  // Update slides when text changes
+  // Update slide texts ONLY if they are the default ones or when user explicitly changes global text
   useEffect(() => {
-    setSlides(prev => prev.map(slide => 
-      slide.type === 'title' ? { ...slide, title: titleText } :
-      slide.type === 'divider' ? { ...slide, dividerText: dividerText } :
-      slide.type === 'team-dashboard' ? { ...slide, nextMoveText: nextMoveText } :
-      slide
-    ));
-  }, [titleText, dividerText, nextMoveText]);
+    setSlides(prev => prev.map(slide => {
+      if (slide.type === 'title' && !slide.title) return { ...slide, title: titleText };
+      if (slide.type === 'divider' && !slide.dividerText) return { ...slide, dividerText: dividerText };
+      return slide;
+    }));
+  }, [titleText, dividerText]);
 
   // Slide management functions
   const addSlide = (type: SlideType, afterIndex?: number) => {
@@ -417,6 +417,85 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
       duration: ls.workDays
     }));
 
+    // ---- Internal Dashboard Specific Analytics ----
+    const internalStats = allInternal.map(t => {
+      const taskLogs = filteredLogs.filter(log => log.work_context === WorkContext.INTERNAL && log.internal_design_id === t.id);
+      const artworkCount = taskLogs.length;
+      const dates = taskLogs.flatMap(log => [log.start_date, log.end_date].filter(Boolean) as string[]);
+      let workDays = 0;
+      if (dates.length >= 2) {
+        const minDate = dates.reduce((a, b) => a < b ? a : b);
+        const maxDate = dates.reduce((a, b) => a > b ? a : b);
+        workDays = Math.max(0, Math.round((new Date(maxDate).getTime() - new Date(minDate).getTime()) / 86400000) + 1);
+      } else if (dates.length === 1) {
+        workDays = 1;
+      }
+      const totalRevisions = taskLogs.reduce((s, log) => s + (log.revision_count || 0), 0);
+      return { task: t, artworkCount, workDays, totalRevisions };
+    });
+
+    const totalInternalArtworksFiltered = filteredLogs.filter(l => l.work_context === WorkContext.INTERNAL).length;
+    const avgInternalWorkDays = allInternal.length > 0 
+      ? (internalStats.reduce((s, is) => s + is.workDays, 0) / allInternal.length)
+      : 0;
+    const avgInternalRevisions = totalInternalArtworksFiltered > 0
+      ? (internalStats.reduce((s, is) => s + is.totalRevisions, 0) / totalInternalArtworksFiltered)
+      : 0;
+    
+    const internalDeptStats = departments.map(d => {
+      const artworks = filteredLogs.filter(l => {
+        if (l.work_context !== WorkContext.INTERNAL) return false;
+        if (l.department_id === d.id) return true;
+        const task = state.internalDesigns.find(t => t.id === l.internal_design_id);
+        return task && task.department_id === d.id;
+      }).length;
+      return { label: d.department_name, count: artworks };
+    }).filter(ds => ds.count > 0).sort((a,b) => b.count - a.count);
+
+    // ---- Internal Team Type Breakdown (Stacked) ----
+    const internalTeamTypeStats = designers.map(d => {
+      const logs = filteredLogs.filter(l => l.work_context === WorkContext.INTERNAL && l.pic_designer_id === d.id);
+      return {
+        label: d.name,
+        "2D Design": logs.filter(l => l.artwork_type === "2D Design").length,
+        "3D Design": logs.filter(l => l.artwork_type === "3D Design").length,
+        "Video": logs.filter(l => l.artwork_type === "Video").length,
+        total: logs.length
+      };
+    }).filter(t => t.total > 0).sort((a,b) => b.total - a.total).slice(0, 10);
+
+    // ---- Monthly Internal Data (Trend) ----
+    const monthlyInternalData = (() => {
+      const months: { label: string; count: number }[] = [];
+      const endDate = new Date(filterEnd);
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(endDate.getFullYear(), endDate.getMonth() - i, 1);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const key = `${y}-${m}`;
+        const label = d.toLocaleString('id-ID', { month: 'short' }).toUpperCase();
+        const monthArtworks = artworkLogs.filter(
+          l => l.work_context === WorkContext.INTERNAL && l.start_date.startsWith(key)
+        );
+        months.push({ label, count: monthArtworks.length });
+      }
+      return months;
+    })();
+
+    // ---- Team Project Charts Analytics ----
+    const teamProjectStats = designers.map(d => {
+      const picCount = allProjects.filter(p => p.pic_designer_id === d.id).length;
+      const supportCount = allProjects.filter(p => (p.support_designer_ids || []).includes(d.id)).length;
+      const artworkCount = filteredLogs.filter(l => l.work_context === WorkContext.PROJECT && l.pic_designer_id === d.id).length;
+      return {
+        label: d.name,
+        picCount,
+        supportCount,
+        artworkCount,
+        total: picCount + supportCount + artworkCount
+      };
+    }).filter(t => t.total > 0).sort((a,b) => b.artworkCount - a.artworkCount).slice(0, 8); // Top 8 for visibility
+
     return {
       totalArtworks, projectPICs, projectLocs, allProjectsCount: allProjects.length,
       allLeadsCount: allLeads.length, leadGrades, leadRequesters,
@@ -439,7 +518,17 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
       totalLeadArtworks,
       avgLeadWorkDays,
       avgLeadRevisions,
-      leadDurationData
+      leadDurationData,
+      // Internal dashboard
+      totalInternalArtworks: totalInternalArtworksFiltered,
+      avgInternalWorkDays,
+      avgInternalRevisions,
+      internalDeptStats,
+      // Internal chart
+      internalTeamTypeStats,
+      monthlyInternalData,
+      // Team project chart
+      teamProjectStats
     };
   }, [state, filterStart, filterEnd]);
 
@@ -519,7 +608,24 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
             return acc + (dates.length === 1 ? 1 : 0);
           }, 0) / allLeads.length 
         : 0,
-      avgLeadRevisions: prevAvgLeadRevisions
+      avgLeadRevisions: prevAvgLeadRevisions,
+      // Internal previous analytics
+      totalInternalArtworks: filteredLogs.filter(l => l.work_context === WorkContext.INTERNAL).length,
+      avgInternalWorkDays: allInternal.length > 0 
+        ? (allInternal.reduce((acc, t) => {
+            const logs = filteredLogs.filter(log => log.work_context === WorkContext.INTERNAL && log.internal_design_id === t.id);
+            const dates = logs.flatMap(log => [log.start_date, log.end_date].filter(Boolean) as string[]);
+            if (dates.length >= 2) {
+              const min = dates.reduce((a, b) => a < b ? a : b);
+              const max = dates.reduce((a, b) => a > b ? a : b);
+              return acc + (Math.max(0, Math.round((new Date(max).getTime() - new Date(min).getTime()) / 86400000) + 1));
+            }
+            return acc + (dates.length === 1 ? 1 : 0);
+          }, 0) / allInternal.length)
+        : 0,
+      avgInternalRevisions: filteredLogs.filter(l => l.work_context === WorkContext.INTERNAL).length > 0
+        ? filteredLogs.filter(l => l.work_context === WorkContext.INTERNAL).reduce((s, l) => s + (l.revision_count || 0), 0) / filteredLogs.filter(l => l.work_context === WorkContext.INTERNAL).length
+        : 0
     };
   }, [state, prevPeriod]);
 
@@ -564,105 +670,141 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
     return counts;
   }
 
-  const generatePDF = async () => {
+
+  const generateHTML = () => {
     setIsGenerating(true);
-    
-    // Give React time to flush the "isGenerating" state to the DOM
-    // without this, the old DOM nodes might detach during the capture, causing html2canvas to fail.
-    await new Promise(resolve => setTimeout(resolve, 150));
-
     try {
-      const slides = document.querySelectorAll('.report-slide');
-      if (slides.length === 0) throw new Error("No slides found in the document");
-
-      const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+      const reportSlides = Array.from(document.querySelectorAll('.report-slide'));
+      if (reportSlides.length === 0) {
+        alert('Tidak ada slide untuk diekspor.');
+        setIsGenerating(false);
+        return;
+      }
       
-      const fixClonedStyles = (clonedDoc: Document) => {
-        const allElements = clonedDoc.querySelectorAll('*');
-        allElements.forEach(clonedEl => {
-          if (!(clonedEl instanceof HTMLElement)) return;
-          if (clonedEl.classList.contains('text-transparent') || clonedEl.classList.contains('bg-clip-text')) {
-             clonedEl.style.setProperty('-webkit-text-fill-color', '#1e293b', 'important');
-             clonedEl.style.setProperty('-webkit-background-clip', 'initial', 'important');
-             clonedEl.style.setProperty('background-clip', 'initial', 'important');
-             clonedEl.style.setProperty('color', '#1e293b', 'important');
-             clonedEl.style.setProperty('background-image', 'none', 'important');
-             clonedEl.style.setProperty('background', 'none', 'important');
-          }
-        });
-      };
-
-      for (let i = 0; i < slides.length; i++) {
-        const el = slides[i] as HTMLElement;
+      let slidesHTML = '';
+      reportSlides.forEach((slide) => {
+        // Deep clone so we can modify inline styles for export
+        const clone = slide.cloneNode(true) as HTMLElement;
+        clone.style.transform = 'none';
+        clone.style.position = 'absolute';
+        clone.style.top = '0';
+        clone.style.left = '0';
+        clone.style.margin = '0';
+        clone.style.boxShadow = 'none';
         
-        const canvas = await html2canvas(el, { 
-          scale: 2, 
-          useCORS: true, 
-          backgroundColor: '#ffffff',
-          logging: false,
-          windowWidth: 1300,
-          windowHeight: 800,
-          onclone: (clonedDoc) => {
-            // Find the exactly matching cloned element
-            const clonedEl = clonedDoc.querySelectorAll('.report-slide')[i] as HTMLElement;
-            if (clonedEl) {
-               // Use transform scale(1) inside the clone ONLY, avoiding live DOM bugs.
-               clonedEl.style.transform = 'scale(1)';
-               clonedEl.style.transformOrigin = 'top left';
-               clonedEl.style.margin = '0';
-               // Give the document some breathing room to reflow if necessary
-               clonedEl.style.position = 'relative';
+        slidesHTML += `
+          <div class="slide-wrapper" style="width: 1280px; height: 720px; page-break-after: always; overflow: hidden; position: relative; background: white; margin-bottom: 40px; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);">
+            ${clone.outerHTML}
+          </div>
+        `;
+      });
+      
+      const htmlContent = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Report - ${isFullYear ? targetYear : `${targetMonth}-${targetYear}`}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f1f5f9;
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px;
+            margin: 0;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        .report-slide {
+            transform: none !important;
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            margin: 0 !important;
+            box-shadow: none !important;
+            border: none !important;
+        }
+        @media print {
+            body { 
+                background-color: white !important; 
+                padding: 0 !important; 
+                display: block;
             }
-            fixClonedStyles(clonedDoc);
-          }
-        });
+            .slide-wrapper {
+                margin: 0 !important;
+                border-radius: 0 !important;
+                box-shadow: none !important;
+                page-break-after: always;
+            }
+            @page {
+                size: 1280px 720px;
+                margin: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    ${slidesHTML}
+    <script>
+      // Allow react components to render briefly, then trigger print
+      setTimeout(() => {
+         window.print();
+      }, 1500);
+    </script>
+</body>
+</html>`;
 
-        const imgData = canvas.toDataURL('image/png', 1.0);
-        if (i > 0) pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, 0, 297, 167.0625);
-        
-        // Brief pause after adding the image to keep browser thread responsive
-        await new Promise(resolve => setTimeout(resolve, 50));
-      }
+      const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Report_${isFullYear ? targetYear : `${targetYear}-${targetMonth}`}.html`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
       
-      pdf.save(`Report_${isFullYear ? targetYear : `${targetYear}-${targetMonth}`}.pdf`);
-    } catch(e: any) {
+    } catch(e) {
       console.error(e);
-      let errorMsg = e?.message || e?.toString() || 'Unknown error occurred';
-      if (errorMsg === '[object Object]') {
-        try { errorMsg = JSON.stringify(e); } catch(err) {} 
-      }
-      alert('Error generating PDF: ' + errorMsg);
+      alert('Gagal mengekspor HTML.');
+    } finally {
+      setIsGenerating(false);
     }
-    setIsGenerating(false);
   };
 
   const SlideWrapper = ({ children, title, id }: { children: React.ReactNode, title?: string, id?: string }) => (
-    <div id={id} className="report-slide bg-gradient-to-br from-slate-50 via-sky-50 to-white relative overflow-hidden flex flex-col items-center justify-center shrink-0 border border-zinc-200 shadow-xl" 
-         style={{ width: '1280px', height: '720px', transformOrigin: 'top left', transform: 'scale(0.65)', marginBottom: '-240px' }}>
-      
-      {/* Header */}
-      {title && (
-        <div className="absolute top-8 w-full px-12 z-20 flex justify-between items-start">
-          <div className="flex items-center gap-2.5 text-zinc-800">
-             <svg className="w-6 h-6 text-blue-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-             <span className="font-bold text-lg tracking-tight">Werkudara Group</span>
+    <div className="slide-preview-container" style={{ width: '832px', height: '468px', marginBottom: '20px', position: 'relative' }}>
+      <div id={id} className="report-slide bg-gradient-to-br from-slate-50 via-sky-50 to-white relative overflow-hidden flex flex-col items-center justify-center shrink-0 border border-zinc-200 shadow-xl" 
+           style={{ width: '1280px', height: '720px', transformOrigin: 'top left', transform: 'scale(0.65)', position: 'absolute', top: 0, left: 0 }}>
+        
+        {/* Header */}
+        {title && (
+          <div className="absolute top-8 w-full px-12 z-20 flex justify-between items-start">
+            <div className="flex items-center gap-2.5 text-zinc-800">
+               <svg className="w-6 h-6 text-blue-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+               <span className="font-bold text-lg tracking-tight">Werkudara Group</span>
+            </div>
+            <div className="bg-[#123661] text-white px-6 py-1.5 rounded-full font-bold text-sm tracking-widest shadow-sm">
+              {title}
+            </div>
           </div>
-          <div className="bg-[#123661] text-white px-6 py-1.5 rounded-full font-bold text-sm tracking-widest shadow-sm">
-            {title}
-          </div>
+        )}
+  
+        {/* Slide Content */}
+        <div className="w-full h-full pt-20 pb-16 px-12 z-10 flex text-left text-zinc-900">
+           {children}
         </div>
-      )}
-
-      {/* Slide Content */}
-      <div className="w-full h-full pt-20 pb-16 px-12 z-10 flex text-left">
-         {children}
-      </div>
-
-      {/* Footer */}
-      <div className="absolute bottom-8 w-full px-12 z-20 flex justify-between items-end">
-        <div className="text-[10px] font-bold tracking-widest text-zinc-800">
-          CONFIDENTIAL DOCUMENT, FOR INTERNAL USE ONLY <span className="text-zinc-500 font-normal">| &copy; {new Date().getFullYear()} Werkudara Group. All rights reserved.</span>
+  
+        {/* Footer */}
+        <div className="absolute bottom-8 w-full px-12 z-20 flex justify-between items-end">
+          <div className="text-[10px] font-bold tracking-widest text-zinc-800">
+            CONFIDENTIAL DOCUMENT, FOR INTERNAL USE ONLY <span className="text-zinc-500 font-normal">| &copy; {new Date().getFullYear()} Werkudara Group. All rights reserved.</span>
+          </div>
         </div>
       </div>
     </div>
@@ -689,8 +831,8 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
           <button onClick={saveReport} className="px-5 py-2.5 bg-white border border-zinc-200 hover:bg-zinc-50 text-zinc-700 rounded-xl font-bold shadow-sm transition-all">
              Save Config
           </button>
-          <button onClick={generatePDF} disabled={isGenerating} className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-md transition-all flex items-center gap-2">
-             {isGenerating ? 'Generating...' : 'Export to PDF'}
+          <button onClick={generateHTML} disabled={isGenerating} className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-md transition-all flex items-center gap-2">
+             <span className="text-lg">🌐</span> {isGenerating ? 'Wait..' : 'Export Report (HTML)'}
           </button>
         </div>
       </div>
@@ -732,14 +874,17 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
             <div className="space-y-2">
               {(
                 [
-                  { type: 'title' as SlideType, label: '+ Add Title Slide', cls: 'bg-blue-50 hover:bg-blue-100 text-blue-700 disabled:bg-slate-50 disabled:text-slate-300 disabled:cursor-not-allowed' },
-                  { type: 'divider' as SlideType, label: '+ Add Divider Slide', cls: 'bg-purple-50 hover:bg-purple-100 text-purple-700' },
-                  { type: 'general-dashboard' as SlideType, label: '+ Add General Dashboard', cls: 'bg-green-50 hover:bg-green-100 text-green-700 disabled:bg-slate-50 disabled:text-slate-300 disabled:cursor-not-allowed' },
-                  { type: 'team-dashboard' as SlideType, label: '+ Add Team Dashboard', cls: 'bg-orange-50 hover:bg-orange-100 text-orange-700 disabled:bg-slate-50 disabled:text-slate-300 disabled:cursor-not-allowed' },
-                  { type: 'project-dashboard' as SlideType, label: '+ Add Project Dashboard', cls: 'bg-teal-50 hover:bg-teal-100 text-teal-700 disabled:bg-slate-50 disabled:text-slate-300 disabled:cursor-not-allowed' },
-                  { type: 'lead-dashboard' as SlideType, label: '+ Add Lead Summary', cls: 'bg-amber-50 hover:bg-amber-100 text-amber-700 disabled:bg-slate-50 disabled:text-slate-300 disabled:cursor-not-allowed' },
-                  { type: 'lead-team-dashboard' as SlideType, label: '+ Add Lead Team', cls: 'bg-orange-50 hover:bg-orange-100 text-orange-700 disabled:bg-slate-50 disabled:text-slate-300 disabled:cursor-not-allowed' },
-                  { type: 'project-chart' as SlideType, label: '+ Add Project Chart', cls: 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 disabled:bg-slate-50 disabled:text-slate-300 disabled:cursor-not-allowed' },
+                  { type: 'title' as SlideType, label: 'Title Slide', cls: 'bg-blue-50 hover:bg-blue-100 text-blue-700 disabled:bg-slate-50 disabled:text-slate-300 disabled:cursor-not-allowed' },
+                  { type: 'divider' as SlideType, label: 'Divider Slide', cls: 'bg-purple-50 hover:bg-purple-100 text-purple-700' },
+                  { type: 'general-dashboard' as SlideType, label: 'General Dashboard', cls: 'bg-green-50 hover:bg-green-100 text-green-700 disabled:bg-slate-50 disabled:text-slate-300 disabled:cursor-not-allowed' },
+                  { type: 'team-dashboard' as SlideType, label: 'Team Dashboard', cls: 'bg-orange-50 hover:bg-orange-100 text-orange-700 disabled:bg-slate-50 disabled:text-slate-300 disabled:cursor-not-allowed' },
+                  { type: 'project-dashboard' as SlideType, label: 'Project Dashboard', cls: 'bg-teal-50 hover:bg-teal-100 text-teal-700 disabled:bg-slate-50 disabled:text-slate-300 disabled:cursor-not-allowed' },
+                  { type: 'lead-dashboard' as SlideType, label: 'Lead Summary', cls: 'bg-amber-50 hover:bg-amber-100 text-amber-700 disabled:bg-slate-50 disabled:text-slate-300 disabled:cursor-not-allowed' },
+                  { type: 'lead-team-dashboard' as SlideType, label: 'Lead Team', cls: 'bg-orange-50 hover:bg-orange-100 text-orange-700 disabled:bg-slate-50 disabled:text-slate-300 disabled:cursor-not-allowed' },
+                  { type: 'internal-dashboard' as SlideType, label: 'Internal Dashboard', cls: 'bg-violet-50 hover:bg-violet-100 text-violet-700 disabled:bg-slate-50 disabled:text-slate-300 disabled:cursor-not-allowed' },
+                  { type: 'internal-chart' as SlideType, label: 'Internal Trend', cls: 'bg-pink-50 hover:bg-pink-100 text-pink-700 disabled:bg-slate-50 disabled:text-slate-300 disabled:cursor-not-allowed' },
+                  { type: 'team-project-chart' as SlideType, label: 'Team Project Engagement', cls: 'bg-sky-50 hover:bg-sky-100 text-sky-700 disabled:bg-slate-50 disabled:text-slate-300 disabled:cursor-not-allowed' },
+                  { type: 'project-chart' as SlideType, label: 'Project Chart', cls: 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 disabled:bg-slate-50 disabled:text-slate-300 disabled:cursor-not-allowed' },
                 ] as { type: SlideType; label: string; cls: string }[]
               ).map(({ type, label, cls }) => {
                 const isOnce = type !== 'divider';
@@ -749,9 +894,9 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
                     key={type}
                     onClick={() => !alreadyAdded && addSlide(type)}
                     disabled={alreadyAdded}
-                    className={`w-full px-3 py-2 rounded-lg font-medium text-sm transition-colors ${cls} ${alreadyAdded ? 'opacity-40 cursor-not-allowed' : ''}`}
+                    className={`w-full px-3 py-1.5 rounded-lg font-black text-[10px] uppercase tracking-wider text-left transition-colors ${cls} ${alreadyAdded ? 'opacity-40 cursor-not-allowed' : ''}`}
                   >
-                    {alreadyAdded ? `✓ ${label.replace('+ ', '')}` : label}
+                    {alreadyAdded ? `✓ ${label}` : `+ ${label}`}
                   </button>
                 );
               })}
@@ -759,25 +904,25 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
 
             <div className="border-t border-zinc-200 pt-4">
               <h4 className="font-bold text-xs tracking-tight uppercase text-zinc-700 mb-3">Current Slides ({slides.length})</h4>
-              <div className="space-y-2 max-h-60 overflow-y-auto">
+              <div className="space-y-1 max-h-[800px] overflow-y-auto pr-1">
                 {slides.map((slide, index) => (
-                  <div key={slide.id} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg border border-slate-200">
-                    <div className="flex-1">
-                      <div className="font-medium text-sm text-zinc-800 capitalize">
-                        {slide.type.replace('-', ' ')}
+                  <div key={slide.id} className="flex items-center justify-between p-1.5 bg-slate-50 rounded-lg border border-slate-200 group">
+                    <div className="flex-1 min-w-0 pr-2">
+                      <div className="font-black text-[11px] text-zinc-800 uppercase truncate">
+                        {slide.type.replace(/-/g, ' ')}
                       </div>
                       {slide.type === 'title' && slide.title && (
-                        <div className="text-xs text-zinc-500 truncate max-w-32">{slide.title}</div>
+                        <div className="text-[10px] font-bold text-zinc-400 truncate">{slide.title}</div>
                       )}
                       {slide.type === 'divider' && slide.dividerText && (
-                        <div className="text-xs text-zinc-500 truncate max-w-32">{slide.dividerText}</div>
+                        <div className="text-[10px] font-bold text-zinc-400 truncate">{slide.dividerText}</div>
                       )}
                     </div>
-                    <div className="flex gap-1">
+                    <div className="flex gap-1 shrink-0 opacity-40 group-hover:opacity-100 transition-opacity">
                       <button 
                         onClick={() => moveSlide(index, 'up')}
                         disabled={index === 0}
-                        className="px-2 py-1 bg-zinc-100 hover:bg-zinc-200 text-zinc-500 rounded text-xs disabled:opacity-30 disabled:cursor-not-allowed"
+                        className="w-5 h-5 flex items-center justify-center bg-zinc-100 hover:bg-zinc-200 text-zinc-500 rounded text-[10px] disabled:opacity-30 disabled:cursor-not-allowed"
                         title="Move Up"
                       >
                         ↑
@@ -785,14 +930,14 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
                       <button 
                         onClick={() => moveSlide(index, 'down')}
                         disabled={index === slides.length - 1}
-                        className="px-2 py-1 bg-zinc-100 hover:bg-zinc-200 text-zinc-500 rounded text-xs disabled:opacity-30 disabled:cursor-not-allowed"
+                        className="w-5 h-5 flex items-center justify-center bg-zinc-100 hover:bg-zinc-200 text-zinc-500 rounded text-[10px] disabled:opacity-30 disabled:cursor-not-allowed"
                         title="Move Down"
                       >
                         ↓
                       </button>
                       <button 
                         onClick={() => addSlide(slide.type, index)}
-                        className="px-2 py-1 bg-zinc-100 hover:bg-zinc-200 text-zinc-500 rounded text-xs font-medium"
+                        className="w-5 h-5 flex items-center justify-center bg-zinc-100 hover:bg-zinc-200 text-zinc-500 rounded text-[10px] font-black"
                         title="Duplicate"
                       >
                         +
@@ -800,7 +945,7 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
                       <button 
                         onClick={() => removeSlide(slide.id)}
                         disabled={slides.length <= 1}
-                        className="px-2 py-1 bg-red-100 hover:bg-red-200 text-red-600 rounded text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-5 h-5 flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-500 rounded text-[10px] font-black disabled:opacity-50 disabled:cursor-not-allowed"
                         title="Remove"
                       >
                         ×
@@ -1051,115 +1196,169 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
             }
 
             if (slide.type === 'team-dashboard') {
-              return teamChunks.map((chunk, chunkIdx) => (
-                <SlideWrapper key={`${slide.id}-chunk-${chunkIdx}`} id={`slide-${index}-team-${chunkIdx}`} title="TEAM DASHBOARD">
-                  <div className="flex-1 flex w-full h-[540px] mt-6 relative gap-4">
-                    
-                    {/* Team Cards Grid */}
-                    <div className="grid grid-cols-4 grid-rows-2 gap-4 w-[980px] h-full">
-                      {chunk.map((ds: any, idx: number) => (
-                        <div key={idx} className="bg-[#f0f2f1] rounded-2xl relative flex flex-col p-4 pt-12 shadow-sm border border-black/5">
-                          {/* Avatar Overlapping Top */}
-                          <div className="absolute -top-6 left-6 w-[52px] h-[52px] rounded-full bg-gradient-to-br from-indigo-400 to-blue-600 text-white flex items-center justify-center font-black text-xl shadow-lg border-2 border-white">
-                            {ds.name.charAt(0)}
-                          </div>
-                          
-                          {/* Name placeholder if wanted, but screenshot leaves it off and relies on data? Let's add name for usability */}
-                          <div className="absolute top-2 right-4 text-[13px] font-extrabold uppercase text-zinc-900 max-w-[120px] text-right truncate">{ds.name}</div>
+              const allTeamItems = analytics.teamStats.filter(t => t.totalArtworks > 0);
+              // Mencari nilai tertinggi untuk penandaan
+              const maxProj = Math.max(...allTeamItems.map(t => t.projInvCount), 1);
+              const maxLeads = Math.max(...allTeamItems.map(t => t.uniqueLeads), 1);
+              const maxArtworks = Math.max(...allTeamItems.map(t => t.totalArtworks), 1);
+              const maxEval = Math.max(...allTeamItems.map(t => parseFloat(String(t.avgRating || 0))), 0.1);
+              const durations = allTeamItems.map(t => parseFloat(t.avgLeadDur)).filter(v => v > 0);
+              const bestDur = durations.length > 0 ? Math.min(...durations) : 999;
 
-                          <div className="space-y-2 text-xs font-bold text-zinc-800 mt-2">
-                            <div className="flex justify-between border-b border-black/5 pb-1"><span className="w-6">{ds.projInvCount}</span> <span className="text-zinc-500 font-medium">PROJECTS</span></div>
-                            <div className="flex justify-between border-b border-black/5 pb-1"><span className="w-6">{ds.uniqueLeads}</span> <span className="text-zinc-500 font-medium">LEADS</span></div>
-                            <div className="flex justify-between border-b border-black/5 pb-1 items-center">
-                               <span><span className="w-6 inline-block">{ds.avgLeadDur}</span> <span className="text-zinc-500 font-medium">DAYS LEAD DELIVERY</span></span>
-                               {parseFloat(ds.avgLeadDur) < 2.0 && parseFloat(ds.avgLeadDur) > 0 && 
-                                 <div className="w-4 h-4 bg-emerald-500 text-white rounded-full flex items-center justify-center text-[10px]">★</div>
-                               }
-                            </div>
-                            <div className="flex justify-between border-b border-black/5 pb-1"><span className="w-6">{ds.totalArtworks}</span> <span className="text-zinc-500 font-medium">ARTWORKS</span></div>
-                            
-                            <div className="text-[10px] font-black bg-zinc-200/50 p-1.5 rounded-md text-center border-b border-black/5 pb-1 mt-2">
-                              PRO: {ds.pro} | LEAD: {ds.lead} | INT: {ds.int}
-                            </div>
-
-                            <div className="flex justify-between py-1 items-center pt-2">
-                              <span><span className="w-6 inline-block">{ds.avgRating}</span> <span className="text-zinc-500 font-medium tracking-tight">PROJECT EVALUATION</span></span>
-                              {parseFloat(ds.avgRating) >= 4.0 && 
-                                 <div className="w-4 h-4 bg-emerald-500 text-white rounded-full flex items-center justify-center text-[10px]">★</div>
-                               }
-                            </div>
-                          </div>
-
-                          {/* Hapus detailed score hitam */}
+              return (
+                <SlideWrapper key={slide.id} id={`slide-${index}`} title="TEAM PERFORMANCE DASHBOARD">
+                  <div className="flex-1 mt-4 w-full h-[540px] overflow-hidden flex flex-col">
+                    <div className="bg-white rounded-xl border border-slate-100 shadow-sm flex-1 flex flex-col overflow-hidden">
+                      <div className="w-full h-full flex flex-col text-left">
+                        {/* THE HEADER */}
+                        <div className="flex bg-slate-50/50 border-b border-slate-100 px-4">
+                           <div className="w-[180px] py-2 px-2 text-[9px] font-black uppercase tracking-widest text-slate-400">Team Member</div>
+                           <div className="w-[80px] py-2 px-2 text-[9px] font-black uppercase tracking-widest text-slate-400 text-center">Projects</div>
+                           <div className="w-[80px] py-2 px-2 text-[9px] font-black uppercase tracking-widest text-slate-400 text-center">Leads</div>
+                           <div className="w-[100px] py-2 px-2 text-[9px] font-black uppercase tracking-widest text-slate-400 text-center">Delivery</div>
+                           <div className="w-[120px] py-2 px-2 text-[9px] font-black uppercase tracking-widest text-slate-400 text-right">Total Artworks</div>
+                           <div className="w-[180px] py-2 px-2 text-[9px] font-black uppercase tracking-widest text-slate-400 text-center">Breakdown (P|L|I)</div>
+                           <div className="w-[120px] py-2 px-2 text-[9px] font-black uppercase tracking-widest text-slate-400 text-right">Avg Eval</div>
                         </div>
-                      ))}
+                        {/* THE BODY */}
+                        <div className="flex-1 overflow-hidden flex flex-col divide-y divide-slate-50">
+                          {allTeamItems.map((ds: any, idx: number) => {
+                            const artworkShare = (ds.totalArtworks / maxArtworks) * 100;
+                            const isTopProj = ds.projInvCount === maxProj && maxProj > 0;
+                            const isTopLeads = ds.uniqueLeads === maxLeads && maxLeads > 0;
+                            const isTopArtworks = ds.totalArtworks === maxArtworks && maxArtworks > 0;
+                            const isTopEval = parseFloat(ds.avgRating || 0) === maxEval && maxEval > 0;
+                            const isBestDur = parseFloat(ds.avgLeadDur) === bestDur && bestDur < 999;
+
+                            return (
+                              <div key={idx} className="flex px-4 items-center hover:bg-slate-50/30 transition-colors py-1">
+                                <div className="w-[180px] px-2 flex items-center gap-2">
+                                     <div className={`w-7 h-7 shrink-0 rounded-full ${isTopArtworks ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'} flex items-center justify-center font-black text-xs uppercase shadow-sm`}>
+                                       {ds.name.charAt(0)}
+                                     </div>
+                                     <div className="flex flex-col min-w-0 pb-1">
+                                        <div className="font-black text-slate-800 text-[11px] tracking-tight truncate uppercase leading-tight mt-1">{ds.name}</div>
+                                        <div className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter truncate leading-tight">{ds.role || 'Personnel'}</div>
+                                     </div>
+                                </div>
+                                <div className="w-[80px] px-2 flex justify-center">
+                                  <span className={`font-black text-xs ${isTopProj ? 'text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded' : 'text-slate-600'}`}>{ds.projInvCount}</span>
+                                </div>
+                                <div className="w-[80px] px-2 flex justify-center">
+                                  <span className={`font-black text-xs ${isTopLeads ? 'text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded' : 'text-slate-600'}`}>{ds.uniqueLeads}</span>
+                                </div>
+                                <div className="w-[100px] px-2 flex justify-center">
+                                     <div className="flex items-center gap-1">
+                                        <span className={`font-black text-[11px] ${isBestDur ? 'text-emerald-600 bg-emerald-50 px-1 rounded' : 'text-slate-600'}`}>{ds.avgLeadDur}</span>
+                                        {parseFloat(ds.avgLeadDur) < 2.0 && parseFloat(ds.avgLeadDur) > 0 && 
+                                          <span className="text-emerald-500 text-[10px]">★</span>
+                                        }
+                                     </div>
+                                </div>
+                                <div className="w-[120px] px-2 flex flex-col items-end justify-center">
+                                    <span className={`font-black ${isTopArtworks ? 'text-indigo-600 text-sm' : 'text-slate-900 text-[11px]'} leading-none -mb-0.5`}>{ds.totalArtworks}</span>
+                                    <div className="w-16 h-[3px] bg-slate-100 rounded mt-1.5 overflow-hidden flex justify-end">
+                                       <div className={`h-full ${isTopArtworks ? 'bg-indigo-600' : 'bg-indigo-400'}`} style={{ width: `${artworkShare}%` }}></div>
+                                    </div>
+                                </div>
+                                <div className="w-[180px] px-2 flex justify-center">
+                                     <div className="flex gap-1 p-0.5 bg-slate-50 rounded border border-slate-100 items-center">
+                                        <div className="text-[9px] font-black text-slate-500 px-1 border-r border-slate-200">P:{ds.pro}</div>
+                                        <div className="text-[9px] font-black text-slate-500 px-1 border-r border-slate-200">L:{ds.lead}</div>
+                                        <div className="text-[9px] font-black text-slate-500 px-1">I:{ds.int}</div>
+                                     </div>
+                                </div>
+                                <div className="w-[120px] px-2 flex justify-end items-center gap-1">
+                                     <span className={`font-black text-[11px] ${isTopEval ? 'text-fuchsia-600 bg-fuchsia-50 px-1 rounded' : 'text-slate-600'}`}>{ds.avgRating}</span>
+                                     {parseFloat(ds.avgRating) >= 4.0 && 
+                                       <span className="text-fuchsia-500 text-[10px]">★</span>
+                                     }
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
                     </div>
-
-                    {/* Next Move dihapus */}
-
                   </div>
                 </SlideWrapper>
-              ));
+              );
             }
 
             if (slide.type === 'lead-team-dashboard') {
               const leadDesigners = analytics.teamStats.filter(t => t.uniqueLeads > 0 || t.lead > 0);
+              
+              // Find maximum values to highlight top performers
+              const maxLeads = leadDesigners.length > 0 ? Math.max(...leadDesigners.map(d => d.uniqueLeads)) : 0;
+              const maxArtworks = leadDesigners.length > 0 ? Math.max(...leadDesigners.map(d => d.lead)) : 0;
+              const maxDuration = leadDesigners.length > 0 ? Math.max(...leadDesigners.map(d => parseFloat(d.avgLeadDur))) : 0;
 
               return (
                 <SlideWrapper key={slide.id} id={`slide-${index}`} title="LEAD TEAM PERFORMANCE SUMMARY">
                   <div className="flex-1 flex flex-col gap-4 mt-6 w-full h-[540px]">
                     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col">
-                      <table className="w-full text-left border-collapse">
-                        <thead>
-                          <tr className="bg-slate-50 border-b border-slate-100">
-                             <th className="py-4 px-6 text-[11px] font-black uppercase tracking-widest text-slate-400">Team Member</th>
-                             <th className="py-4 px-6 text-[11px] font-black uppercase tracking-widest text-slate-400 text-center">Leads Handled</th>
-                             <th className="py-4 px-6 text-[11px] font-black uppercase tracking-widest text-slate-400 text-center">Lead Artworks</th>
-                             <th className="py-4 px-6 text-[11px] font-black uppercase tracking-widest text-slate-400 text-center">Avg Duration</th>
-                             <th className="py-4 px-6 text-[11px] font-black uppercase tracking-widest text-slate-400 text-right">Efficiency</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {leadDesigners.map((d, dIdx) => (
-                            <tr key={dIdx} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50 transition-colors">
-                              <td className="py-3 px-6">
-                                <div className="flex items-center gap-3">
-                                   <div className="w-8 h-8 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center font-black text-sm uppercase shadow-sm">
-                                     {d.name.charAt(0)}
-                                   </div>
-                                   <div className="flex flex-col">
-                                      <span className="font-black text-slate-800 text-sm tracking-tight leading-none uppercase">{d.name}</span>
-                                      <span className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider">{d.role || 'Personnel'}</span>
-                                   </div>
+                      <div className="w-full text-left">
+                        {/* THE HEADER */}
+                        <div className="flex bg-slate-50 border-b border-slate-100">
+                           <div className="flex-1 py-4 px-6 text-[11px] font-black uppercase tracking-widest text-slate-400">Team Member</div>
+                           <div className="w-[160px] py-4 px-6 text-[11px] font-black uppercase tracking-widest text-slate-400 text-center">Leads Handled</div>
+                           <div className="w-[160px] py-4 px-6 text-[11px] font-black uppercase tracking-widest text-slate-400 text-center">Lead Artworks</div>
+                           <div className="w-[160px] py-4 px-6 text-[11px] font-black uppercase tracking-widest text-slate-400 text-center">Avg Duration</div>
+                           <div className="w-[160px] py-4 px-6 text-[11px] font-black uppercase tracking-widest text-slate-400 text-right">Efficiency</div>
+                        </div>
+                        {/* THE BODY */}
+                        <div className="flex flex-col">
+                          {leadDesigners.map((d, dIdx) => {
+                            const isMaxLeads = d.uniqueLeads === maxLeads && maxLeads > 0;
+                            const isMaxArtworks = d.lead === maxArtworks && maxArtworks > 0;
+                            const isMaxDuration = parseFloat(d.avgLeadDur) === maxDuration && maxDuration > 0;
+                            const hasAnyMax = isMaxLeads || isMaxArtworks || isMaxDuration;
+
+                            return (
+                              <div key={dIdx} className="flex border-b border-slate-50 last:border-0 hover:bg-slate-50/50 transition-colors">
+                                <div className="flex-1 py-3 px-6 flex items-center gap-3">
+                                     <div className={`w-8 h-8 shrink-0 rounded-full ${hasAnyMax ? 'bg-amber-100 text-amber-600 border border-amber-200' : 'bg-orange-100 text-orange-600'} flex items-center justify-center font-black text-sm uppercase shadow-sm`}>
+                                       {d.name.charAt(0)}
+                                     </div>
+                                     <div className="flex flex-col min-w-0">
+                                        <div className="flex items-center gap-1.5">
+                                          <span className="font-black text-slate-800 text-sm tracking-tight leading-none uppercase">{d.name}</span>
+                                          {hasAnyMax && <span className="text-amber-500 text-xs" title="Top Performer">👑</span>}
+                                        </div>
+                                        <div className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider truncate">{d.role || 'Personnel'}</div>
+                                     </div>
                                 </div>
-                              </td>
-                              <td className="py-3 px-6 text-center">
-                                <span className="font-black text-orange-500 text-lg">{d.uniqueLeads}</span>
-                              </td>
-                              <td className="py-3 px-6 text-center">
-                                <span className="font-black text-amber-500 text-lg">{d.lead}</span>
-                              </td>
-                              <td className="py-3 px-6 text-center">
-                                <div className="flex flex-col items-center">
-                                   <span className="font-black text-yellow-600 text-lg leading-none">{d.avgLeadDur}<span className="text-[10px] text-slate-400 ml-0.5">d</span></span>
-                                   <span className="text-[9px] font-bold text-slate-300 uppercase tracking-tighter mt-1">delivery avg</span>
+                                <div className="w-[160px] py-3 px-6 flex flex-col items-center justify-center">
+                                     <span className={`font-black ${isMaxLeads ? 'text-orange-600 scale-110' : 'text-orange-500'} text-lg transition-transform`}>{d.uniqueLeads}</span>
+                                     {isMaxLeads && <span className="text-[7px] font-black uppercase tracking-tighter bg-orange-100 text-orange-700 px-1 rounded mt-0.5">Most Leads</span>}
                                 </div>
-                              </td>
-                              <td className="py-3 px-6 text-right">
-                                {parseFloat(d.avgLeadDur) > 0 && parseFloat(d.avgLeadDur) <= 1.5 ? (
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-600 rounded-lg text-[9px] font-black uppercase tracking-widest">
-                                     <span className="text-xs">⚡</span> OPTIMIZED
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 text-slate-400 rounded-lg text-[9px] font-black uppercase tracking-widest">
-                                     STANDARD
-                                  </span>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                                <div className="w-[160px] py-3 px-6 flex flex-col items-center justify-center">
+                                     <span className={`font-black ${isMaxArtworks ? 'text-amber-600 scale-110' : 'text-amber-500'} text-lg transition-transform`}>{d.lead}</span>
+                                     {isMaxArtworks && <span className="text-[7px] font-black uppercase tracking-tighter bg-amber-100 text-amber-700 px-1 rounded mt-0.5">Most Artworks</span>}
+                                </div>
+                                <div className="w-[160px] py-3 px-6 flex flex-col items-center justify-center">
+                                     <span className={`font-black ${isMaxDuration ? 'text-rose-600' : 'text-yellow-600'} text-lg leading-none`}>
+                                       {d.avgLeadDur}<span className="text-[10px] text-slate-400 ml-0.5">d</span>
+                                     </span>
+                                     <span className="text-[9px] font-bold text-slate-300 uppercase tracking-tighter mt-1">delivery avg</span>
+                                     {isMaxDuration && <span className="text-[7px] font-black uppercase tracking-tighter bg-rose-50 text-rose-600 px-1 rounded mt-0.5 border border-rose-100">Longest</span>}
+                                </div>
+                                <div className="w-[160px] py-3 px-6 flex items-center justify-end">
+                                  {parseFloat(d.avgLeadDur) > 0 && parseFloat(d.avgLeadDur) <= 1.5 ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-600 rounded-lg text-[9px] font-black uppercase tracking-widest">
+                                       <span className="text-xs">⚡</span> OPTIMIZED
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 text-slate-400 rounded-lg text-[9px] font-black uppercase tracking-widest">
+                                       STANDARD
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
                       {leadDesigners.length === 0 && (
                         <div className="py-20 flex flex-col items-center justify-center text-slate-300 gap-2">
                           <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center text-xl opacity-50 text-slate-200">∅</div>
@@ -1186,16 +1385,18 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
                         <div className="flex flex-col justify-between flex-1 p-5">
                           <div className="text-xs font-black uppercase tracking-widest text-slate-400">Total Projects</div>
                           <div>
-                            <div className="flex items-baseline gap-3">
-                              <div className="text-8xl font-semibold tracking-tight leading-none text-indigo-600">{analytics.allProjectsCount}</div>
-                              {(() => {
-                                const diff = analytics.allProjectsCount - prevAnalytics.allProjectsCount;
-                                const color = diff > 0 ? 'text-emerald-500' : diff < 0 ? 'text-red-500' : 'text-slate-400';
-                                const arrow = diff > 0 ? '▲' : diff < 0 ? '▼' : '●';
-                                return <span className={`text-base font-black ${color}`}>{arrow} {Math.abs(diff)}</span>;
-                              })()}
+                            <div className="flex flex-col gap-2">
+                               <div className="text-8xl font-semibold tracking-tight leading-none text-indigo-600">{analytics.allProjectsCount}</div>
+                               <div className="flex items-center gap-2">
+                                  {(() => {
+                                    const diff = analytics.allProjectsCount - prevAnalytics.allProjectsCount;
+                                    const color = diff > 0 ? 'text-emerald-500' : diff < 0 ? 'text-red-500' : 'text-slate-400';
+                                    const arrow = diff > 0 ? '▲' : diff < 0 ? '▼' : '●';
+                                    return <span className={`text-base font-black ${color}`}>{arrow} {Math.abs(diff)}</span>;
+                                  })()}
+                                  <div className="text-[11px] font-bold uppercase text-slate-400">registered projects</div>
+                               </div>
                             </div>
-                            <div className="text-[11px] font-bold uppercase text-slate-400 mt-1">registered projects</div>
                           </div>
                         </div>
                       </div>
@@ -1205,16 +1406,18 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
                         <div className="flex flex-col justify-between flex-1 p-5">
                           <div className="text-xs font-black uppercase tracking-widest text-slate-400">Project Artworks</div>
                           <div>
-                            <div className="flex items-baseline gap-3">
-                              <div className="text-8xl font-semibold tracking-tight leading-none text-sky-500">{analytics.totalProjectArtworks}</div>
-                              {(() => {
-                                const diff = analytics.totalProjectArtworks - prevAnalytics.totalProjectArtworks;
-                                const color = diff > 0 ? 'text-emerald-500' : diff < 0 ? 'text-red-500' : 'text-slate-400';
-                                const arrow = diff > 0 ? '▲' : diff < 0 ? '▼' : '●';
-                                return <span className={`text-base font-black ${color}`}>{arrow} {Math.abs(diff)}</span>;
-                              })()}
+                            <div className="flex flex-col gap-2">
+                               <div className="text-8xl font-semibold tracking-tight leading-none text-sky-500">{analytics.totalProjectArtworks}</div>
+                               <div className="flex items-center gap-2">
+                                  {(() => {
+                                    const diff = analytics.totalProjectArtworks - prevAnalytics.totalProjectArtworks;
+                                    const color = diff > 0 ? 'text-emerald-500' : diff < 0 ? 'text-red-500' : 'text-slate-400';
+                                    const arrow = diff > 0 ? '▲' : diff < 0 ? '▼' : '●';
+                                    return <span className={`text-base font-black ${color}`}>{arrow} {Math.abs(diff)}</span>;
+                                  })()}
+                                  <div className="text-[11px] font-bold uppercase text-slate-400">project artworks</div>
+                               </div>
                             </div>
-                            <div className="text-[11px] font-bold uppercase text-slate-400 mt-1">total project-context artworks</div>
                           </div>
                         </div>
                       </div>
@@ -1224,16 +1427,18 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
                         <div className="flex flex-col justify-between flex-1 p-5">
                           <div className="text-xs font-black uppercase tracking-widest text-slate-400">Avg Team Size</div>
                           <div>
-                            <div className="flex items-baseline gap-3">
-                              <div className="text-8xl font-semibold tracking-tight leading-none text-violet-600">{parseFloat(analytics.avgTeamSize.toFixed(2)).toString()}</div>
-                              {(() => {
-                                const diff = analytics.avgTeamSize - prevAnalytics.avgTeamSize;
-                                const color = diff > 0 ? 'text-emerald-500' : diff < 0 ? 'text-red-500' : 'text-slate-400';
-                                const arrow = diff > 0 ? '▲' : diff < 0 ? '▼' : '●';
-                                return <span className={`text-base font-black ${color}`}>{arrow} {parseFloat(Math.abs(diff).toFixed(2))}</span>;
-                              })()}
+                            <div className="flex flex-col gap-2">
+                               <div className="text-8xl font-semibold tracking-tight leading-none text-violet-600">{parseFloat(analytics.avgTeamSize.toFixed(2)).toString()}</div>
+                               <div className="flex items-center gap-2">
+                                  {(() => {
+                                    const diff = analytics.avgTeamSize - prevAnalytics.avgTeamSize;
+                                    const color = diff > 0 ? 'text-emerald-500' : diff < 0 ? 'text-red-500' : 'text-slate-400';
+                                    const arrow = diff > 0 ? '▲' : diff < 0 ? '▼' : '●';
+                                    return <span className={`text-base font-black ${color}`}>{arrow} {parseFloat(Math.abs(diff).toFixed(2))}</span>;
+                                  })()}
+                                  <div className="text-[11px] font-bold uppercase text-slate-400">members / project</div>
+                               </div>
                             </div>
-                            <div className="text-[11px] font-bold uppercase text-slate-400 mt-1">members / project</div>
                           </div>
                         </div>
                       </div>
@@ -1243,16 +1448,18 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
                         <div className="flex flex-col justify-between flex-1 p-5">
                           <div className="text-xs font-black uppercase tracking-widest text-slate-400">Avg Workdays</div>
                           <div>
-                            <div className="flex items-baseline gap-3">
-                              <div className="text-8xl font-semibold tracking-tight leading-none text-rose-500">{parseFloat(analytics.avgWorkDays.toFixed(2)).toString()}</div>
-                              {(() => {
-                                const diff = analytics.avgWorkDays - prevAnalytics.avgWorkDays;
-                                const color = diff > 0 ? 'text-emerald-500' : diff < 0 ? 'text-red-500' : 'text-slate-400';
-                                const arrow = diff > 0 ? '▲' : diff < 0 ? '▼' : '●';
-                                return <span className={`text-base font-black ${color}`}>{arrow} {parseFloat(Math.abs(diff).toFixed(2))}</span>;
-                              })()}
+                            <div className="flex flex-col gap-2">
+                               <div className="text-8xl font-semibold tracking-tight leading-none text-rose-500">{parseFloat(analytics.avgWorkDays.toFixed(2)).toString()}</div>
+                               <div className="flex items-center gap-2">
+                                  {(() => {
+                                    const diff = analytics.avgWorkDays - prevAnalytics.avgWorkDays;
+                                    const color = diff > 0 ? 'text-emerald-500' : diff < 0 ? 'text-red-500' : 'text-slate-400';
+                                    const arrow = diff > 0 ? '▲' : diff < 0 ? '▼' : '●';
+                                    return <span className={`text-base font-black ${color}`}>{arrow} {parseFloat(Math.abs(diff).toFixed(2))}</span>;
+                                  })()}
+                                  <div className="text-[11px] font-bold uppercase text-slate-400">days / project</div>
+                               </div>
                             </div>
-                            <div className="text-[11px] font-bold uppercase text-slate-400 mt-1">days / project</div>
                           </div>
                         </div>
                       </div>
@@ -1274,15 +1481,19 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
                               {analytics.mostArtworkProj ? analytics.mostArtworkProj.proj.project_name : '-'}
                             </div>
                           </div>
-                          <div className="flex items-end justify-between mt-3">
-                            <div>
-                              <div className="text-4xl font-black leading-none text-amber-500">{analytics.mostArtworkProj ? analytics.mostArtworkProj.artworkCount : 0}</div>
-                              <div className="text-[11px] font-bold uppercase text-slate-400 mt-0.5">artworks</div>
-                            </div>
-                            <div className="text-right space-y-0.5">
-                              <div className="text-[11px] font-bold text-slate-500">{analytics.mostArtworkProj ? analytics.mostArtworkProj.proj.start_date : '-'}</div>
-                              <div className="text-[11px] font-bold text-slate-500">{analytics.mostArtworkProj ? (analytics.mostArtworkProj.proj.locations || []).join(', ') || '-' : '-'}</div>
-                            </div>
+                          <div className="flex flex-col mt-4 gap-2">
+                             <div className="flex items-baseline justify-between">
+                                <div className="text-4xl font-black leading-none text-amber-500">{analytics.mostArtworkProj ? analytics.mostArtworkProj.artworkCount : 0}</div>
+                                <div className="text-right">
+                                   <div className="text-[11px] font-bold text-slate-500">{analytics.mostArtworkProj ? analytics.mostArtworkProj.proj.start_date : '-'}</div>
+                                </div>
+                             </div>
+                             <div className="flex justify-between items-end border-t border-slate-50 pt-2">
+                                <div className="text-[11px] font-bold uppercase text-slate-400">artworks</div>
+                                <div className="text-[11px] font-bold text-slate-500 max-w-[140px] truncate text-right" title={analytics.mostArtworkProj ? (analytics.mostArtworkProj.proj.locations || []).join(', ') : ''}>
+                                   {analytics.mostArtworkProj ? (analytics.mostArtworkProj.proj.locations || []).join(', ') || '-' : '-'}
+                                </div>
+                             </div>
                           </div>
                         </div>
                       </div>
@@ -1299,15 +1510,19 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
                               {analytics.longestDurProj ? analytics.longestDurProj.proj.project_name : '-'}
                             </div>
                           </div>
-                          <div className="flex items-end justify-between mt-3">
-                            <div>
-                              <div className="text-4xl font-black leading-none text-teal-500">{analytics.longestDurProj ? analytics.longestDurProj.workDays : 0}</div>
-                              <div className="text-[11px] font-bold uppercase text-slate-400 mt-0.5">workdays</div>
-                            </div>
-                            <div className="text-right space-y-0.5">
-                              <div className="text-[11px] font-bold text-slate-500">{analytics.longestDurProj ? analytics.longestDurProj.proj.start_date : '-'}</div>
-                              <div className="text-[11px] font-bold text-slate-500">{analytics.longestDurProj ? (analytics.longestDurProj.proj.locations || []).join(', ') || '-' : '-'}</div>
-                            </div>
+                          <div className="flex flex-col mt-4 gap-2">
+                             <div className="flex items-baseline justify-between">
+                                <div className="text-4xl font-black leading-none text-teal-500">{analytics.longestDurProj ? analytics.longestDurProj.workDays : 0}</div>
+                                <div className="text-right">
+                                   <div className="text-[11px] font-bold text-slate-500">{analytics.longestDurProj ? analytics.longestDurProj.proj.start_date : '-'}</div>
+                                </div>
+                             </div>
+                             <div className="flex justify-between items-end border-t border-slate-50 pt-2">
+                                <div className="text-[11px] font-bold uppercase text-slate-400">workdays</div>
+                                <div className="text-[11px] font-bold text-slate-500 max-w-[140px] truncate text-right" title={analytics.longestDurProj ? (analytics.longestDurProj.proj.locations || []).join(', ') : ''}>
+                                   {analytics.longestDurProj ? (analytics.longestDurProj.proj.locations || []).join(', ') || '-' : '-'}
+                                </div>
+                             </div>
                           </div>
                         </div>
                       </div>
@@ -1324,15 +1539,19 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
                               {analytics.mostTeamProj ? analytics.mostTeamProj.proj.project_name : '-'}
                             </div>
                           </div>
-                          <div className="flex items-end justify-between mt-3">
-                            <div>
-                              <div className="text-4xl font-black leading-none text-slate-600">{analytics.mostTeamProj ? analytics.mostTeamProj.teamSize : 0}</div>
-                              <div className="text-[11px] font-bold uppercase text-slate-400 mt-0.5">team members</div>
-                            </div>
-                            <div className="text-right space-y-0.5">
-                              <div className="text-[11px] font-bold text-slate-500">{analytics.mostTeamProj ? analytics.mostTeamProj.proj.start_date : '-'}</div>
-                              <div className="text-[11px] font-bold text-slate-500">{analytics.mostTeamProj ? (analytics.mostTeamProj.proj.locations || []).join(', ') || '-' : '-'}</div>
-                            </div>
+                          <div className="flex flex-col mt-4 gap-2">
+                             <div className="flex items-baseline justify-between">
+                                <div className="text-4xl font-black leading-none text-slate-600">{analytics.mostTeamProj ? analytics.mostTeamProj.teamSize : 0}</div>
+                                <div className="text-right">
+                                   <div className="text-[11px] font-bold text-slate-500">{analytics.mostTeamProj ? analytics.mostTeamProj.proj.start_date : '-'}</div>
+                                </div>
+                             </div>
+                             <div className="flex justify-between items-end border-t border-slate-50 pt-2">
+                                <div className="text-[11px] font-bold uppercase text-slate-400">team members</div>
+                                <div className="text-[11px] font-bold text-slate-500 max-w-[140px] truncate text-right" title={analytics.mostTeamProj ? (analytics.mostTeamProj.proj.locations || []).join(', ') : ''}>
+                                   {analytics.mostTeamProj ? (analytics.mostTeamProj.proj.locations || []).join(', ') || '-' : '-'}
+                                </div>
+                             </div>
                           </div>
                         </div>
                       </div>
@@ -1352,17 +1571,12 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
                 const padL = 60, padR = 20, padTop = 30, padBot = 40;
                 const chartW = W - padL - padR;
                 const chartH = H - padTop - padBot;
-                const barWidth = (chartW / data.length) * 0.6;
-                const gap = chartW / data.length;
+                const len = Math.max(data.length, 1);
+                const barWidth = (chartW / len) * 0.6;
+                const gap = chartW / len;
 
                 return (
                   <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`}>
-                    <defs>
-                      <linearGradient id="leadGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#f59e0b" />
-                        <stop offset="100%" stopColor="#fbbf24" />
-                      </linearGradient>
-                    </defs>
                     {/* Gridlines */}
                     {[0, 1, 2, 3].map(i => {
                       const gv = (maxVal * i) / 3;
@@ -1380,7 +1594,7 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
                       const by = padTop + chartH - bh;
                       return (
                         <g key={i}>
-                          {d.duration > 0 && <rect x={bx} y={by} width={barWidth} height={bh} rx="6" fill="url(#leadGrad)" />}
+                          {d.duration > 0 && <rect x={bx} y={by} width={barWidth} height={bh} rx="6" fill="#f59e0b" />}
                           {d.duration > 0 && <text x={bx + barWidth / 2} y={by - 5} textAnchor="middle" fontSize="11" fill="#ea580c" fontWeight="800">{d.duration}</text>}
                           <text x={bx + barWidth / 2} y={padTop + chartH + 18} textAnchor="middle" fontSize="10" fill="#64748b" fontWeight="700" transform={`rotate(10, ${bx + barWidth / 2}, ${padTop + chartH + 18})`}>
                             {d.label.length > 15 ? d.label.substring(0, 13) + '..' : d.label}
@@ -1474,6 +1688,266 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
               );
             }
 
+            if (slide.type === 'internal-dashboard') {
+              const DepartmentBarChart = ({ data }: { data: { label: string; count: number }[] }) => {
+                const max = Math.max(...data.map(d => d.count), 1);
+                return (
+                  <div className="w-full h-full flex items-end justify-between px-1 gap-2 pt-12 pb-2">
+                    {data.map((d, i) => (
+                      <div key={i} className="flex flex-col items-center gap-3 h-full flex-1 min-w-0">
+                        <div className="flex-1 w-full bg-slate-50/50 rounded-lg relative flex flex-col justify-end overflow-visible border border-slate-100/30">
+                           <div className="bg-gradient-to-t from-indigo-500 via-indigo-600 to-violet-600 rounded-lg transition-all duration-1000 origin-bottom shadow-lg flex items-start justify-center" 
+                                style={{ height: `${(d.count / max) * 100}%` }}>
+                              <div className="absolute -top-9 px-2.5 py-1 bg-slate-900 text-white text-[12px] font-black rounded-lg shadow-xl flex items-center justify-center whitespace-nowrap border border-slate-700/50">
+                                {d.count}
+                                <div className="absolute top-[85%] left-1/2 -mb-2 border-[6px] border-transparent border-t-slate-900 -translate-x-1/2"></div>
+                              </div>
+                           </div>
+                        </div>
+                        <div className="h-12 w-full flex items-start justify-center pt-2 overflow-hidden">
+                          <span className="text-[11px] font-black uppercase text-slate-800 tracking-tighter text-center leading-[1.1] break-words px-0.5" style={{ wordBreak: 'break-word', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                            {d.label}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              };
+
+              return (
+                <SlideWrapper key={slide.id} id={`slide-${index}`} title="INTERNAL ARTWORKS SUMMARY">
+                  <div className="flex-1 flex flex-col gap-6 mt-6 w-full h-[540px]">
+                    
+                    {/* Top Row: 3 KPI Cards */}
+                    <div className="flex gap-6 h-[220px]">
+                      
+                      <div className="bg-white rounded-2xl flex-1 flex flex-col overflow-hidden shadow-sm border border-slate-100 p-6 justify-between">
+                         <div className="text-xs font-black uppercase tracking-widest text-slate-400">Total Internal Artworks</div>
+                         <div>
+                            <div className="flex items-baseline gap-3">
+                               <div className="text-8xl font-semibold tracking-tight text-indigo-600">{analytics.totalInternalArtworks}</div>
+                               {(() => {
+                                 const diff = analytics.totalInternalArtworks - prevAnalytics.totalInternalArtworks;
+                                 const color = diff > 0 ? 'text-emerald-500' : diff < 0 ? 'text-rose-500' : 'text-slate-400';
+                                 return <span className={`text-lg font-black ${color}`}>{diff > 0 ? '▲' : diff < 0 ? '▼' : '●'} {Math.abs(diff)}</span>;
+                               })()}
+                            </div>
+                            <div className="text-[11px] font-bold uppercase text-slate-400 mt-1">artworks in period</div>
+                         </div>
+                      </div>
+
+                      <div className="bg-white rounded-2xl flex-1 flex flex-col overflow-hidden shadow-sm border border-slate-100 p-6 justify-between">
+                         <div className="text-xs font-black uppercase tracking-widest text-slate-400">Avg Internal Workdays</div>
+                         <div>
+                            <div className="flex items-baseline gap-3">
+                               <div className="text-8xl font-semibold tracking-tight text-sky-500">{parseFloat(analytics.avgInternalWorkDays.toFixed(1)).toString()}</div>
+                               {(() => {
+                                 const diff = analytics.avgInternalWorkDays - prevAnalytics.avgInternalWorkDays;
+                                 const color = diff > 0 ? 'text-rose-500' : diff < 0 ? 'text-emerald-500' : 'text-slate-400';
+                                 return <span className={`text-lg font-black ${color}`}>{diff > 0 ? '▲' : diff < 0 ? '▼' : '●'} {parseFloat(Math.abs(diff).toFixed(1))}</span>;
+                               })()}
+                            </div>
+                            <div className="text-[11px] font-bold uppercase text-slate-400 mt-1">days / internal task</div>
+                         </div>
+                      </div>
+
+                      <div className="bg-white rounded-2xl flex-1 flex flex-col overflow-hidden shadow-sm border border-slate-100 p-6 justify-between">
+                         <div className="text-xs font-black uppercase tracking-widest text-slate-400">Avg Internal Revisions</div>
+                         <div>
+                            <div className="flex items-baseline gap-3">
+                               <div className="text-8xl font-semibold tracking-tight text-violet-500">{parseFloat(analytics.avgInternalRevisions.toFixed(2)).toString()}</div>
+                               {(() => {
+                                 const diff = analytics.avgInternalRevisions - prevAnalytics.avgInternalRevisions;
+                                 const color = diff > 0 ? 'text-rose-500' : diff < 0 ? 'text-emerald-500' : 'text-slate-400';
+                                 return <span className={`text-lg font-black ${color}`}>{diff > 0 ? '▲' : diff < 0 ? '▼' : '●'} {parseFloat(Math.abs(diff).toFixed(2))}</span>;
+                               })()}
+                            </div>
+                            <div className="text-[11px] font-bold uppercase text-slate-400 mt-1">revisions / internal artwork</div>
+                         </div>
+                      </div>
+
+                    </div>
+
+                    {/* Bottom Row: Dept Bar Chart */}
+                    <div className="flex-1 bg-white rounded-2xl border border-slate-100 shadow-sm flex flex-col p-8 overflow-hidden">
+                       <div className="mb-6 flex justify-between items-end">
+                          <div>
+                            <div className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Artworks Distribution</div>
+                            <div className="text-2xl font-black text-slate-800 leading-tight">By Department</div>
+                          </div>
+                          <div className="text-[11px] font-black uppercase text-slate-300">Internal work context only</div>
+                       </div>
+                       <div className="flex-1 flex items-end">
+                          <DepartmentBarChart data={analytics.internalDeptStats} />
+                       </div>
+                    </div>
+
+                  </div>
+                </SlideWrapper>
+              );
+            }
+
+            if (slide.type === 'internal-chart') {
+              const StackedInternalBarChart = ({ data }: { data: any[] }) => {
+                const values = data.map(d => d.total);
+                const maxVal = Math.max(...values, 1);
+                const W = 1100, H = 190;
+                const padL = 60, padR = 20, padTop = 20, padBot = 30;
+                const chartW = W - padL - padR;
+                const chartH = H - padTop - padBot;
+                const len = Math.max(data.length, 1);
+                const barWidth = (chartW / len) * 0.5;
+                const gap = chartW / len;
+
+                return (
+                  <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ overflow: 'visible' }}>
+                    {[0, 1, 2, 3].map(i => {
+                      const gv = (maxVal * i) / 3;
+                      const y = padTop + chartH - (gv / maxVal) * chartH;
+                      return (
+                        <g key={i}>
+                          <line x1={padL} y1={y} x2={W - padR} y2={y} stroke="#f1f5f9" strokeWidth="1" strokeDasharray="4 2" />
+                          <text x={padL - 10} y={y + 4} textAnchor="end" fontSize="10" fill="#94a3b8" fontWeight="600">{Math.round(gv)}</text>
+                        </g>
+                      );
+                    })}
+                    {data.map((d, i) => {
+                      const bx = padL + i * gap + (gap - barWidth) / 2;
+                      let currentY = padTop + chartH;
+                      const types = [
+                        { key: '2D Design', color: '#6366f1' }, // Indigo
+                        { key: '3D Design', color: '#ec4899' }, // Pink
+                        { key: 'Video', color: '#f59e0b' }      // Amber
+                      ];
+
+                      return (
+                        <g key={i}>
+                          {types.map((type, tIdx) => {
+                            const val = d[type.key];
+                            if (val === 0) return null;
+                            const bh = (val / maxVal) * chartH;
+                            currentY -= bh;
+                            return <rect key={tIdx} x={bx} y={currentY} width={barWidth} height={bh} fill={type.color} />;
+                          })}
+                          <text x={bx + barWidth/2} y={padTop + chartH + 18} textAnchor="middle" fontSize="10" fill="#64748b" fontWeight="800">{d.label.split(' ')[0]}</text>
+                          {d.total > 0 && <text x={bx + barWidth/2} y={currentY - 5} textAnchor="middle" fontSize="11" fill="#1e293b" fontWeight="900">{d.total}</text>}
+                        </g>
+                      );
+                    })}
+                  </svg>
+                );
+              };
+
+              const InternalTrendLine = ({ data }: { data: any[] }) => {
+                const values = data.map(d => d.count);
+                const maxVal = Math.max(...values, 5);
+                const W = 1100, H = 140;
+                const padL = 60, padR = 40, padTop = 20, padBot = 30;
+                const chartW = W - padL - padR;
+                const chartH = H - padTop - padBot;
+                const gap = chartW / Math.max(data.length - 1, 1);
+                const points = data.map((d, i) => `${padL + i * gap},${padTop + chartH - (d.count / maxVal) * chartH}`).join(' ');
+
+                return (
+                  <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ overflow: 'visible' }}>
+                    {[0, 1, 2, 3].map(i => {
+                      const gv = (maxVal * i) / 3;
+                      const y = padTop + chartH - (gv / maxVal) * chartH;
+                      return <line key={i} x1={padL} y1={y} x2={W - padR} y2={y} stroke="#f1f5f9" strokeWidth="1" />;
+                    })}
+                    <polyline points={points} fill="none" stroke="#6366f1" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                    {data.map((d, i) => (
+                      <g key={i}>
+                        <circle cx={padL + i * gap} cy={padTop + chartH - (d.count/maxVal)*chartH} r="4" fill="#6366f1" stroke="white" strokeWidth="2" />
+                        <text x={padL + i * gap} y={padTop + chartH + 20} textAnchor="middle" fontSize="9" fill="#94a3b8" fontWeight="700">{d.label}</text>
+                        {d.count > 0 && <text x={padL + i * gap} y={padTop + chartH - (d.count/maxVal)*chartH - 8} textAnchor="middle" fontSize="10" fill="#4f46e5" fontWeight="900">{d.count}</text>}
+                      </g>
+                    ))}
+                  </svg>
+                );
+              };
+
+              return (
+                <SlideWrapper key={slide.id} id={`slide-${index}`} title="INTERNAL ARTWORK ANALYTICS">
+                  <div className="flex-1 flex flex-col gap-4 mt-2">
+                    <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex-1">
+                      <div className="flex justify-between items-center mb-2">
+                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Internal per Team Member</h3>
+                        <div className="flex gap-4">
+                          <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-sm bg-[#6366f1]"></div><span className="text-[8px] font-black text-slate-500 uppercase">2D</span></div>
+                          <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-sm bg-[#ec4899]"></div><span className="text-[8px] font-black text-slate-500 uppercase">3D</span></div>
+                          <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-sm bg-[#f59e0b]"></div><span className="text-[8px] font-black text-slate-500 uppercase">Video</span></div>
+                        </div>
+                      </div>
+                      <div className="flex justify-center"><StackedInternalBarChart data={analytics.internalTeamTypeStats} /></div>
+                    </div>
+                    <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex-1">
+                      <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Monthly Trend Summary</h3>
+                      <div className="flex justify-center"><InternalTrendLine data={analytics.monthlyInternalData} /></div>
+                    </div>
+                  </div>
+                </SlideWrapper>
+              );
+            }
+
+            if (slide.type === 'team-project-chart') {
+              const TeamProjectBarChart = ({ data, valKey, color, label }: { data: any[], valKey: string, color: string, label: string }) => {
+                const maxVal = Math.max(...data.map(d => d[valKey]), 1);
+                const W = 1100, H = 125;
+                const padL = 40, padR = 20, padTop = 25, padBot = 30;
+                const chartW = W - padL - padR;
+                const chartH = H - padTop - padBot;
+                const len = Math.max(data.length, 1);
+                const barW = (chartW / len) * 0.4;
+                const gap = chartW / len;
+
+                return (
+                  <div className="flex flex-col items-center w-full">
+                    <div className="text-[9px] font-black uppercase text-slate-400 mb-1 tracking-[0.2em]">{label}</div>
+                    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ overflow: 'visible' }}>
+                      {[0, 1, 2, 3].map(i => {
+                        const gv = (maxVal * i) / 3;
+                        const y = padTop + chartH - (gv / maxVal) * chartH;
+                        return <line key={i} x1={padL} y1={y} x2={W - padR} y2={y} stroke="#f1f5f9" strokeWidth="1" strokeDasharray="4 2" />;
+                      })}
+                      {data.map((d, i) => {
+                        const val = d[valKey];
+                        const bx = padL + i * gap + (gap - barW) / 2;
+                        const bh = (val / maxVal) * chartH;
+                        const by = padTop + chartH - bh;
+                        return (
+                          <g key={i}>
+                            <rect x={bx} y={by} width={barW} height={bh} fill={color} rx="4" />
+                            {val > 0 && <text x={bx + barW/2} y={by - 5} textAnchor="middle" fontSize="10" fill={color} fontWeight="900">{val}</text>}
+                            <text x={bx + barW/2} y={padTop + chartH + 18} textAnchor="middle" fontSize="10" fill="#94a3b8" fontWeight="800">
+                              {d.label.split(' ')[0]}
+                            </text>
+                          </g>
+                        );
+                      })}
+                    </svg>
+                  </div>
+                );
+              };
+
+              return (
+                <SlideWrapper key={slide.id} id={`slide-${index}`} title="TEAM PROJECT ENGAGEMENT">
+                   <div className="flex-1 flex flex-col justify-center gap-4 mt-2">
+                      <div className="bg-white rounded-xl p-3 px-6 shadow-sm border border-slate-100 flex-1 flex flex-col items-center justify-center">
+                         <TeamProjectBarChart data={analytics.teamProjectStats} valKey="picCount" color="#6366f1" label="PIC Involvement Count" />
+                      </div>
+                      <div className="bg-white rounded-xl p-3 px-6 shadow-sm border border-slate-100 flex-1 flex flex-col items-center justify-center">
+                         <TeamProjectBarChart data={analytics.teamProjectStats} valKey="supportCount" color="#ec4899" label="Support Presence Count" />
+                      </div>
+                      <div className="bg-white rounded-xl p-3 px-6 shadow-sm border border-slate-100 flex-1 flex flex-col items-center justify-center">
+                         <TeamProjectBarChart data={analytics.teamProjectStats} valKey="artworkCount" color="#f59e0b" label="Project Artwork Output" />
+                      </div>
+                   </div>
+                </SlideWrapper>
+              );
+            }
+
             if (slide.type === 'project-chart') {
               // SVG bar chart helper
               const SvgBarChart = ({
@@ -1497,20 +1971,15 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
                 const padL = 44, padR = 16, padTop = 36, padBot = 36;
                 const chartW = W - padL - padR;
                 const chartH = H - padTop - padBot;
-                const barW = (chartW / data.length) * 0.55;
-                const gap = chartW / data.length;
+                const len = Math.max(data.length, 1);
+                const barW = (chartW / len) * 0.55;
+                const gap = chartW / len;
 
                 // Y gridlines (0, 1/3, 2/3, max)
                 const gridLines = [0, 1, 2, 3].map(i => maxVal * i / 3);
 
                 return (
                   <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ overflow: 'visible' }}>
-                    <defs>
-                      <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor={colorFrom} />
-                        <stop offset="100%" stopColor={colorTo} />
-                      </linearGradient>
-                    </defs>
 
                     {/* Grid lines + Y labels */}
                     {gridLines.map((gv, gi) => {
@@ -1538,7 +2007,7 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
                           {/* Bar */}
                           {val > 0 && (
                             <rect x={bx} y={by} width={barW} height={bh}
-                              rx="6" ry="6" fill={`url(#${gradId})`} />
+                              rx="6" ry="6" fill={colorFrom} />
                           )}
                           {/* Value label above bar */}
                           {val > 0 && (
