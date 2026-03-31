@@ -55,13 +55,11 @@ const GoogleAdsSummaryContent: React.FC<{ url?: string }> = ({ url }) => {
     const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>({ key: 'clicks', direction: 'desc' });
 
     const fetchData = async () => {
-        // Try to load from cache first for instant feedback if possible
         const cacheKey = `gads_cache_${fetchUrl}`;
         const cached = localStorage.getItem(cacheKey);
         if (cached && loading) {
             try {
                 const { timestamp, data: cachedData } = JSON.parse(cached);
-                // Cache valid for 30 minutes
                 if (Date.now() - timestamp < 30 * 60 * 1000) {
                     setData(cachedData);
                     setLoading(false);
@@ -74,41 +72,43 @@ const GoogleAdsSummaryContent: React.FC<{ url?: string }> = ({ url }) => {
         try {
             let targetUrl = fetchUrl;
             
-            // URL Transformation
-            if (targetUrl.includes('/edit')) {
+            // Standardize URL to use /export?format=csv which is more reliable
+            if (targetUrl.includes('/edit') || targetUrl.includes('/view') || targetUrl.includes('/gviz')) {
                 const gidMatch = targetUrl.match(/[#&?]gid=([0-9]+)/);
                 const gid = gidMatch ? gidMatch[1] : null;
-                targetUrl = targetUrl.replace(/\/edit.*$/, '/gviz/tq?tqx=out:csv');
+                targetUrl = targetUrl.replace(/\/(edit|view|gviz\/tq).*$/, '/export?format=csv');
                 if (gid) targetUrl += `&gid=${gid}`;
             }
 
             const proxyServers = [
-                `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`,
-                `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`,
-                `https://thingproxy.freeboard.io/fetch/${targetUrl}`
+                (url: string) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+                (url: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+                (url: string) => `https://thingproxy.freeboard.io/fetch/${url}`
             ];
 
-            // RACE the proxies for the fastest response
-            const csvText = await Promise.any(proxyServers.map(async (proxyUrl) => {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout per proxy
-                
-                try {
-                    const resp = await fetch(proxyUrl, { cache: 'no-cache', signal: controller.signal });
-                    clearTimeout(timeoutId);
-                    if (!resp.ok) throw new Error("Failed");
-                    const text = await resp.text();
-                    if (text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<html') || text.length < 10) {
-                        throw new Error("Invalid format");
-                    }
-                    return text;
-                } catch (e) {
-                    clearTimeout(timeoutId);
-                    throw e;
-                }
-            }));
+            let csvText = "";
+            let success = false;
+            let lastError = "";
 
-            if (!csvText) throw new Error("No data received");
+            for (const getProxy of proxyServers) {
+                try {
+                    const proxyUrl = getProxy(targetUrl);
+                    const resp = await fetch(proxyUrl, { cache: 'no-cache' });
+                    if (resp.ok) {
+                        csvText = await resp.text();
+                        if (csvText.length > 50 && !csvText.trim().startsWith('<!DOCTYPE') && !csvText.trim().startsWith('<html')) {
+                            success = true;
+                            break;
+                        }
+                    }
+                } catch (e: any) {
+                    lastError = e.message;
+                }
+            }
+
+            if (!success) {
+                throw new Error("Gagal mengambil data. Pastikan spreadsheet dalam status 'Anyone with the link can view' dan cek koneksi.");
+            }
 
             // Robust CSV Parsing with Header Normalization
             const lines = csvText.split(/\r?\n/).filter(line => line.trim() !== "");
