@@ -58,23 +58,61 @@ const GoogleAdsSummaryContent: React.FC<{ url?: string }> = ({ url }) => {
         setLoading(true);
         setError(null);
         try {
-            // Deteksi jika link adalah tipe "edit" atau "sharing" dan ubah menjadi format CSV otomatis
             let targetUrl = fetchUrl;
-            if (targetUrl.includes('/edit')) {
-                // Mengubah /edit... menjadi /gviz/tq?tqx=out:csv agar dapat dibaca sebagai data
-                targetUrl = targetUrl.replace(/\/edit.*$/, '/gviz/tq?tqx=out:csv');
-            }
-
-            const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(targetUrl);
-            const resp = await fetch(proxyUrl);
-            if (!resp.ok) throw new Error("Gagal mengambil data melalui proxy. Pastikan link CSV benar dan sheet publik.");
-            const csvText = await resp.text();
-
-            // Cek jika yang didapat adalah halaman login/HTML alih-alih data CSV
-            if (csvText.trim().startsWith('<!DOCTYPE') || csvText.trim().startsWith('<html')) {
-                throw new Error("Link yang dimasukkan bukan data CSV mentah. Pastikan spreadsheet diatur ke 'Anyone with the link can view'.");
-            }
             
+            // 1. Improved URL Transformation
+            if (targetUrl.includes('/edit')) {
+                // Extracts gid if present to prioritize the correct sheet
+                const gidMatch = targetUrl.match(/[#&?]gid=([0-9]+)/);
+                const gid = gidMatch ? gidMatch[1] : null;
+                
+                // Base transformation for CSV export
+                targetUrl = targetUrl.replace(/\/edit.*$/, '/gviz/tq?tqx=out:csv');
+                
+                // Re-append gid or sheet name if found
+                if (gid) targetUrl += `&gid=${gid}`;
+                else if (targetUrl.includes('sheet=')) {
+                    // if sheet= was already in the URL before it somehow, it stays, but usually it's manually added
+                }
+            }
+
+            // 2. Multi-Proxy Support for better reliability (especially for Vercel/Public deployment)
+            // We use allorigins.win/raw as it's generally more stable than corsproxy.io on cloud environments
+            const proxyServers = [
+                (url: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+                (url: string) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+                (url: string) => `https://thingproxy.freeboard.io/fetch/${url}`
+            ];
+
+            let lastError = "";
+            let success = false;
+            let csvText = "";
+
+            // Try each proxy until one works
+            for (let i = 0; i < proxyServers.length; i++) {
+                try {
+                    const proxyUrl = proxyServers[i](targetUrl);
+                    const resp = await fetch(proxyUrl, { cache: 'no-cache' });
+                    if (resp.ok) {
+                        csvText = await resp.text();
+                        if (csvText.trim().startsWith('<!DOCTYPE') || csvText.trim().startsWith('<html')) {
+                            // This might be a login page or error page from Google
+                            continue; 
+                        }
+                        success = true;
+                        break;
+                    } else {
+                        lastError = `Proxy ${i+1} returned status ${resp.status}`;
+                    }
+                } catch (e: any) {
+                    lastError = `Proxy ${i+1} failed: ${e.message}`;
+                }
+            }
+
+            if (!success) {
+                throw new Error(`Gagal mengambil data: ${lastError || "Semua proxy gagal"}. Pastikan Spreadsheet diatur ke 'Anyone with the link can view' dan cek koneksi.`);
+            }
+
             // Robust CSV Parsing with Header Normalization
             const lines = csvText.split(/\r?\n/).filter(line => line.trim() !== "");
             if (lines.length > 0) {
