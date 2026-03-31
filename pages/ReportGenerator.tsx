@@ -55,63 +55,60 @@ const GoogleAdsSummaryContent: React.FC<{ url?: string }> = ({ url }) => {
     const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>({ key: 'clicks', direction: 'desc' });
 
     const fetchData = async () => {
+        // Try to load from cache first for instant feedback if possible
+        const cacheKey = `gads_cache_${fetchUrl}`;
+        const cached = localStorage.getItem(cacheKey);
+        if (cached && loading) {
+            try {
+                const { timestamp, data: cachedData } = JSON.parse(cached);
+                // Cache valid for 30 minutes
+                if (Date.now() - timestamp < 30 * 60 * 1000) {
+                    setData(cachedData);
+                    setLoading(false);
+                }
+            } catch(e) {}
+        }
+
         setLoading(true);
         setError(null);
         try {
             let targetUrl = fetchUrl;
             
-            // 1. Improved URL Transformation
+            // URL Transformation
             if (targetUrl.includes('/edit')) {
-                // Extracts gid if present to prioritize the correct sheet
                 const gidMatch = targetUrl.match(/[#&?]gid=([0-9]+)/);
                 const gid = gidMatch ? gidMatch[1] : null;
-                
-                // Base transformation for CSV export
                 targetUrl = targetUrl.replace(/\/edit.*$/, '/gviz/tq?tqx=out:csv');
-                
-                // Re-append gid or sheet name if found
                 if (gid) targetUrl += `&gid=${gid}`;
-                else if (targetUrl.includes('sheet=')) {
-                    // if sheet= was already in the URL before it somehow, it stays, but usually it's manually added
-                }
             }
 
-            // 2. Multi-Proxy Support for better reliability (especially for Vercel/Public deployment)
-            // We use allorigins.win/raw as it's generally more stable than corsproxy.io on cloud environments
             const proxyServers = [
-                (url: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-                (url: string) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-                (url: string) => `https://thingproxy.freeboard.io/fetch/${url}`
+                `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`,
+                `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`,
+                `https://thingproxy.freeboard.io/fetch/${targetUrl}`
             ];
 
-            let lastError = "";
-            let success = false;
-            let csvText = "";
-
-            // Try each proxy until one works
-            for (let i = 0; i < proxyServers.length; i++) {
+            // RACE the proxies for the fastest response
+            const csvText = await Promise.any(proxyServers.map(async (proxyUrl) => {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout per proxy
+                
                 try {
-                    const proxyUrl = proxyServers[i](targetUrl);
-                    const resp = await fetch(proxyUrl, { cache: 'no-cache' });
-                    if (resp.ok) {
-                        csvText = await resp.text();
-                        if (csvText.trim().startsWith('<!DOCTYPE') || csvText.trim().startsWith('<html')) {
-                            // This might be a login page or error page from Google
-                            continue; 
-                        }
-                        success = true;
-                        break;
-                    } else {
-                        lastError = `Proxy ${i+1} returned status ${resp.status}`;
+                    const resp = await fetch(proxyUrl, { cache: 'no-cache', signal: controller.signal });
+                    clearTimeout(timeoutId);
+                    if (!resp.ok) throw new Error("Failed");
+                    const text = await resp.text();
+                    if (text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<html') || text.length < 10) {
+                        throw new Error("Invalid format");
                     }
-                } catch (e: any) {
-                    lastError = `Proxy ${i+1} failed: ${e.message}`;
+                    return text;
+                } catch (e) {
+                    clearTimeout(timeoutId);
+                    throw e;
                 }
-            }
+            }));
 
-            if (!success) {
-                throw new Error(`Gagal mengambil data: ${lastError || "Semua proxy gagal"}. Pastikan Spreadsheet diatur ke 'Anyone with the link can view' dan cek koneksi.`);
-            }
+            if (!csvText) throw new Error("No data received");
 
             // Robust CSV Parsing with Header Normalization
             const lines = csvText.split(/\r?\n/).filter(line => line.trim() !== "");
@@ -166,6 +163,7 @@ const GoogleAdsSummaryContent: React.FC<{ url?: string }> = ({ url }) => {
                     return obj;
                 });
                 setData(parsed);
+                localStorage.setItem(cacheKey, JSON.stringify({ timestamp: Date.now(), data: parsed }));
             }
         } catch (err: any) {
             setError(err.message);
