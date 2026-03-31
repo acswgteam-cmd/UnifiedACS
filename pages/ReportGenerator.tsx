@@ -52,7 +52,7 @@ const GoogleAdsSummaryContent: React.FC<{ url?: string }> = ({ url }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
-    const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
+    const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>({ key: 'clicks', direction: 'desc' });
 
     const fetchData = async () => {
         setLoading(true);
@@ -198,18 +198,23 @@ const GoogleAdsSummaryContent: React.FC<{ url?: string }> = ({ url }) => {
     }, [data]);
 
     const filteredData = useMemo(() => {
-        let result = data.filter(item => 
+        let result = [...data].filter(item => 
             (item.keyword || "").toLowerCase().includes(searchTerm.toLowerCase())
         );
-        if (sortConfig) {
-            result.sort((a,b) => {
-                const aVal = a[sortConfig.key];
-                const bVal = b[sortConfig.key];
-                if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
-                if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
-                return 0;
-            });
-        }
+        
+        const config = sortConfig;
+        result.sort((a,b) => {
+            if (config) {
+                const aVal = a[config.key];
+                const bVal = b[config.key];
+                if (aVal < bVal) return config.direction === 'asc' ? -1 : 1;
+                if (aVal > bVal) return config.direction === 'asc' ? 1 : -1;
+            }
+            // Tie-breaker or default sort: Click > Conv > Impr
+            if (b.clicks !== a.clicks) return b.clicks - a.clicks;
+            if (b.conversions !== a.conversions) return b.conversions - a.conversions;
+            return b.impressions - a.impressions;
+        });
         return result;
     }, [data, searchTerm, sortConfig]);
 
@@ -316,7 +321,7 @@ const GoogleAdsSummaryContent: React.FC<{ url?: string }> = ({ url }) => {
                                  <th 
                                    key={h.key} 
                                    onClick={() => requestSort(h.key)}
-                                   className="px-6 py-4 font-black uppercase tracking-widest text-slate-400 cursor-pointer hover:text-indigo-600 transition-colors group"
+                                   className="px-6 py-3 font-bold uppercase tracking-widest text-slate-500 cursor-pointer hover:text-indigo-600 transition-colors group text-[10px]"
                                  >
                                    <div className="flex items-center gap-1.5 justify-between">
                                       {h.label}
@@ -331,11 +336,11 @@ const GoogleAdsSummaryContent: React.FC<{ url?: string }> = ({ url }) => {
                          <tbody className="divide-y divide-slate-50">
                             {filteredData.map((row, idx) => (
                                <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
-                                  <td className="px-6 py-3.5 text-slate-800 font-black uppercase tracking-tight">{row.keyword || '-'}</td>
-                                  <td className="px-6 py-3.5 font-bold text-slate-600">{(row.clicks || 0).toLocaleString('id-ID')}</td>
-                                  <td className="px-6 py-3.5 font-bold text-slate-500">{(row.impressions || 0).toLocaleString('id-ID')}</td>
-                                  <td className="px-6 py-3.5 font-black text-emerald-600">Rp {Math.floor(row.cost || 0).toLocaleString('id-ID')}</td>
-                                  <td className="px-6 py-3.5 text-rose-500 font-extrabold">{(row.conversions || 0).toLocaleString('id-ID')}</td>
+                                  <td className="px-6 py-2.5 text-slate-600 font-bold uppercase tracking-tight text-[10px] leading-tight max-w-[200px] break-words">{row.keyword || '-'}</td>
+                                  <td className="px-6 py-2.5 font-bold text-slate-600">{(row.clicks || 0).toLocaleString('id-ID')}</td>
+                                  <td className="px-6 py-2.5 font-bold text-slate-500">{(row.impressions || 0).toLocaleString('id-ID')}</td>
+                                  <td className="px-6 py-2.5 font-bold text-emerald-600 text-[10px]">Rp {Math.floor(row.cost || 0).toLocaleString('id-ID')}</td>
+                                  <td className="px-6 py-2.5 text-rose-500 font-bold">{(row.conversions || 0).toLocaleString('id-ID')}</td>
                                </tr>
                             ))}
                          </tbody>
