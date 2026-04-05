@@ -60,7 +60,7 @@ class ReportGeneratorErrorBoundary extends React.Component<{children: React.Reac
 
 
 const GoogleAdsSummaryContent: React.FC<{ url?: string }> = ({ url }) => {
-    const defaultUrl = "https://docs.google.com/spreadsheets/d/1TJX3LrTiqhFTpK52UaV_G6Wr5b37mPkVZxB0ezAHNTQ/gviz/tq?tqx=out:csv&sheet=KeywordData";
+    const defaultUrl = "https://docs.google.com/spreadsheets/d/1TJX3LrTiqhfTpK52UaV_G6Wr5b37mPkVZxBOezAHNTQ/export?format=csv&sheet=KeywordData";
     const fetchUrl = url || defaultUrl;
     const [data, setData] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -155,10 +155,10 @@ const GoogleAdsSummaryContent: React.FC<{ url?: string }> = ({ url }) => {
                     const normalized = h.toLowerCase().replace(/[^a-z]/g, '');
                     if (normalized.includes('keyword')) headerMap[h] = 'keyword';
                     else if (normalized.includes('date')) headerMap[h] = 'date';
-                    else if (normalized.includes('clicks')) headerMap[h] = 'clicks';
-                    else if (normalized.includes('impressions')) headerMap[h] = 'impressions';
+                    else if (normalized.includes('click')) headerMap[h] = 'clicks';
+                    else if (normalized.includes('impres')) headerMap[h] = 'impressions';
                     else if (normalized.includes('cost')) headerMap[h] = 'cost';
-                    else if (normalized.includes('conversions')) headerMap[h] = 'conversions';
+                    else if (normalized.includes('conversi')) headerMap[h] = 'conversions';
                     else headerMap[h] = h;
                 });
 
@@ -641,7 +641,7 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
       ...(type === 'title' && { title: titleText }),
       ...(type === 'divider' && { dividerText: dividerText }),
       ...(type === 'team-dashboard' && { nextMoveText: nextMoveText }),
-      ...(type === 'google-ads' && { spreadsheetUrl: 'https://docs.google.com/spreadsheets/d/1TJX3LrTiqhFTpK52UaV_G6Wr5b37mPkVZxB0ezAHNTQ/gviz/tq?tqx=out:csv&sheet=KeywordData' }),
+      ...(type === 'google-ads' && { spreadsheetUrl: 'https://docs.google.com/spreadsheets/d/1TJX3LrTiqhfTpK52UaV_G6Wr5b37mPkVZxBOezAHNTQ/export?format=csv&sheet=KeywordData' }),
       ...(type === 'social-media' && { 
           instagramFollowers: 3785, 
           instagramFollowersPrev: 3620,
