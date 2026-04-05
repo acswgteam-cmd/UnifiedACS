@@ -6,7 +6,7 @@ interface Props {
   state: AppState;
 }
 
-type SlideType = 'title' | 'divider' | 'general-dashboard' | 'team-dashboard' | 'project-dashboard' | 'lead-dashboard' | 'lead-team-dashboard' | 'project-chart' | 'internal-dashboard' | 'internal-chart' | 'team-project-chart' | 'google-ads';
+type SlideType = 'title' | 'divider' | 'general-dashboard' | 'team-dashboard' | 'project-dashboard' | 'lead-dashboard' | 'lead-team-dashboard' | 'project-chart' | 'internal-dashboard' | 'internal-chart' | 'team-project-chart' | 'google-ads' | 'social-media';
 
 interface Slide {
   id: string;
@@ -15,6 +15,20 @@ interface Slide {
   dividerText?: string;
   nextMoveText?: string;
   spreadsheetUrl?: string;
+  instagramFollowers?: number;
+  instagramFollowersPrev?: number;
+  instagramPosts?: number;
+  instagramPostsMonth?: number;
+  instagramPostsMonthPrev?: number;
+  instagramEngagement?: number;
+  instagramEngagementPrev?: number;
+  youtubeSubscribers?: number;
+  youtubeSubscribersPrev?: number;
+  youtubeVideos?: number;
+  youtubeVideosMonth?: number;
+  youtubeVideosMonthPrev?: number;
+  youtubeViews?: number;
+  youtubeViewsPrev?: number;
 }
 
 class ReportGeneratorErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean; error?: any}> {
@@ -54,25 +68,29 @@ const GoogleAdsSummaryContent: React.FC<{ url?: string }> = ({ url }) => {
     const [searchTerm, setSearchTerm] = useState("");
     const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>({ key: 'clicks', direction: 'desc' });
 
-    const fetchData = async () => {
+    const fetchData = async (isRetry = false) => {
         const cacheKey = `gads_cache_${fetchUrl}`;
         const cached = localStorage.getItem(cacheKey);
-        if (cached && loading) {
+        
+        if (cached && !isRetry) {
             try {
                 const { timestamp, data: cachedData } = JSON.parse(cached);
                 if (Date.now() - timestamp < 30 * 60 * 1000) {
                     setData(cachedData);
                     setLoading(false);
+                    return; // Exit early if cache is valid
                 }
             } catch(e) {}
         }
 
         setLoading(true);
         setError(null);
+        console.log(`Starting Ads Fetch: ${fetchUrl}`);
+
         try {
             let targetUrl = fetchUrl;
             
-            // Standardize URL to use /export?format=csv which is more reliable
+            // Standardize URL to use /export?format=csv
             if (targetUrl.includes('/edit') || targetUrl.includes('/view') || targetUrl.includes('/gviz')) {
                 const gidMatch = targetUrl.match(/[#&?]gid=([0-9]+)/);
                 const gid = gidMatch ? gidMatch[1] : null;
@@ -81,41 +99,57 @@ const GoogleAdsSummaryContent: React.FC<{ url?: string }> = ({ url }) => {
             }
 
             const proxyServers = [
-                (url: string) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-                (url: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-                (url: string) => `https://thingproxy.freeboard.io/fetch/${url}`
+                (u: string) => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+                (u: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+                (u: string) => `https://thingproxy.freeboard.io/fetch/${u}`
             ];
 
             let csvText = "";
             let success = false;
-            let lastError = "";
+            let lastErrorMessage = "";
 
-            for (const getProxy of proxyServers) {
+            for (let i = 0; i < proxyServers.length; i++) {
+                const getProxy = proxyServers[i];
+                const proxyUrl = getProxy(targetUrl);
+                console.log(`Trying Proxy ${i+1}: ${proxyUrl}`);
+                
                 try {
-                    const proxyUrl = getProxy(targetUrl);
-                    const resp = await fetch(proxyUrl, { cache: 'no-cache' });
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+                    
+                    const resp = await fetch(proxyUrl, { 
+                        cache: 'no-cache',
+                        signal: controller.signal
+                    });
+                    
+                    clearTimeout(timeoutId);
+                    
                     if (resp.ok) {
                         csvText = await resp.text();
                         if (csvText.length > 50 && !csvText.trim().startsWith('<!DOCTYPE') && !csvText.trim().startsWith('<html')) {
+                            console.log(`Proxy ${i+1} success! CSV length: ${csvText.length}`);
                             success = true;
                             break;
+                        } else {
+                            console.warn(`Proxy ${i+1} returned invalid content format.`);
                         }
+                    } else {
+                        console.warn(`Proxy ${i+1} returned status ${resp.status}`);
                     }
                 } catch (e: any) {
-                    lastError = e.message;
+                    console.error(`Proxy ${i+1} failed:`, e.name === 'AbortError' ? 'Timeout' : e.message);
+                    lastErrorMessage = e.message;
                 }
             }
 
             if (!success) {
-                throw new Error("Gagal mengambil data. Pastikan spreadsheet dalam status 'Anyone with the link can view' dan cek koneksi.");
+                throw new Error("Gagal mengambil data dari Google Sheets. Pastikan spreadsheet dipublikasikan (Anyone with the link can view) dan coba tekan tombol Retry di bawah.");
             }
 
-            // Robust CSV Parsing with Header Normalization
+            // Robust CSV Parsing
             const lines = csvText.split(/\r?\n/).filter(line => line.trim() !== "");
             if (lines.length > 0) {
                 const rawHeaders = lines[0].split(",").map(h => h.trim().replace(/^"|"$/g, ''));
-                
-                // Melakukan normalisasi header agar tahan terhadap perbedaan huruf besar/kecil atau spasi
                 const headerMap: Record<string, string> = {};
                 rawHeaders.forEach(h => {
                     const normalized = h.toLowerCase().replace(/[^a-z]/g, '');
@@ -146,26 +180,21 @@ const GoogleAdsSummaryContent: React.FC<{ url?: string }> = ({ url }) => {
                     rawHeaders.forEach((h, i) => {
                         let val = row[i]?.replace(/^"|"$/g, '') || '';
                         const targetKey = headerMap[h];
-                        
-                        // Membersihkan angka dari simbol mata uang, koma pemisah ribuan, atau spasi
                         if (['clicks', 'impressions', 'cost', 'conversions'].includes(targetKey)) {
-                            // Hapus semua karakter kecuali angka, titik desimal, dan tanda minus
                             const cleanNum = val.replace(/[^0-9.\-]/g, '');
                             obj[targetKey] = parseFloat(cleanNum) || 0;
-                        } else if (targetKey === 'keyword') {
-                            obj['keyword'] = val;
-                        } else if (targetKey === 'date') {
-                            obj['date'] = val;
-                        } else {
-                            obj[h] = val; // fallback ke header asli
-                        }
+                        } else if (targetKey === 'keyword') obj['keyword'] = val;
+                        else if (targetKey === 'date') obj['date'] = val;
+                        else obj[h] = val;
                     });
                     return obj;
                 });
+                
                 setData(parsed);
                 localStorage.setItem(cacheKey, JSON.stringify({ timestamp: Date.now(), data: parsed }));
             }
         } catch (err: any) {
+            console.error("Final Fetch Error:", err);
             setError(err.message);
         } finally {
             setLoading(false);
@@ -230,11 +259,19 @@ const GoogleAdsSummaryContent: React.FC<{ url?: string }> = ({ url }) => {
     );
 
     if (error) return (
-        <div className="flex-1 flex flex-col items-center justify-center h-[540px] text-center p-20 bg-rose-50/30 rounded-3xl border-2 border-dashed border-rose-200">
-            <div className="text-rose-500 text-6xl mb-6">🚫</div>
-            <div className="text-2xl font-black text-slate-800 uppercase tracking-tight">Syncing Service Failed</div>
-            <div className="text-slate-500 font-medium max-w-sm mt-2">{error}</div>
-            <button onClick={fetchData} className="mt-8 px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black shadow-lg transition-all active:scale-95">RETRY CONNECTION</button>
+        <div className="flex-1 flex flex-col items-center justify-center h-[540px] text-center p-20 bg-rose-50/5 rounded-[40px] border-2 border-dashed border-rose-200/50 backdrop-blur-sm relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-br from-rose-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <div className="w-24 h-24 bg-rose-100 rounded-full flex items-center justify-center mb-8 relative z-10">
+                <span className="text-4xl">⚠️</span>
+            </div>
+            <div className="text-2xl font-black text-slate-800 uppercase tracking-tight relative z-10">Syncing Service Failed</div>
+            <div className="text-slate-500 font-medium max-w-sm mt-3 mb-10 text-sm leading-relaxed relative z-10">{error}</div>
+            <button 
+                onClick={() => fetchData(true)} 
+                className="relative z-10 px-10 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black shadow-xl shadow-indigo-200/50 transition-all active:scale-95 flex items-center gap-3 uppercase tracking-widest text-xs"
+            >
+                <span className="text-lg">⟳</span> RETRY CONNECTION
+            </button>
         </div>
     );
 
@@ -267,7 +304,7 @@ const GoogleAdsSummaryContent: React.FC<{ url?: string }> = ({ url }) => {
                          <div className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1">Conversion Trend</div>
                          <div className="text-xl font-black text-slate-800 tracking-tight leading-none">Activity vs Results</div>
                       </div>
-                      <button onClick={fetchData} className="text-[9px] font-black uppercase tracking-wider text-indigo-600 bg-indigo-50/50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg border border-indigo-100/50 transition-colors">⟳ REFRESH</button>
+                      <button onClick={() => fetchData(true)} className="text-[9px] font-black uppercase tracking-wider text-indigo-600 bg-indigo-50/50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg border border-indigo-100/50 transition-colors">⟳ REFRESH</button>
                    </div>
                    <div className="flex-1 w-full -ml-4">
                     <ResponsiveContainer width="100%" height="100%">
@@ -356,6 +393,187 @@ const GoogleAdsSummaryContent: React.FC<{ url?: string }> = ({ url }) => {
     );
 };
 
+const SocialMediaSummaryContent: React.FC<{ 
+  instagramFollowers?: number; 
+  instagramFollowersPrev?: number;
+  instagramPosts?: number; 
+  instagramPostsMonth?: number;
+  instagramPostsMonthPrev?: number;
+  instagramEngagement?: number;
+  instagramEngagementPrev?: number;
+  youtubeSubscribers?: number; 
+  youtubeSubscribersPrev?: number;
+  youtubeVideos?: number;
+  youtubeVideosMonth?: number;
+  youtubeVideosMonthPrev?: number;
+  youtubeViews?: number;
+  youtubeViewsPrev?: number;
+}> = ({ 
+    instagramFollowers = 3785, 
+    instagramFollowersPrev = 3620,
+    instagramPosts = 871, 
+    instagramPostsMonth = 12,
+    instagramPostsMonthPrev = 10,
+    instagramEngagement = 4.2,
+    instagramEngagementPrev = 3.8,
+    youtubeSubscribers = 466, 
+    youtubeSubscribersPrev = 412,
+    youtubeVideos = 337,
+    youtubeVideosMonth = 4,
+    youtubeVideosMonthPrev = 3,
+    youtubeViews = 12400,
+    youtubeViewsPrev = 10800
+}) => {
+    const igGrowth = ((instagramFollowers - instagramFollowersPrev) / instagramFollowersPrev) * 100;
+    const ytGrowth = ((youtubeSubscribers - youtubeSubscribersPrev) / youtubeSubscribersPrev) * 100;
+
+    const ComparisonBadge = ({ current, prev, isPercent = false }: { current: number, prev: number, isPercent?: boolean }) => {
+        const diff = current - prev;
+        if (prev === 0) return null;
+        const growPercent = (diff / prev) * 100;
+        const isUp = diff >= 0;
+        return (
+            <div className={`flex items-center text-[10px] font-bold ${isUp ? 'text-emerald-500' : 'text-rose-500'}`}>
+                {isUp ? '▲' : '▼'} {Math.abs(isPercent ? diff : growPercent).toFixed(1)}{isPercent ? '' : '%'}
+            </div>
+        );
+    };
+
+    return (
+        <div className="flex-1 flex flex-col gap-8 mt-4 w-full h-[540px]">
+             <div className="grid grid-cols-2 gap-8 h-full">
+                {/* Instagram Card */}
+                <div className="bg-white rounded-[32px] p-8 shadow-sm border border-slate-100 flex flex-col relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-500/10 via-pink-500/10 to-orange-500/10 rounded-bl-[100px] -mr-8 -mt-8 transition-transform group-hover:scale-110 duration-700"></div>
+                    <div className="relative z-10 flex flex-col h-full">
+                        <div className="flex items-center gap-4 mb-8">
+                            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-[#f09433] via-[#e6683c] to-[#bc1888] flex items-center justify-center shadow-lg transform -rotate-3 group-hover:rotate-0 transition-transform">
+                                <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4s1.791-4 4-4 4 1.791 4 4-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 className="text-2xl font-bold text-slate-800 tracking-tight">Instagram</h3>
+                                <p className="text-slate-400 font-semibold text-[10px] uppercase tracking-widest leading-none mt-0.5">@werkudaragroup</p>
+                            </div>
+                        </div>
+
+                        <div className="flex-1 flex flex-col justify-center gap-10">
+                            <div>
+                                <div className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400 mb-2">Follower Growth</div>
+                                <div className="text-7xl font-semibold text-slate-800 tracking-tight leading-none flex items-baseline">
+                                    {instagramFollowers.toLocaleString('id-ID')}
+                                    <div className="flex flex-col ml-6">
+                                        <div className="flex items-center text-emerald-500 font-bold text-xl tracking-normal">
+                                            <span className="text-lg mr-1">▲</span>
+                                            <span>+{igGrowth.toFixed(1)}%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="text-[11px] font-semibold text-slate-400 mt-4 flex items-center gap-2 tracking-normal">
+                                    <span>Prev: <b className="text-slate-500">{instagramFollowersPrev.toLocaleString('id-ID')}</b></span>
+                                    <span className="w-1.5 h-1.5 rounded-full bg-slate-200"></span>
+                                    <span className="text-emerald-600 font-bold">+{Math.abs(instagramFollowers - instagramFollowersPrev)} new followers</span>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-100 transition-colors group-hover:bg-white group-hover:shadow-sm">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <div className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Monthly Content</div>
+                                        <ComparisonBadge current={instagramPostsMonth} prev={instagramPostsMonthPrev} />
+                                    </div>
+                                    <div className="text-2xl font-bold text-slate-800 leading-none mb-1 tracking-tight">{instagramPostsMonth} <span className="text-xs text-zinc-400 font-normal tracking-normal">Post</span></div>
+                                    <div className="text-[8px] font-semibold text-slate-400 uppercase tracking-normal">Total: {instagramPosts.toLocaleString('id-ID')} content</div>
+                                </div>
+                                <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-100 transition-colors group-hover:bg-white group-hover:shadow-sm">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <div className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Engagement</div>
+                                        <ComparisonBadge current={instagramEngagement} prev={instagramEngagementPrev} isPercent />
+                                    </div>
+                                    <div className="text-2xl font-bold text-fuchsia-600 leading-none mb-1 tracking-tight">{instagramEngagement.toFixed(1)}%</div>
+                                    <div className="text-[8px] font-semibold text-slate-400 uppercase tracking-normal">Average performance</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="mt-8 pt-8 border-t border-slate-100">
+                            <div className="flex items-center gap-2 text-indigo-600 font-bold text-[9px] uppercase tracking-widest">
+                                <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-pulse"></span>
+                                Data generated for Current period
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* YouTube Card */}
+                <div className="bg-white rounded-[32px] p-8 shadow-sm border border-slate-100 flex flex-col relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-red-500/10 to-orange-500/10 rounded-bl-[100px] -mr-8 -mt-8 transition-transform group-hover:scale-110 duration-700"></div>
+                    <div className="relative z-10 flex flex-col h-full">
+                        <div className="flex items-center gap-4 mb-8">
+                            <div className="w-16 h-16 rounded-2xl bg-red-600 flex items-center justify-center shadow-lg transform rotate-3 group-hover:rotate-0 transition-transform">
+                                <svg className="w-9 h-9 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.377.505 9.377.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 className="text-2xl font-bold text-slate-800 tracking-tight">YouTube</h3>
+                                <p className="text-slate-400 font-semibold text-[10px] uppercase tracking-widest leading-none mt-0.5">Werkudara Group</p>
+                            </div>
+                        </div>
+
+                        <div className="flex-1 flex flex-col justify-center gap-10">
+                            <div>
+                                <div className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400 mb-2">Subscribers Base</div>
+                                <div className="text-7xl font-semibold text-slate-800 tracking-tight leading-none flex items-baseline">
+                                    {youtubeSubscribers.toLocaleString('id-ID')}
+                                    <div className="flex flex-col ml-6">
+                                        <div className="flex items-center text-red-500 font-bold text-xl tracking-normal">
+                                            <span className="text-lg mr-1">▲</span>
+                                            <span>+{ytGrowth.toFixed(1)}%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="text-[11px] font-semibold text-slate-400 mt-4 flex items-center gap-2 tracking-normal">
+                                    <span>Prev: <b className="text-slate-500">{youtubeSubscribersPrev.toLocaleString('id-ID')}</b></span>
+                                    <span className="w-1.5 h-1.5 rounded-full bg-slate-200"></span>
+                                    <span className="text-red-600 font-bold">+{Math.abs(youtubeSubscribers - youtubeSubscribersPrev)} new subscribers</span>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-100 transition-colors group-hover:bg-white group-hover:shadow-sm">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <div className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Monthly Content</div>
+                                        <ComparisonBadge current={youtubeVideosMonth} prev={youtubeVideosMonthPrev} />
+                                    </div>
+                                    <div className="text-2xl font-bold text-slate-800 leading-none mb-1 tracking-tight">{youtubeVideosMonth} <span className="text-xs text-zinc-400 font-normal tracking-normal">Video</span></div>
+                                    <div className="text-[8px] font-semibold text-slate-400 uppercase tracking-normal">Library: {youtubeVideos.toLocaleString('id-ID')} task</div>
+                                </div>
+                                <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-100 transition-colors group-hover:bg-white group-hover:shadow-sm">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <div className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Monthly Views</div>
+                                        <ComparisonBadge current={youtubeViews} prev={youtubeViewsPrev} />
+                                    </div>
+                                    <div className="text-2xl font-bold text-rose-600 leading-none mb-1 tracking-tight">{youtubeViews.toLocaleString('id-ID')}</div>
+                                    <div className="text-[8px] font-semibold text-slate-400 uppercase tracking-normal">Audience reach traffic</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="mt-8 pt-8 border-t border-slate-100">
+                            <div className="flex items-center gap-2 text-red-600 font-bold text-[9px] uppercase tracking-widest">
+                                <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse"></span>
+                                Data generated for Current period
+                            </div>
+                        </div>
+                    </div>
+                </div>
+             </div>
+        </div>
+    );
+};
+
 const ReportGenerator: React.FC<Props> = ({ state }) => {
   const [targetMonth, setTargetMonth] = useState(String(new Date().getMonth() + 1).padStart(2, '0'));  const [targetYear, setTargetYear] = useState(String(new Date().getFullYear()));
   const [isFullYear, setIsFullYear] = useState(false);
@@ -423,7 +641,23 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
       ...(type === 'title' && { title: titleText }),
       ...(type === 'divider' && { dividerText: dividerText }),
       ...(type === 'team-dashboard' && { nextMoveText: nextMoveText }),
-      ...(type === 'google-ads' && { spreadsheetUrl: 'https://docs.google.com/spreadsheets/d/1TJX3LrTiqhFTpK52UaV_G6Wr5b37mPkVZxB0ezAHNTQ/gviz/tq?tqx=out:csv&sheet=KeywordData' })
+      ...(type === 'google-ads' && { spreadsheetUrl: 'https://docs.google.com/spreadsheets/d/1TJX3LrTiqhFTpK52UaV_G6Wr5b37mPkVZxB0ezAHNTQ/gviz/tq?tqx=out:csv&sheet=KeywordData' }),
+      ...(type === 'social-media' && { 
+          instagramFollowers: 3785, 
+          instagramFollowersPrev: 3620,
+          instagramPosts: 871, 
+          instagramPostsMonth: 12,
+          instagramPostsMonthPrev: 10,
+          instagramEngagement: 4.2,
+          instagramEngagementPrev: 3.8,
+          youtubeSubscribers: 466, 
+          youtubeSubscribersPrev: 412,
+          youtubeVideos: 337,
+          youtubeVideosMonth: 4,
+          youtubeVideosMonthPrev: 3,
+          youtubeViews: 12400,
+          youtubeViewsPrev: 10800
+      })
     };
     
     setSlides(prev => {
@@ -1201,6 +1435,7 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
                   { type: 'team-project-chart' as SlideType, label: 'Team Project Engagement', cls: 'bg-sky-50 hover:bg-sky-100 text-sky-700 disabled:bg-slate-50 disabled:text-slate-300 disabled:cursor-not-allowed' },
                   { type: 'project-chart' as SlideType, label: 'Project Chart', cls: 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 disabled:bg-slate-50 disabled:text-slate-300 disabled:cursor-not-allowed' },
                   { type: 'google-ads' as SlideType, label: 'Google Ads Summary', cls: 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700' },
+                  { type: 'social-media' as SlideType, label: 'Social Media Stats', cls: 'bg-pink-50 hover:bg-pink-100 text-pink-700' },
                 ] as { type: SlideType; label: string; cls: string }[]
               ).map(({ type, label, cls }) => {
                 const isOnce = type !== 'divider';
@@ -1252,6 +1487,141 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
                              onChange={(e) => updateSlide(slide.id, { spreadsheetUrl: e.target.value })}
                              placeholder="Paste CSV link here..."
                            />
+                        </div>
+                      )}
+                      {slide.type === 'social-media' && (
+                        <div className="mt-2 grid grid-cols-2 gap-x-2 gap-y-2">
+                           <div className="flex flex-col">
+                              <label className="text-[7px] font-bold uppercase text-zinc-400">IG Followers</label>
+                              <input 
+                                type="number"
+                                className="text-[9px] font-bold text-pink-600 bg-pink-50/50 rounded px-1 py-0.5 border border-pink-100 focus:ring-1 focus:ring-pink-300 focus:outline-none w-full"
+                                value={slide.instagramFollowers || 0}
+                                onChange={(e) => updateSlide(slide.id, { instagramFollowers: parseInt(e.target.value) || 0 })}
+                              />
+                           </div>
+                           <div className="flex flex-col">
+                              <label className="text-[7px] font-bold uppercase text-zinc-400">IG Follow Prev</label>
+                              <input 
+                                type="number"
+                                className="text-[9px] font-bold text-zinc-600 bg-zinc-50/50 rounded px-1 py-0.5 border border-zinc-100 focus:ring-1 focus:ring-zinc-300 focus:outline-none w-full"
+                                value={slide.instagramFollowersPrev || 0}
+                                onChange={(e) => updateSlide(slide.id, { instagramFollowersPrev: parseInt(e.target.value) || 0 })}
+                              />
+                           </div>
+                           <div className="flex flex-col">
+                              <label className="text-[7px] font-bold uppercase text-zinc-400">IG Posts (Total)</label>
+                              <input 
+                                type="number"
+                                className="text-[9px] font-bold text-pink-600 bg-pink-50/50 rounded px-1 py-0.5 border border-pink-100 focus:ring-1 focus:ring-pink-300 focus:outline-none w-full"
+                                value={slide.instagramPosts || 0}
+                                onChange={(e) => updateSlide(slide.id, { instagramPosts: parseInt(e.target.value) || 0 })}
+                              />
+                           </div>
+                           <div className="flex flex-col">
+                              <label className="text-[7px] font-bold uppercase text-zinc-400">IG Posts (This Month)</label>
+                              <input 
+                                type="number"
+                                className="text-[9px] font-bold text-pink-600 bg-pink-50/50 rounded px-1 py-0.5 border border-pink-100 focus:ring-1 focus:ring-pink-300 focus:outline-none w-full"
+                                value={slide.instagramPostsMonth || 0}
+                                onChange={(e) => updateSlide(slide.id, { instagramPostsMonth: parseInt(e.target.value) || 0 })}
+                              />
+                           </div>
+                           <div className="flex flex-col">
+                              <label className="text-[7px] font-bold uppercase text-zinc-400">IG Posts (Last Month)</label>
+                              <input 
+                                type="number"
+                                className="text-[9px] font-bold text-zinc-600 bg-zinc-50/50 rounded px-1 py-0.5 border border-zinc-100 focus:ring-1 focus:ring-zinc-300 focus:outline-none w-full"
+                                value={slide.instagramPostsMonthPrev || 0}
+                                onChange={(e) => updateSlide(slide.id, { instagramPostsMonthPrev: parseInt(e.target.value) || 0 })}
+                              />
+                           </div>
+                           <div className="flex flex-col">
+                              <label className="text-[7px] font-bold uppercase text-zinc-400">IG Eng% (Current)</label>
+                              <input 
+                                type="number"
+                                step="0.1"
+                                className="text-[9px] font-bold text-pink-600 bg-pink-50/50 rounded px-1 py-0.5 border border-pink-100 focus:ring-1 focus:ring-pink-300 focus:outline-none w-full"
+                                value={slide.instagramEngagement || 0}
+                                onChange={(e) => updateSlide(slide.id, { instagramEngagement: parseFloat(e.target.value) || 0 })}
+                              />
+                           </div>
+                           <div className="flex flex-col">
+                              <label className="text-[7px] font-bold uppercase text-zinc-400">IG Eng% (Prev)</label>
+                              <input 
+                                type="number"
+                                step="0.1"
+                                className="text-[9px] font-bold text-zinc-600 bg-zinc-50/50 rounded px-1 py-0.5 border border-zinc-100 focus:ring-1 focus:ring-zinc-300 focus:outline-none w-full"
+                                value={slide.instagramEngagementPrev || 0}
+                                onChange={(e) => updateSlide(slide.id, { instagramEngagementPrev: parseFloat(e.target.value) || 0 })}
+                              />
+                           </div>
+
+                           <div className="col-span-2 my-1 border-t border-zinc-100"></div>
+
+                           <div className="flex flex-col">
+                              <label className="text-[7px] font-bold uppercase text-zinc-400">YT Subs</label>
+                              <input 
+                                type="number"
+                                className="text-[9px] font-bold text-red-600 bg-red-50/50 rounded px-1 py-0.5 border border-red-100 focus:ring-1 focus:ring-red-300 focus:outline-none w-full"
+                                value={slide.youtubeSubscribers || 0}
+                                onChange={(e) => updateSlide(slide.id, { youtubeSubscribers: parseInt(e.target.value) || 0 })}
+                              />
+                           </div>
+                           <div className="flex flex-col">
+                              <label className="text-[7px] font-bold uppercase text-zinc-400">YT Subs Prev</label>
+                              <input 
+                                type="number"
+                                className="text-[9px] font-bold text-zinc-600 bg-zinc-50/50 rounded px-1 py-0.5 border border-zinc-100 focus:ring-1 focus:ring-zinc-300 focus:outline-none w-full"
+                                value={slide.youtubeSubscribersPrev || 0}
+                                onChange={(e) => updateSlide(slide.id, { youtubeSubscribersPrev: parseInt(e.target.value) || 0 })}
+                              />
+                           </div>
+                           <div className="flex flex-col">
+                              <label className="text-[7px] font-bold uppercase text-zinc-400">YT Videos (Total)</label>
+                              <input 
+                                type="number"
+                                className="text-[9px] font-bold text-red-600 bg-red-50/50 rounded px-1 py-0.5 border border-red-100 focus:ring-1 focus:ring-red-300 focus:outline-none w-full"
+                                value={slide.youtubeVideos || 0}
+                                onChange={(e) => updateSlide(slide.id, { youtubeVideos: parseInt(e.target.value) || 0 })}
+                              />
+                           </div>
+                           <div className="flex flex-col">
+                              <label className="text-[7px] font-bold uppercase text-zinc-400">YT Videos (Month)</label>
+                              <input 
+                                type="number"
+                                className="text-[9px] font-bold text-red-600 bg-red-50/50 rounded px-1 py-0.5 border border-red-100 focus:ring-1 focus:ring-red-300 focus:outline-none w-full"
+                                value={slide.youtubeVideosMonth || 0}
+                                onChange={(e) => updateSlide(slide.id, { youtubeVideosMonth: parseInt(e.target.value) || 0 })}
+                              />
+                           </div>
+                           <div className="flex flex-col">
+                              <label className="text-[7px] font-bold uppercase text-zinc-400">YT Videos (Prev Month)</label>
+                              <input 
+                                type="number"
+                                className="text-[9px] font-bold text-zinc-600 bg-zinc-50/50 rounded px-1 py-0.5 border border-zinc-100 focus:ring-1 focus:ring-zinc-300 focus:outline-none w-full"
+                                value={slide.youtubeVideosMonthPrev || 0}
+                                onChange={(e) => updateSlide(slide.id, { youtubeVideosMonthPrev: parseInt(e.target.value) || 0 })}
+                              />
+                           </div>
+                           <div className="flex flex-col">
+                              <label className="text-[7px] font-bold uppercase text-zinc-400">YT Views (Current)</label>
+                              <input 
+                                type="number"
+                                className="text-[9px] font-bold text-red-600 bg-red-50/50 rounded px-1 py-0.5 border border-red-100 focus:ring-1 focus:ring-red-300 focus:outline-none w-full"
+                                value={slide.youtubeViews || 0}
+                                onChange={(e) => updateSlide(slide.id, { youtubeViews: parseInt(e.target.value) || 0 })}
+                              />
+                           </div>
+                           <div className="flex flex-col">
+                              <label className="text-[7px] font-bold uppercase text-zinc-400">YT Views (Prev)</label>
+                              <input 
+                                type="number"
+                                className="text-[9px] font-bold text-zinc-600 bg-zinc-50/50 rounded px-1 py-0.5 border border-zinc-100 focus:ring-1 focus:ring-zinc-300 focus:outline-none w-full"
+                                value={slide.youtubeViewsPrev || 0}
+                                onChange={(e) => updateSlide(slide.id, { youtubeViewsPrev: parseInt(e.target.value) || 0 })}
+                              />
+                           </div>
                         </div>
                       )}
                     </div>
@@ -2428,6 +2798,29 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
               return (
                 <SlideWrapper key={slide.id} id={`slide-${index}`} title="SEARCH TERM PERFORMANCE">
                   <GoogleAdsSummaryContent url={slide.spreadsheetUrl} />
+                </SlideWrapper>
+              );
+            }
+
+            if (slide.type === 'social-media') {
+              return (
+                <SlideWrapper key={slide.id} id={`slide-${index}`} title="SOCIAL MEDIA PERFORMANCE">
+                  <SocialMediaSummaryContent 
+                    instagramFollowers={slide.instagramFollowers}
+                    instagramFollowersPrev={slide.instagramFollowersPrev}
+                    instagramPosts={slide.instagramPosts}
+                    instagramPostsMonth={slide.instagramPostsMonth}
+                    instagramPostsMonthPrev={slide.instagramPostsMonthPrev}
+                    instagramEngagement={slide.instagramEngagement}
+                    instagramEngagementPrev={slide.instagramEngagementPrev}
+                    youtubeSubscribers={slide.youtubeSubscribers}
+                    youtubeSubscribersPrev={slide.youtubeSubscribersPrev}
+                    youtubeVideos={slide.youtubeVideos}
+                    youtubeVideosMonth={slide.youtubeVideosMonth}
+                    youtubeVideosMonthPrev={slide.youtubeVideosMonthPrev}
+                    youtubeViews={slide.youtubeViews}
+                    youtubeViewsPrev={slide.youtubeViewsPrev}
+                  />
                 </SlideWrapper>
               );
             }
