@@ -393,44 +393,114 @@ const GoogleAdsSummaryContent: React.FC<{ url?: string }> = ({ url }) => {
     );
 };
 
-const SocialMediaSummaryContent: React.FC<{ 
-  instagramFollowers?: number; 
-  instagramFollowersPrev?: number;
-  instagramPosts?: number; 
-  instagramPostsMonth?: number;
-  instagramPostsMonthPrev?: number;
-  instagramEngagement?: number;
-  instagramEngagementPrev?: number;
-  youtubeSubscribers?: number; 
-  youtubeSubscribersPrev?: number;
-  youtubeVideos?: number;
-  youtubeVideosMonth?: number;
-  youtubeVideosMonthPrev?: number;
-  youtubeViews?: number;
-  youtubeViewsPrev?: number;
-}> = ({ 
-    instagramFollowers = 3785, 
-    instagramFollowersPrev = 3620,
-    instagramPosts = 871, 
-    instagramPostsMonth = 12,
-    instagramPostsMonthPrev = 10,
-    instagramEngagement = 4.2,
-    instagramEngagementPrev = 3.8,
-    youtubeSubscribers = 466, 
-    youtubeSubscribersPrev = 412,
-    youtubeVideos = 337,
-    youtubeVideosMonth = 4,
-    youtubeVideosMonthPrev = 3,
-    youtubeViews = 12400,
-    youtubeViewsPrev = 10800
-}) => {
+const SocialMediaSummaryContent: React.FC<{ slide: Slide, onUpdate: (data: Partial<Slide>) => void }> = ({ slide, onUpdate }) => {
+    const [isSyncing, setIsSyncing] = useState(false);
+    const [syncError, setSyncError] = useState<string | null>(null);
+
+    const {
+        instagramFollowers = 3785,
+        instagramFollowersPrev = 3620,
+        instagramPosts = 871,
+        instagramPostsMonth = 12,
+        instagramPostsMonthPrev = 10,
+        instagramEngagement = 4.2,
+        instagramEngagementPrev = 3.8,
+        youtubeSubscribers = 466,
+        youtubeSubscribersPrev = 412,
+        youtubeVideos = 337,
+        youtubeVideosMonth = 4,
+        youtubeVideosMonthPrev = 3,
+        youtubeViews = 12400,
+        youtubeViewsPrev = 10800
+    } = slide;
+
+    const syncSocialData = async () => {
+        setIsSyncing(true);
+        setSyncError(null);
+        console.log("Starting Social Media Sync...");
+
+        const proxies = [
+            (u: string) => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+            (u: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`
+        ];
+
+        let newData: Partial<Slide> = {};
+
+        try {
+            // 1. Fetch Instagram
+            const igUrl = "https://www.instagram.com/werkudaragroup/";
+            for (const getProxy of proxies) {
+                try {
+                    const resp = await fetch(getProxy(igUrl));
+                    if (resp.ok) {
+                        const html = await resp.text();
+                        const metaMatch = html.match(/<meta content="([^"]+)" name="description"/i);
+                        if (metaMatch) {
+                            const content = metaMatch[1];
+                            const followers = content.match(/([\d,.]+)\s*Followers/i)?.[1]?.replace(/[,.]/g, '');
+                            const posts = content.match(/([\d,.]+)\s*Posts/i)?.[1]?.replace(/[,.]/g, '');
+                            
+                            if (followers) newData.instagramFollowers = parseInt(followers);
+                            if (posts) newData.instagramPosts = parseInt(posts);
+                            console.log("IG Sync Success:", newData.instagramFollowers, newData.instagramPosts);
+                            break;
+                        }
+                    }
+                } catch (e) {}
+            }
+
+            // 2. Fetch YouTube
+            const ytUrl = "https://www.youtube.com/@werkudaragroup";
+            for (const getProxy of proxies) {
+                try {
+                    const resp = await fetch(getProxy(ytUrl));
+                    if (resp.ok) {
+                        const html = await resp.text();
+                        const subMatch = html.match(/"subscriberCountText":\{"simpleText":"([^"]+)"\}/);
+                        const videoMatch = html.match(/"videoCountText":\{"simpleText":"([^"]+)"\}/);
+
+                        if (subMatch) {
+                            const subText = subMatch[1];
+                            const subs = subText.match(/([\d,.]+)/)?.[1]?.replace(/[,.]/g, '');
+                            if (subs) newData.youtubeSubscribers = parseInt(subs);
+                        }
+                        if (videoMatch) {
+                            const videoText = videoMatch[1];
+                            const videos = videoText.match(/([\d,.]+)/)?.[1]?.replace(/[,.]/g, '');
+                            if (videos) newData.youtubeVideos = parseInt(videos);
+                        }
+                        
+                        if (subMatch || videoMatch) {
+                            console.log("YT Sync Success:", newData.youtubeSubscribers, newData.youtubeVideos);
+                            break;
+                        }
+                    }
+                } catch (e) {}
+            }
+
+            if (Object.keys(newData).length > 0) {
+                onUpdate(newData);
+            } else {
+                throw new Error("Gagal mengambil data. Cek koneksi atau coba lagi nanti.");
+            }
+        } catch (err: any) {
+            setSyncError(err.message);
+        } finally {
+            setIsSyncing(false);
+        }
+    };
+
+    useEffect(() => {
+        // Auto-sync on mount to fulfill the "automatic" requirement
+        syncSocialData();
+    }, []);
+
     const igGrowth = ((instagramFollowers - instagramFollowersPrev) / instagramFollowersPrev) * 100;
     const ytGrowth = ((youtubeSubscribers - youtubeSubscribersPrev) / youtubeSubscribersPrev) * 100;
 
     const ComparisonBadge = ({ current, prev, isPercent = false }: { current: number, prev: number, isPercent?: boolean }) => {
         const diff = current - prev;
-        if (prev === 0) return null;
-        const growPercent = (diff / prev) * 100;
+        const growPercent = prev > 0 ? (diff / prev) * 100 : 0;
         const isUp = diff >= 0;
         return (
             <div className={`flex items-center text-[10px] font-bold ${isUp ? 'text-emerald-500' : 'text-rose-500'}`}>
@@ -440,8 +510,16 @@ const SocialMediaSummaryContent: React.FC<{
     };
 
     return (
-        <div className="flex-1 flex flex-col gap-8 mt-4 w-full h-[540px]">
-             <div className="grid grid-cols-2 gap-8 h-full">
+        <div className="flex-1 flex flex-col gap-5 mt-4 w-full h-[540px] relative">
+            {/* Sync Overlay/Indicator */}
+            {isSyncing && (
+                <div className="absolute inset-0 z-50 bg-white/60 backdrop-blur-[2px] rounded-3xl flex flex-col items-center justify-center transition-all duration-500">
+                    <div className="w-16 h-16 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
+                    <div className="text-xs font-black text-indigo-600 uppercase tracking-widest animate-pulse">Syncing Social Data...</div>
+                </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-8 h-full">
                 {/* Instagram Card */}
                 <div className="bg-white rounded-[32px] p-8 shadow-sm border border-slate-100 flex flex-col relative overflow-hidden group">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-500/10 via-pink-500/10 to-orange-500/10 rounded-bl-[100px] -mr-8 -mt-8 transition-transform group-hover:scale-110 duration-700"></div>
@@ -497,11 +575,18 @@ const SocialMediaSummaryContent: React.FC<{
                             </div>
                         </div>
 
-                        <div className="mt-8 pt-8 border-t border-slate-100">
+                        <div className="mt-8 pt-6 border-t border-slate-100 flex justify-between items-center">
                             <div className="flex items-center gap-2 text-indigo-600 font-bold text-[9px] uppercase tracking-widest">
-                                <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-pulse"></span>
-                                Data generated for Current period
+                                <span className={`w-1.5 h-1.5 rounded-full ${isSyncing ? 'bg-indigo-400 animate-ping' : 'bg-indigo-600'}`}></span>
+                                {isSyncing ? 'Auto-Sync Active' : 'Data Synced from Cloud'}
                             </div>
+                            <button 
+                                onClick={syncSocialData}
+                                disabled={isSyncing}
+                                className="text-[9px] font-black text-slate-400 hover:text-indigo-600 tracking-widest uppercase transition-colors"
+                            >
+                                {isSyncing ? '...' : '⟳ Sync Live'}
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -561,11 +646,12 @@ const SocialMediaSummaryContent: React.FC<{
                             </div>
                         </div>
 
-                        <div className="mt-8 pt-8 border-t border-slate-100">
+                        <div className="mt-8 pt-6 border-t border-slate-100 flex justify-between items-center">
                             <div className="flex items-center gap-2 text-red-600 font-bold text-[9px] uppercase tracking-widest">
-                                <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse"></span>
-                                Data generated for Current period
+                                <span className={`w-1.5 h-1.5 rounded-full ${isSyncing ? 'bg-red-400 animate-ping' : 'bg-red-600'}`}></span>
+                                {isSyncing ? 'Syncing...' : 'Verified Performance'}
                             </div>
+                            {syncError && <span className="text-[8px] text-rose-500 font-bold max-w-[120px] truncate">{syncError}</span>}
                         </div>
                     </div>
                 </div>
@@ -1938,14 +2024,14 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
                             const isBestDur = parseFloat(ds.avgLeadDur) === bestDur && bestDur < 999;
 
                             return (
-                              <div key={idx} className="flex px-4 items-center hover:bg-slate-50/30 transition-colors py-1">
-                                <div className="w-[180px] px-2 flex items-center gap-2">
-                                     <div className={`w-7 h-7 shrink-0 rounded-full ${isTopArtworks ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'} flex items-center justify-center font-black text-xs uppercase shadow-sm`}>
+                              <div key={idx} className="flex px-4 items-center hover:bg-slate-50/30 transition-colors py-3.5">
+                                <div className="w-[180px] px-2 flex items-center gap-3">
+                                     <div className={`w-9 h-9 shrink-0 rounded-full ${isTopArtworks ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'} flex items-center justify-center font-black text-sm uppercase shadow-sm`}>
                                        {ds.name.charAt(0)}
                                      </div>
-                                     <div className="flex flex-col min-w-0 pb-1">
-                                        <div className="font-black text-slate-800 text-[11px] tracking-tight truncate uppercase leading-tight mt-1">{ds.name}</div>
-                                        <div className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter truncate leading-tight">{ds.role || 'Personnel'}</div>
+                                     <div className="flex flex-col min-w-0">
+                                        <div className="font-black text-slate-800 text-[13px] tracking-tight truncate uppercase leading-tight">{ds.name}</div>
+                                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-normal truncate leading-tight mt-0.5">{ds.role || 'Personnel'}</div>
                                      </div>
                                 </div>
                                 <div className="w-[80px] px-2 flex justify-center">
@@ -2022,17 +2108,17 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
                             const hasAnyMax = isMaxLeads || isMaxArtworks || isMaxDuration;
 
                             return (
-                              <div key={dIdx} className="flex border-b border-slate-50 last:border-0 hover:bg-slate-50/50 transition-colors">
-                                <div className="flex-1 py-3 px-6 flex items-center gap-3">
-                                     <div className={`w-8 h-8 shrink-0 rounded-full ${hasAnyMax ? 'bg-amber-100 text-amber-600 border border-amber-200' : 'bg-orange-100 text-orange-600'} flex items-center justify-center font-black text-sm uppercase shadow-sm`}>
+                              <div key={dIdx} className="flex border-b border-slate-50 last:border-0 hover:bg-slate-50/50 transition-colors py-2">
+                                <div className="flex-1 py-4 px-6 flex items-center gap-4">
+                                     <div className={`w-11 h-11 shrink-0 rounded-full ${hasAnyMax ? 'bg-amber-100 text-amber-600 border border-amber-200' : 'bg-orange-100 text-orange-600'} flex items-center justify-center font-black text-lg uppercase shadow-sm`}>
                                        {d.name.charAt(0)}
                                      </div>
                                      <div className="flex flex-col min-w-0">
                                         <div className="flex items-center gap-1.5">
-                                          <span className="font-black text-slate-800 text-sm tracking-tight leading-none uppercase">{d.name}</span>
-                                          {hasAnyMax && <span className="text-amber-500 text-xs" title="Top Performer">👑</span>}
+                                          <span className="font-black text-slate-800 text-base tracking-tight leading-none uppercase">{d.name}</span>
+                                          {hasAnyMax && <span className="text-amber-500 text-sm" title="Top Performer">👑</span>}
                                         </div>
-                                        <div className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider truncate">{d.role || 'Personnel'}</div>
+                                        <div className="text-xs font-bold text-slate-400 mt-1.5 uppercase tracking-wider truncate">{d.role || 'Personnel'}</div>
                                      </div>
                                 </div>
                                 <div className="w-[160px] py-3 px-6 flex flex-col items-center justify-center">
@@ -2806,20 +2892,8 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
               return (
                 <SlideWrapper key={slide.id} id={`slide-${index}`} title="SOCIAL MEDIA PERFORMANCE">
                   <SocialMediaSummaryContent 
-                    instagramFollowers={slide.instagramFollowers}
-                    instagramFollowersPrev={slide.instagramFollowersPrev}
-                    instagramPosts={slide.instagramPosts}
-                    instagramPostsMonth={slide.instagramPostsMonth}
-                    instagramPostsMonthPrev={slide.instagramPostsMonthPrev}
-                    instagramEngagement={slide.instagramEngagement}
-                    instagramEngagementPrev={slide.instagramEngagementPrev}
-                    youtubeSubscribers={slide.youtubeSubscribers}
-                    youtubeSubscribersPrev={slide.youtubeSubscribersPrev}
-                    youtubeVideos={slide.youtubeVideos}
-                    youtubeVideosMonth={slide.youtubeVideosMonth}
-                    youtubeVideosMonthPrev={slide.youtubeVideosMonthPrev}
-                    youtubeViews={slide.youtubeViews}
-                    youtubeViewsPrev={slide.youtubeViewsPrev}
+                    slide={slide}
+                    onUpdate={(data) => updateSlide(slide.id, data)}
                   />
                 </SlideWrapper>
               );
