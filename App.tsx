@@ -16,6 +16,62 @@ import ReportGenerator from './pages/ReportGenerator';
 import { supabase, isSupabaseConfigured } from './lib/supabase';
 import { INITIAL_STATE } from './data/mockData';
 
+// ─── SVG Icons ────────────────────────────────────────────────────────────────
+const IconDashboard = () => (
+  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" />
+    <rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" />
+  </svg>
+);
+const IconArtwork = () => (
+  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 20h9" /><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z" />
+  </svg>
+);
+const IconDept = () => (
+  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" />
+  </svg>
+);
+const IconTeam = () => (
+  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
+    <path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
+  </svg>
+);
+const IconProject = () => (
+  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+  </svg>
+);
+const IconLead = () => (
+  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+  </svg>
+);
+const IconInternal = () => (
+  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+  </svg>
+);
+const IconReport = () => (
+  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
+    <line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" />
+  </svg>
+);
+const IconChevronLeft = () => (
+  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="15 18 9 12 15 6" />
+  </svg>
+);
+const IconChevronRight = () => (
+  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="9 18 15 12 9 6" />
+  </svg>
+);
+
+// ─── App ──────────────────────────────────────────────────────────────────────
 const App: React.FC = () => {
   const [useDemoMode, setUseDemoMode] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -37,21 +93,10 @@ const App: React.FC = () => {
   const fetchData = async () => {
     if (!supabase || useDemoMode) return;
     try {
-      // Increased limits to 50,000 to prevent data cutoff (default is 1,000)
       const MAX_ROWS = 50000;
-
       const [
-        designersRes,
-        departmentsRes,
-        projectsRes,
-        leadsRes,
-        internalRes,
-        logsRes,
-        surveysRes,
-        designerEvalsRes,
-        checklistsRes,
-        templatesRes,
-        templateItemsRes
+        designersRes, departmentsRes, projectsRes, leadsRes, internalRes,
+        logsRes, surveysRes, designerEvalsRes, checklistsRes, templatesRes, templateItemsRes
       ] = await Promise.all([
         supabase.from('designers').select('*').order('name'),
         supabase.from('departments').select('*').order('department_name'),
@@ -65,7 +110,6 @@ const App: React.FC = () => {
         supabase.from('checklist_templates').select('*').order('name'),
         supabase.from('checklist_template_items').select('*').order('created_at')
       ]);
-
       setState({
         designers: designersRes.data || [],
         departments: departmentsRes.data || [],
@@ -80,11 +124,10 @@ const App: React.FC = () => {
         checklistTemplateItems: templateItemsRes.data || []
       });
     } catch (error) {
-      console.error("Fetch error:", error);
+      console.error('Fetch error:', error);
     }
   };
 
-  // Initial Load
   useEffect(() => {
     if (isSupabaseConfigured && !useDemoMode) {
       setLoading(true);
@@ -94,167 +137,199 @@ const App: React.FC = () => {
     }
   }, [useDemoMode]);
 
-  // REALTIME SUBSCRIPTION setup
   useEffect(() => {
     if (!supabase || useDemoMode) return;
-
-    // Subscribe to all changes in the 'public' schema
     const channel = supabase.channel('db-changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public' },
-        (payload) => {
-          console.log('Realtime change detected:', payload);
-          fetchData(); // Trigger data refresh automatically
-        }
-      )
+      .on('postgres_changes', { event: '*', schema: 'public' }, () => fetchData())
       .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [useDemoMode]);
 
-  if (!isSupabaseConfigured && !useDemoMode) {
-    return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6">
-        <div className="max-w-xl w-full bg-white rounded-3xl shadow-2xl p-10 border-t-8 border-rose-500 animate-in fade-in zoom-in duration-300">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 bg-rose-100 text-rose-600 rounded-2xl flex items-center justify-center text-2xl">⚠️</div>
-            <h1 className="text-2xl font-black text-slate-900">Database Connection Error</h1>
-          </div>
-          <p className="text-slate-600 mb-6 font-medium leading-relaxed">
-            Aplikasi tidak dapat menemukan kredensial database. Pastikan <strong>Environment Variables</strong> sudah terpasang.
-          </p>
-          <div className="space-y-4">
-            <button onClick={() => window.location.reload()} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold">Refresh</button>
-            <button onClick={() => { setState({ ...INITIAL_STATE }); setUseDemoMode(true); }} className="w-full py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold">Demo Mode</button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
+  // ─── Handlers ───────────────────────────────────────────────────────────────
   const handleAddLog = async (log: Omit<ArtworkLog, 'id'>) => {
     if (useDemoMode || !supabase) return;
     const { error } = await supabase.from('artwork_logs').insert([log]);
     if (error) alert(`Error: ${error.message}`);
     else fetchData();
   };
-
   const handleUpdateLog = async (log: ArtworkLog) => {
     if (useDemoMode || !supabase) return;
     const { error } = await supabase.from('artwork_logs').update(log).eq('id', log.id);
     if (error) alert(`Update failed: ${error.message}`);
     else fetchData();
   };
-
   const handleDeleteLog = async (id: string) => {
-    if (useDemoMode || !supabase || !confirm("Hapus?")) return;
+    if (useDemoMode || !supabase || !confirm('Hapus log ini?')) return;
     const { error } = await supabase.from('artwork_logs').delete().eq('id', id);
     if (error) alert(`Hapus gagal: ${error.message}`);
     else fetchData();
   };
 
-  // SVGs for Icons - Solid White
-  const icons = {
-    dashboard: <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M2 10a8 8 0 018-8v8h8a8 8 0 11-16 0z" /><path d="M12 2.252A8.014 8.014 0 0117.748 8H12V2.252z" /></svg>,
-    artwork: <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" /></svg>,
-    dept: <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 110 2h-3a1 1 0 01-1-1v-2a1 1 0 00-1-1H9a1 1 0 00-1 1v2a1 1 0 01-1 1H4a1 1 0 110-2V4zm3 1h2v2H7V5zm2 4H7v2h2V9zm2-4h2v2h-2V5zm2 4h-2v2h2V9z" clipRule="evenodd" /></svg>,
-    team: <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" /></svg>,
-    project: <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M2 5a2 2 0 012-2h8a2 2 0 012 2v10a2 2 0 002 2H4a2 2 0 01-2-2V5zm3 1h6v4H5V6zm6 6H5v2h6v-2z" clipRule="evenodd" /><path d="M15 7h1a2 2 0 012 2v5.5a1.5 1.5 0 01-3 0V7z" /></svg>,
-    lead: <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" /></svg>,
-    internal: <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" /></svg>,
-    report: <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" /></svg>
-  };
+  // ─── DB Error Screen ─────────────────────────────────────────────────────────
+  if (!isSupabaseConfigured && !useDemoMode) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6" style={{ backgroundColor: 'var(--color-bg)' }}>
+        <div className="card p-10 max-w-lg w-full animate-scale-in" style={{ borderTop: '3px solid var(--color-error)' }}>
+          <div className="flex items-start gap-4 mb-6">
+            <div className="w-10 h-10 rounded-panel flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#fee2e2', color: 'var(--color-error)' }}>
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </div>
+            <div>
+              <h1 className="font-display text-xl font-bold mb-1" style={{ color: 'var(--color-text-primary)' }}>Database Connection Error</h1>
+              <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                Aplikasi tidak dapat menemukan kredensial database. Pastikan <strong>Environment Variables</strong> sudah terpasang dengan benar.
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <button onClick={() => window.location.reload()} className="btn btn-primary btn-md flex-1">
+              Refresh
+            </button>
+            <button
+              onClick={() => { setState({ ...INITIAL_STATE }); setUseDemoMode(true); }}
+              className="btn btn-secondary btn-md flex-1"
+            >
+              Demo Mode
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <HashRouter>
       <Routes>
+        {/* Public routes */}
         <Route path="/portal/v1/inquiry/:token" element={<PublicLeadForm onHostSubmit={() => fetchData()} currentLeads={state.leads} />} />
         <Route path="/portal/v1/internal/:token" element={<PublicInternalForm onHostSubmit={() => fetchData()} departments={state.departments} />} />
-        <Route path="/portal/v1/survey/:token" element={<PublicProjectSurvey />} />
+        <Route path="/portal/v1/survey/:token"   element={<PublicProjectSurvey />} />
 
+        {/* Admin layout */}
         <Route path="/admin/*" element={
-          <div className="flex flex-col md:flex-row h-screen overflow-hidden bg-[#F8F9FA] text-slate-900 pb-20 md:pb-0">
-            {/* Sidebar: Updated to match elegant dark theme */}
-            <aside className={`hidden md:flex ${collapsed ? 'w-20 overflow-visible' : 'w-64 overflow-hidden'} bg-[#1A1C20] text-zinc-300 flex-shrink-0 flex-col z-20 transition-all duration-300 relative border-r border-zinc-800`}>
-              <div className={`p-6 flex items-center ${collapsed ? 'justify-center' : 'justify-between'}`}>
-                {!collapsed && <h1 className="text-xl font-bold tracking-tight text-white">ACS UNIFIED</h1>}
-                <button onClick={() => setCollapsed(!collapsed)} className="p-1.5 rounded-lg bg-zinc-800/50 hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors">
-                  {collapsed ? (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" /></svg>
-                  ) : (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" /></svg>
-                  )}
+          <div className="flex flex-col md:flex-row h-screen overflow-hidden pb-[72px] md:pb-0" style={{ backgroundColor: 'var(--color-bg)' }}>
+            {/* Loading bar */}
+            {loading && <div className="progress-bar" />}
+
+            {/* — Desktop Sidebar — */}
+            <aside
+              className={`hidden md:flex flex-col flex-shrink-0 h-full transition-all duration-300 sidebar ${collapsed ? 'w-[64px]' : 'w-[220px]'}`}
+            >
+              {/* Logo */}
+              <div className={`flex items-center h-[56px] px-4 border-b ${collapsed ? 'justify-center' : 'justify-between'}`} style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
+                {!collapsed && (
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-btn flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'var(--color-primary)' }}>
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="white"><rect x="1" y="1" width="4" height="4" rx="1"/><rect x="7" y="1" width="4" height="4" rx="1"/><rect x="1" y="7" width="4" height="4" rx="1"/><rect x="7" y="7" width="4" height="4" rx="1"/></svg>
+                    </div>
+                    <span className="font-display font-bold text-sm text-white tracking-tight">ACS Unified</span>
+                  </div>
+                )}
+                <button
+                  onClick={() => setCollapsed(!collapsed)}
+                  className="flex items-center justify-center w-7 h-7 rounded-btn transition-colors"
+                  style={{ color: '#71717a' }}
+                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.07)', e.currentTarget.style.color = '#fff')}
+                  onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent', e.currentTarget.style.color = '#71717a')}
+                  title={collapsed ? 'Expand' : 'Collapse'}
+                >
+                  {collapsed ? <IconChevronRight /> : <IconChevronLeft />}
                 </button>
               </div>
-              {/* Nav: Switch overflow based on state to allow tooltips when collapsed */}
-              <nav className={`flex-1 px-4 py-6 space-y-1 ${collapsed ? 'overflow-visible' : 'overflow-y-auto scrollbar-hide'}`}>
-                <NavLink to="/admin/dashboard" icon={icons.dashboard} label="Dashboard" collapsed={collapsed} />
-                <NavLink to="/admin/reports" icon={icons.report} label="Report Gen" collapsed={collapsed} badge="BETA" />
-                <NavLink to="/admin/artwork-logs" icon={icons.artwork} label="Artwork Logs" collapsed={collapsed} />
 
-                <div className={`mt-10 mb-4 px-3 text-[11px] font-semibold text-zinc-500 uppercase tracking-widest ${collapsed ? 'text-center' : ''}`}>
-                  {collapsed ? '•••' : 'Master Data'}
-                </div>
+              {/* Nav */}
+              <nav className="flex-1 py-4 px-2 space-y-0.5 overflow-y-auto scrollbar-hide overflow-x-visible">
+                <SidebarLink to="/admin/dashboard" icon={<IconDashboard />} label="Dashboard" collapsed={collapsed} />
+                <SidebarLink to="/admin/reports"   icon={<IconReport />}    label="Report Gen" collapsed={collapsed} badge="BETA" />
+                <SidebarLink to="/admin/artwork-logs" icon={<IconArtwork />} label="Artwork Logs" collapsed={collapsed} />
 
-                <NavLink to="/admin/masters/departments" icon={icons.dept} label="Departments" collapsed={collapsed} />
-                <NavLink to="/admin/masters/designers" icon={icons.team} label="Designers" collapsed={collapsed} />
-                <NavLink to="/admin/masters/projects" icon={icons.project} label="Projects" collapsed={collapsed} />
-                <NavLink to="/admin/masters/leads" icon={icons.lead} label="Leads" collapsed={collapsed} />
-                <NavLink to="/admin/masters/internal" icon={icons.internal} label="Internal Tasks" collapsed={collapsed} />
+                {!collapsed && (
+                  <p className="overline px-3 pt-5 pb-2">Master Data</p>
+                )}
+                {collapsed && <div className="my-3 mx-2 border-t" style={{ borderColor: 'rgba(255,255,255,0.07)' }} />}
+
+                <SidebarLink to="/admin/masters/departments" icon={<IconDept />}     label="Departments"    collapsed={collapsed} />
+                <SidebarLink to="/admin/masters/designers"   icon={<IconTeam />}     label="Designers"      collapsed={collapsed} />
+                <SidebarLink to="/admin/masters/projects"    icon={<IconProject />}  label="Projects"       collapsed={collapsed} />
+                <SidebarLink to="/admin/masters/leads"       icon={<IconLead />}     label="Leads"          collapsed={collapsed} />
+                <SidebarLink to="/admin/masters/internal"    icon={<IconInternal />} label="Internal Tasks" collapsed={collapsed} />
               </nav>
+
+              {/* Footer */}
+              <div className={`px-3 py-4 border-t ${collapsed ? 'text-center' : ''}`} style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
+                <p className="text-[10px] font-mono" style={{ color: '#52525b' }}>
+                  {collapsed ? 'v1' : 'ACS Unified · v1.0'}
+                </p>
+              </div>
             </aside>
-            <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-              {loading && <div className="absolute top-0 left-0 w-full h-1 bg-indigo-600 animate-pulse z-50"></div>}
-              <div className="flex-1 overflow-y-auto p-4 md:p-8">
-                <Routes>
-                  <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
-                  <Route path="/dashboard" element={<Dashboard state={state} />} />
-                  <Route path="/reports" element={<ReportGenerator state={state} />} />
-                  <Route path="/artwork-logs" element={<ArtworkLogPage state={state} onAdd={handleAddLog} onUpdate={handleUpdateLog} onDelete={handleDeleteLog} />} />
-                  <Route path="/masters/departments" element={<DepartmentMaster departments={state.departments} onUpdate={fetchData} />} />
-                  <Route path="/masters/designers" element={<DesignerMaster designers={state.designers} onUpdate={fetchData} />} />
-                  <Route path="/masters/projects" element={<ProjectMaster
-                    projects={state.projects}
-                    designers={state.designers}
-                    artworkLogs={state.artworkLogs}
-                    designerEvaluations={state.designerEvaluations}
-                    projectSurveys={state.projectSurveys}
-                    projectChecklists={state.projectChecklists}
-                    checklistTemplates={state.checklistTemplates}
-                    checklistTemplateItems={state.checklistTemplateItems}
-                    onUpdate={fetchData}
-                  />} />
-                  <Route path="/masters/leads" element={<LeadMaster leads={state.leads} onUpdate={fetchData} />} />
-                  <Route path="/masters/internal" element={<InternalDesignMaster internalDesigns={state.internalDesigns} departments={state.departments} onUpdate={fetchData} />} />
-                </Routes>
+
+            {/* — Main content — */}
+            <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+              {/* Top bar (mobile logo + desktop right area) */}
+              <header className="nav-top px-4 md:px-6 md:hidden">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-btn flex items-center justify-center" style={{ backgroundColor: 'var(--color-primary)' }}>
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="white"><rect x="1" y="1" width="4" height="4" rx="1"/><rect x="7" y="1" width="4" height="4" rx="1"/><rect x="1" y="7" width="4" height="4" rx="1"/><rect x="7" y="7" width="4" height="4" rx="1"/></svg>
+                  </div>
+                  <span className="font-display font-bold text-sm tracking-tight" style={{ color: 'var(--color-text-primary)' }}>ACS Unified</span>
+                </div>
+              </header>
+
+              <div className="flex-1 overflow-y-auto scrollbar-thin" style={{ backgroundColor: 'var(--color-bg)' }}>
+                <div className="p-4 md:p-8">
+                  <Routes>
+                    <Route path="/"                   element={<Navigate to="/admin/dashboard" replace />} />
+                    <Route path="/dashboard"          element={<Dashboard state={state} />} />
+                    <Route path="/reports"            element={<ReportGenerator state={state} />} />
+                    <Route path="/artwork-logs"       element={<ArtworkLogPage state={state} onAdd={handleAddLog} onUpdate={handleUpdateLog} onDelete={handleDeleteLog} />} />
+                    <Route path="/masters/departments" element={<DepartmentMaster departments={state.departments} onUpdate={fetchData} />} />
+                    <Route path="/masters/designers"   element={<DesignerMaster designers={state.designers} onUpdate={fetchData} />} />
+                    <Route path="/masters/projects"    element={
+                      <ProjectMaster
+                        projects={state.projects}
+                        designers={state.designers}
+                        artworkLogs={state.artworkLogs}
+                        designerEvaluations={state.designerEvaluations}
+                        projectSurveys={state.projectSurveys}
+                        projectChecklists={state.projectChecklists}
+                        checklistTemplates={state.checklistTemplates}
+                        checklistTemplateItems={state.checklistTemplateItems}
+                        onUpdate={fetchData}
+                      />
+                    } />
+                    <Route path="/masters/leads"    element={<LeadMaster leads={state.leads} onUpdate={fetchData} />} />
+                    <Route path="/masters/internal" element={<InternalDesignMaster internalDesigns={state.internalDesigns} departments={state.departments} onUpdate={fetchData} />} />
+                  </Routes>
+                </div>
               </div>
             </main>
 
-            {/* Mobile Bottom Navbar - Floating Glass */}
-            <nav className="md:hidden fixed bottom-3 left-3 right-3 bg-[#1A1C20]/80 backdrop-blur-xl border border-white/10 flex justify-around items-center h-14 z-[100] px-1 rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.4)]">
-              <MobileNavLink to="/admin/dashboard" icon={icons.dashboard} label="Home" />
-              <MobileNavLink to="/admin/reports" icon={icons.report} label="Report" />
-              <MobileNavLink to="/admin/artwork-logs" icon={icons.artwork} label="Logs" />
-              <MobileNavLink to="/admin/masters/projects" icon={icons.project} label="Proj" />
-              <MobileNavLink to="/admin/masters/leads" icon={icons.lead} label="Lead" />
-              <MobileNavLink to="/admin/masters/internal" icon={icons.internal} label="Task" />
-              <MobileNavLink to="/admin/masters/designers" icon={icons.team} label="Team" />
-              <MobileNavLink to="/admin/masters/departments" icon={icons.dept} label="Dept" />
+            {/* — Mobile bottom nav — */}
+            <nav
+              className="md:hidden fixed bottom-0 left-0 right-0 flex justify-around items-stretch h-[64px] z-[100] border-t safe-bottom"
+              style={{ backgroundColor: 'rgba(15,15,17,0.95)', backdropFilter: 'blur(16px)', borderColor: 'rgba(255,255,255,0.08)' }}
+            >
+              <MobileNavItem to="/admin/dashboard"          icon={<IconDashboard />} label="Home" />
+              <MobileNavItem to="/admin/reports"            icon={<IconReport />}    label="Report" />
+              <MobileNavItem to="/admin/artwork-logs"       icon={<IconArtwork />}   label="Logs" />
+              <MobileNavItem to="/admin/masters/projects"   icon={<IconProject />}   label="Projects" />
+              <MobileNavItem to="/admin/masters/leads"      icon={<IconLead />}      label="Leads" />
+              <MobileNavItem to="/admin/masters/internal"   icon={<IconInternal />}  label="Tasks" />
+              <MobileNavItem to="/admin/masters/designers"  icon={<IconTeam />}      label="Team" />
+              <MobileNavItem to="/admin/masters/departments" icon={<IconDept />}     label="Depts" />
             </nav>
           </div>
         } />
 
         <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
 
+        {/* 404 */}
         <Route path="*" element={
-          <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center">
-            <div className="text-6xl mb-4">🚫</div>
-            <h1 className="text-2xl font-bold text-slate-900">Unauthorized Access</h1>
-            <p className="text-slate-500 mt-2">You do not have permission to view this resource.</p>
-            <Link to="/admin/dashboard" className="mt-6 px-6 py-2 bg-slate-900 text-white rounded-lg font-bold">Back to App</Link>
+          <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center" style={{ backgroundColor: 'var(--color-bg)' }}>
+            <p className="overline mb-4">Error 404</p>
+            <h1 className="font-display text-section font-bold mb-3" style={{ color: 'var(--color-text-primary)' }}>Page Not Found</h1>
+            <p className="text-sm mb-8" style={{ color: 'var(--color-text-secondary)' }}>You do not have permission to view this resource.</p>
+            <Link to="/admin/dashboard" className="btn btn-primary btn-md">Back to Dashboard</Link>
           </div>
         } />
       </Routes>
@@ -262,47 +337,76 @@ const App: React.FC = () => {
   );
 };
 
-const NavLink: React.FC<{ to: string; icon: React.ReactNode; label: string; collapsed: boolean; badge?: string }> = ({ to, icon, label, collapsed, badge }) => {
+// ─── Sidebar Link ─────────────────────────────────────────────────────────────
+const SidebarLink: React.FC<{
+  to: string;
+  icon: React.ReactNode;
+  label: string;
+  collapsed: boolean;
+  badge?: string;
+}> = ({ to, icon, label, collapsed, badge }) => {
   const location = useLocation();
   const isActive = location.pathname === to;
+
   return (
     <Link
       to={to}
-      className={`group relative flex items-center ${collapsed ? 'justify-center px-2' : 'px-3'} py-3 rounded-xl text-sm font-medium transition-all duration-200 ${isActive ? 'bg-white/10 text-white' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}
+      title={collapsed ? label : undefined}
+      className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-panel text-sm font-medium transition-all duration-150 ${
+        collapsed ? 'justify-center' : ''
+      } ${
+        isActive
+          ? 'sidebar-link active'
+          : 'sidebar-link'
+      }`}
     >
-      <span className="text-xl leading-none flex items-center justify-center">{icon}</span>
+      <span className="flex-shrink-0 flex items-center justify-center" style={{ width: 16, height: 16 }}>
+        {icon}
+      </span>
+
       {!collapsed && (
-        <span className="ml-3.5 flex-1 flex items-center justify-between min-w-0">
+        <span className="flex-1 flex items-center justify-between min-w-0">
           <span className="truncate">{label}</span>
-          {badge && <span className="ml-2 px-1.5 py-0.5 bg-pink-500/20 text-pink-400 text-[9px] font-black rounded uppercase tracking-wider shrink-0">{badge}</span>}
+          {badge && (
+            <span className="ml-2 px-1.5 py-0.5 rounded-chip text-[9px] font-bold uppercase tracking-wider flex-shrink-0"
+              style={{ backgroundColor: 'rgba(99,102,241,0.2)', color: '#a5b4fc' }}>
+              {badge}
+            </span>
+          )}
         </span>
       )}
 
-      {/* Tooltip on Hover when Collapsed */}
+      {/* Tooltip when collapsed */}
       {collapsed && (
-        <div className="absolute left-full ml-4 px-3 py-1.5 bg-zinc-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 whitespace-nowrap z-50 shadow-xl border border-zinc-700 font-medium tracking-wide transform translate-x-2 group-hover:translate-x-0">
-          <div className="flex items-center gap-2">
-             <span>{label}</span>
-             {badge && <span className="px-1 bg-pink-500/20 text-pink-400 text-[8px] font-black rounded uppercase">{badge}</span>}
-          </div>
-          {/* Arrow */}
-          <div className="absolute top-1/2 right-full -mt-1 -mr-[1px] border-4 border-transparent border-r-slate-900"></div>
+        <div
+          className="absolute left-full ml-3 px-3 py-1.5 rounded-panel text-xs font-medium whitespace-nowrap pointer-events-none z-50
+            opacity-0 group-hover:opacity-100 translate-x-1 group-hover:translate-x-0
+            transition-all duration-150 shadow-dropdown animate-fade-in"
+          style={{ backgroundColor: '#18181b', color: '#e4e4e7', border: '1px solid rgba(255,255,255,0.1)' }}
+        >
+          {label}
+          {badge && <span className="ml-1.5 text-[9px] font-bold uppercase" style={{ color: '#a5b4fc' }}>{badge}</span>}
         </div>
       )}
     </Link>
   );
 };
 
-const MobileNavLink: React.FC<{ to: string; icon: React.ReactNode; label: string; }> = ({ to, icon, label }) => {
+// ─── Mobile Nav Item ──────────────────────────────────────────────────────────
+const MobileNavItem: React.FC<{ to: string; icon: React.ReactNode; label: string }> = ({ to, icon, label }) => {
   const location = useLocation();
   const isActive = location.pathname === to;
+
   return (
     <Link
       to={to}
-      className={`flex flex-col items-center justify-center flex-1 min-w-0 py-1 rounded-xl transition-all duration-200 ${isActive ? 'text-white bg-white/10' : 'text-zinc-500 hover:text-zinc-300'}`}
+      className="flex flex-col items-center justify-center flex-1 min-w-0 py-2 gap-0.5 transition-all duration-150"
+      style={{ color: isActive ? '#6366F1' : '#71717a' }}
     >
-      <span className={`mb-0.5 ${isActive ? 'text-indigo-400' : ''}`} style={{ fontSize: '16px', lineHeight: 1 }}>{icon}</span>
-      <span className="truncate max-w-full text-[8px] font-bold uppercase tracking-tight">{label}</span>
+      <span className="flex items-center justify-center" style={{ width: 18, height: 18 }}>{icon}</span>
+      <span className="text-[9px] font-semibold uppercase tracking-tight truncate max-w-full" style={{ fontFamily: 'var(--font-body)' }}>
+        {label}
+      </span>
     </Link>
   );
 };
