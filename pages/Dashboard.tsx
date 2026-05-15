@@ -1,5 +1,5 @@
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import html2canvas from 'html2canvas';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
@@ -11,12 +11,92 @@ interface Props {
   state: AppState;
 }
 
+// --- Draggable Dashboard Widget System ---
+const WIDGET_STORAGE_KEY = 'dashboard_widget_order_v1';
+
+const DEFAULT_WIDGET_ORDER = [
+  'kpi-row',
+  'volume-row',
+  'graphic-row',
+  'dept-heatmap-row',
+  'eval-summary-row',
+  'team-stats-row',
+];
+
+const WIDGET_LABELS: Record<string, string> = {
+  'kpi-row': '📊 KPI Overview',
+  'volume-row': '📦 Volume by Context',
+  'graphic-row': '📈 Charts & Trends',
+  'dept-heatmap-row': '🔥 Dept Volume & Heatmaps',
+  'eval-summary-row': '⭐ Evaluation Summary',
+  'team-stats-row': '👥 Team Output & Performance',
+};
+
 const Dashboard: React.FC<Props> = ({ state }) => {
   const [filterStart, setFilterStart] = useState<string>('');
   const [filterEnd, setFilterEnd] = useState<string>('');
 
   // State for the Notes Modal
   const [viewNotes, setViewNotes] = useState<{ name: string; notes: any[]; projectEvals?: any[] } | null>(null);
+
+  // --- Drag & Drop Layout State ---
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [widgetOrder, setWidgetOrder] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem(WIDGET_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved) as string[];
+        // Merge: keep saved order but add any new widgets not yet in saved
+        const merged = parsed.filter((id: string) => DEFAULT_WIDGET_ORDER.includes(id));
+        DEFAULT_WIDGET_ORDER.forEach(id => { if (!merged.includes(id)) merged.push(id); });
+        return merged;
+      }
+    } catch {}
+    return DEFAULT_WIDGET_ORDER;
+  });
+
+  const dragSrcRef = useRef<string | null>(null);
+  const [dragOver, setDragOver] = useState<string | null>(null);
+
+  const saveLayout = useCallback((order: string[]) => {
+    try { localStorage.setItem(WIDGET_STORAGE_KEY, JSON.stringify(order)); } catch {}
+  }, []);
+
+  const handleDragStart = useCallback((id: string) => {
+    dragSrcRef.current = id;
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent, id: string) => {
+    e.preventDefault();
+    if (dragSrcRef.current && dragSrcRef.current !== id) setDragOver(id);
+  }, []);
+
+  const handleDrop = useCallback((targetId: string) => {
+    const src = dragSrcRef.current;
+    if (!src || src === targetId) { setDragOver(null); return; }
+    setWidgetOrder(prev => {
+      const next = [...prev];
+      const srcIdx = next.indexOf(src);
+      const tgtIdx = next.indexOf(targetId);
+      next.splice(srcIdx, 1);
+      next.splice(tgtIdx, 0, src);
+      saveLayout(next);
+      return next;
+    });
+    dragSrcRef.current = null;
+    setDragOver(null);
+  }, [saveLayout]);
+
+  const handleDragEnd = useCallback(() => {
+    dragSrcRef.current = null;
+    setDragOver(null);
+  }, []);
+
+  const resetLayout = useCallback(() => {
+    setWidgetOrder(DEFAULT_WIDGET_ORDER);
+    saveLayout(DEFAULT_WIDGET_ORDER);
+  }, [saveLayout]);
+  // ----------------------------------
 
   const analytics = useMemo(() => {
     const { artworkLogs, projects, leads, designers, departments, internalDesigns, projectSurveys, designerEvaluations } = state;
@@ -506,8 +586,7 @@ const Dashboard: React.FC<Props> = ({ state }) => {
           <h1 className="text-2xl font-bold text-zinc-900 tracking-tight uppercase">Executive Studio Hub</h1>
           <p className="text-zinc-500 text-sm font-medium">Creative Production Insights.</p>
         </div>
-        <div className="flex items-center gap-2">
-          {/* Pass filtered dates to DateRangePicker to properly control state */}
+        <div className="flex items-center gap-2 flex-wrap">
           <DateRangePicker
             startDate={filterStart}
             endDate={filterEnd}
@@ -515,6 +594,33 @@ const Dashboard: React.FC<Props> = ({ state }) => {
             onReset={() => { setFilterStart(''); setFilterEnd(''); }}
             placeholder="Filter Date Range"
           />
+          {/* Edit Layout Toggle */}
+          {isEditMode && (
+            <button
+              onClick={resetLayout}
+              className="flex items-center gap-1.5 px-3 py-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-600 rounded-lg text-sm font-bold shadow-sm transition-colors border border-zinc-200"
+              title="Reset ke layout default"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+              <span className="hidden sm:inline">Reset</span>
+            </button>
+          )}
+          <button
+            onClick={() => setIsEditMode(v => !v)}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-bold shadow-sm transition-all ${
+              isEditMode
+                ? 'bg-amber-500 hover:bg-amber-600 text-white ring-2 ring-amber-300'
+                : 'bg-white hover:bg-zinc-50 text-zinc-700 border border-zinc-200'
+            }`}
+            title={isEditMode ? 'Selesai edit layout' : 'Edit & susun ulang layout dashboard'}
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              {isEditMode
+                ? <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                : <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16" />}
+            </svg>
+            <span className="hidden sm:inline">{isEditMode ? 'Selesai' : 'Edit Layout'}</span>
+          </button>
           <button
             onClick={() => handleDownloadZip(dateLabel, analytics.teamStats)}
             className="flex items-center gap-2 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-bold shadow-sm transition-colors download-btn"
@@ -527,9 +633,30 @@ const Dashboard: React.FC<Props> = ({ state }) => {
         </div>
       </header>
 
-      <div id="dashboard-content" className="space-y-4 md:space-y-6 pt-2">
-        {/* KPI Row - Vibrant Gradients */}
-        <div className="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-4 gap-3 md:gap-6">
+      {/* Edit Mode Banner */}
+      {isEditMode && (
+        <div className="flex items-center gap-3 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-sm font-medium animate-in slide-in-from-top duration-200">
+          <svg className="w-4 h-4 text-amber-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" /></svg>
+          <span className="font-bold text-amber-700">Mode Edit Aktif</span>
+          <span className="text-amber-600 text-xs">Drag & drop setiap section untuk mengatur ulang layout. Layout tersimpan otomatis di browser ini.</span>
+        </div>
+      )}
+
+      <div id="dashboard-content" className="space-y-2 md:space-y-3 pt-2">
+        {widgetOrder.map(widgetId => (
+          <DraggableWidget
+            key={widgetId}
+            id={widgetId}
+            isEditMode={isEditMode}
+            isDragOver={dragOver === widgetId}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
+            onDragEnd={handleDragEnd}
+            label={WIDGET_LABELS[widgetId]}
+          >
+            {widgetId === 'kpi-row' && (
+              <div className="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-4 gap-3 md:gap-6">
           <KPICard
             id="kpi-artworks" filename={`Total_Artworks_${dateLabel}`}
             label="Total Artworks"
@@ -571,10 +698,11 @@ const Dashboard: React.FC<Props> = ({ state }) => {
               { title: "Top Requesters", items: analytics.statsData.internal.reqs }
             ]}
           />
-        </div>
+          </div>
+            )}
 
-        {/* Volume Insights Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-6">
+            {widgetId === 'volume-row' && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-6">
           <VolumeCard
             id="vol-project" filename={`Volume_Project_${dateLabel}`}
             title="Project"
@@ -600,9 +728,10 @@ const Dashboard: React.FC<Props> = ({ state }) => {
             gradient="from-purple-500 to-pink-500"
           />
         </div>
+            )}
 
-        {/* GRAPHIC ROW */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-6">
+            {widgetId === 'graphic-row' && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-6">
           <section id="chart-artwork-trend" className={cardClass}>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-sm font-bold text-zinc-900 uppercase tracking-tight">Artwork Type Trend</h2>
@@ -666,9 +795,10 @@ const Dashboard: React.FC<Props> = ({ state }) => {
             </div>
           </section>
         </div>
+            )}
 
-        {/* DEPARTMENT REQUEST VOLUME & HEATMAP */}
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 md:gap-6">
+            {widgetId === 'dept-heatmap-row' && (
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 md:gap-6">
           <section id="chart-dept-volume" className={cardClass}>
             <div className="flex items-center justify-between mb-6">
               <div className="flex flex-col">
@@ -875,9 +1005,10 @@ const Dashboard: React.FC<Props> = ({ state }) => {
             </section>
           </div>
         </div>
+            )}
 
-        {/* EVALUATION SUMMARY */}
-        <section id="eval-summary" className={cardClass + " animate-slide-up"}>
+            {widgetId === 'eval-summary-row' && (
+              <section id="eval-summary" className={cardClass + " animate-slide-up"}>
           <div className="flex items-center justify-between mb-4">
             <div className="flex flex-col">
               <h2 className="text-sm font-bold text-zinc-900 uppercase tracking-tight">Evaluation Summary</h2>
@@ -944,81 +1075,143 @@ const Dashboard: React.FC<Props> = ({ state }) => {
               </div>
             </div>
           </div>
-        </section >
+          </section>
+            )}
 
-        < div className="pt-2" >
-          <span className={labelClass}>Team Output & Performance</span>
-          <div className="flex overflow-x-auto flex-nowrap gap-4 md:gap-6 mt-4 pb-4 snap-x scrollbar-thin scrollbar-thumb-slate-300">
-            {analytics.teamStats.map(ds => (
-              <div key={ds.id} id={`team-stat-${ds.id}`} className="relative flex-shrink-0 w-[260px] md:w-[300px] snap-start bg-white p-4 md:p-6 rounded-[20px] border border-[#EAEAEA] shadow-sm group">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 text-white flex items-center justify-center font-bold text-lg group-hover:from-indigo-500 group-hover:to-purple-600 transition-all shadow-md">
-                    {ds.name.charAt(0)}
-                  </div>
-                  <div className="min-w-0">
-                    <h4 className="text-sm font-bold text-zinc-900 truncate uppercase tracking-tight">{ds.name}</h4>
-                    <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider">{ds.role}</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-2 mb-6">
-                  <MetricBox label="Projects" value={ds.uniqueProjectsInvolved} gradient="from-blue-50 to-indigo-50" textGradient="from-blue-600 to-indigo-600" />
-                  <MetricBox label="Leads" value={ds.uniqueLeads} gradient="from-emerald-50 to-teal-50" textGradient="from-emerald-600 to-teal-600" />
-                  <MetricBox label="Lead Days" value={ds.avgLeadDuration} unit="d" gradient="from-purple-50 to-fuchsia-50" textGradient="from-purple-600 to-fuchsia-600" />
-                </div>
-
-                <div className="space-y-3 pt-4 border-t border-zinc-100">
-                  <StatBar label="Project" value={ds.projectArtworks} max={ds.totalArtworks} gradient="from-blue-500 to-indigo-500" />
-                  <StatBar label="Lead" value={ds.leadArtworks} max={ds.totalArtworks} gradient="from-emerald-500 to-teal-500" />
-                  <StatBar label="Internal" value={ds.internalArtworks} max={ds.totalArtworks} gradient="from-purple-500 to-fuchsia-500" />
-                </div>
-
-                <div className="mt-6 pt-4 border-t border-zinc-100 flex justify-between items-center">
-                  <span className="text-[10px] font-bold text-zinc-900 uppercase">Total Logged</span>
-                  <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-700 to-slate-900 tracking-tight">{ds.totalArtworks}</span>
-                </div>
-
-                {/* EVALUATION SCORE SECTION (Bottom) */}
-                <div className="mt-4 pt-4 border-t border-dashed border-[#EAEAEA]">
-                  <div
-                    className="flex justify-between items-center mb-2 cursor-pointer hover:bg-[#FCFCFC] rounded p-1 -mx-1 transition-colors"
-                    onClick={() => setViewNotes({ name: ds.name, notes: ds.evalNotes, projectEvals: ds.projectEvalDetails })}
-                    title="Lihat detail evaluasi per project"
-                  >
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Designer Eval</span>
-                      {ds.evalNotes.length > 0 && <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span>}
+            {widgetId === 'team-stats-row' && (
+              <div className="pt-2">
+                <span className={labelClass}>Team Output & Performance</span>
+                <div className="flex overflow-x-auto flex-nowrap gap-4 md:gap-6 mt-4 pb-4 snap-x scrollbar-thin scrollbar-thumb-slate-300">
+                  {analytics.teamStats.map(ds => (
+                    <div key={ds.id} id={`team-stat-${ds.id}`} className="relative flex-shrink-0 w-[260px] md:w-[300px] snap-start bg-white p-4 md:p-6 rounded-[20px] border border-[#EAEAEA] shadow-sm group">
+                      <div className="flex items-center gap-3 mb-6">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 text-white flex items-center justify-center font-bold text-lg group-hover:from-indigo-500 group-hover:to-purple-600 transition-all shadow-md">
+                          {ds.name.charAt(0)}
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-sm font-bold text-zinc-900 truncate uppercase tracking-tight">{ds.name}</h4>
+                          <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider">{ds.role}</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 mb-6">
+                        <MetricBox label="Projects" value={ds.uniqueProjectsInvolved} gradient="from-blue-50 to-indigo-50" textGradient="from-blue-600 to-indigo-600" />
+                        <MetricBox label="Leads" value={ds.uniqueLeads} gradient="from-emerald-50 to-teal-50" textGradient="from-emerald-600 to-teal-600" />
+                        <MetricBox label="Lead Days" value={ds.avgLeadDuration} unit="d" gradient="from-purple-50 to-fuchsia-50" textGradient="from-purple-600 to-fuchsia-600" />
+                      </div>
+                      <div className="space-y-3 pt-4 border-t border-zinc-100">
+                        <StatBar label="Project" value={ds.projectArtworks} max={ds.totalArtworks} gradient="from-blue-500 to-indigo-500" />
+                        <StatBar label="Lead" value={ds.leadArtworks} max={ds.totalArtworks} gradient="from-emerald-500 to-teal-500" />
+                        <StatBar label="Internal" value={ds.internalArtworks} max={ds.totalArtworks} gradient="from-purple-500 to-fuchsia-500" />
+                      </div>
+                      <div className="mt-6 pt-4 border-t border-zinc-100 flex justify-between items-center">
+                        <span className="text-[10px] font-bold text-zinc-900 uppercase">Total Logged</span>
+                        <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-700 to-slate-900 tracking-tight">{ds.totalArtworks}</span>
+                      </div>
+                      <div className="mt-4 pt-4 border-t border-dashed border-[#EAEAEA]">
+                        <div
+                          className="flex justify-between items-center mb-2 cursor-pointer hover:bg-[#FCFCFC] rounded p-1 -mx-1 transition-colors"
+                          onClick={() => setViewNotes({ name: ds.name, notes: ds.evalNotes, projectEvals: ds.projectEvalDetails })}
+                          title="Lihat detail evaluasi per project"
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Designer Eval</span>
+                            {ds.evalNotes.length > 0 && <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span>}
+                          </div>
+                          {ds.avgRating ? (
+                            <span className="bg-gradient-to-r from-amber-100 to-orange-100 text-orange-700 px-2 py-0.5 rounded text-[10px] font-bold border border-orange-200 hover:from-amber-200 hover:to-orange-200 transition-colors">
+                              {ds.avgRating} / 5.0
+                            </span>
+                          ) : (
+                            <span className="text-[9px] text-zinc-300 font-bold italic">No data</span>
+                          )}
+                        </div>
+                        {ds.detailedScores && (
+                          <div className="grid grid-cols-2 gap-2 mt-2">
+                            <TinyScore label="Inisiatif" val={ds.detailedScores.inisiatif} />
+                            <TinyScore label="Disiplin" val={ds.detailedScores.disiplin} />
+                            <TinyScore label="Tugas" val={ds.detailedScores.penyelesaian_tugas} />
+                            <TinyScore label="Attitude" val={ds.detailedScores.attitude} />
+                            <TinyScore label="Komunikasi" val={ds.detailedScores.komunikasi} />
+                            <TinyScore label="Respon" val={ds.detailedScores.respon_masukan} />
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    {ds.avgRating ? (
-                      <span className="bg-gradient-to-r from-amber-100 to-orange-100 text-orange-700 px-2 py-0.5 rounded text-[10px] font-bold border border-orange-200 hover:from-amber-200 hover:to-orange-200 transition-colors">
-                        {ds.avgRating} / 5.0
-                      </span>
-                    ) : (
-                      <span className="text-[9px] text-zinc-300 font-bold italic">No data</span>
-                    )}
-                  </div>
-
-                  {ds.detailedScores && (
-                    <div className="grid grid-cols-2 gap-2 mt-2">
-                      <TinyScore label="Inisiatif" val={ds.detailedScores.inisiatif} />
-                      <TinyScore label="Disiplin" val={ds.detailedScores.disiplin} />
-                      <TinyScore label="Tugas" val={ds.detailedScores.penyelesaian_tugas} />
-                      <TinyScore label="Attitude" val={ds.detailedScores.attitude} />
-                      <TinyScore label="Komunikasi" val={ds.detailedScores.komunikasi} />
-                      <TinyScore label="Respon" val={ds.detailedScores.respon_masukan} />
-                    </div>
-                  )}
+                  ))}
                 </div>
               </div>
-            ))}
-          </div>
-        </div >
+            )}
+          </DraggableWidget>
+        ))}
       </div>
-    </div >
+    </div>
   );
 };
 
 // --- Sub-Components ---
+
+// DraggableWidget: wraps each dashboard section row for drag-and-drop reordering
+interface DraggableWidgetProps {
+  id: string;
+  isEditMode: boolean;
+  isDragOver: boolean;
+  onDragStart: (id: string) => void;
+  onDragOver: (e: React.DragEvent, id: string) => void;
+  onDrop: (id: string) => void;
+  onDragEnd: () => void;
+  label: string;
+  children: React.ReactNode;
+}
+
+const DraggableWidget: React.FC<DraggableWidgetProps> = ({
+  id, isEditMode, isDragOver, onDragStart, onDragOver, onDrop, onDragEnd, label, children
+}) => {
+  return (
+    <div
+      draggable={isEditMode}
+      onDragStart={() => onDragStart(id)}
+      onDragOver={(e) => onDragOver(e, id)}
+      onDrop={() => onDrop(id)}
+      onDragEnd={onDragEnd}
+      className={`transition-all duration-200 ${
+        isEditMode
+          ? 'cursor-grab active:cursor-grabbing'
+          : ''
+      } ${
+        isDragOver
+          ? 'ring-2 ring-amber-400 ring-offset-2 rounded-2xl scale-[0.99] opacity-80'
+          : ''
+      }`}
+    >
+      {isEditMode && (
+        <div className="flex items-center gap-2 mb-2 px-1 select-none">
+          <div className="flex flex-col gap-[3px] opacity-40">
+            <div className="flex gap-[3px]">
+              <div className="w-1 h-1 rounded-full bg-zinc-500"></div>
+              <div className="w-1 h-1 rounded-full bg-zinc-500"></div>
+            </div>
+            <div className="flex gap-[3px]">
+              <div className="w-1 h-1 rounded-full bg-zinc-500"></div>
+              <div className="w-1 h-1 rounded-full bg-zinc-500"></div>
+            </div>
+            <div className="flex gap-[3px]">
+              <div className="w-1 h-1 rounded-full bg-zinc-500"></div>
+              <div className="w-1 h-1 rounded-full bg-zinc-500"></div>
+            </div>
+          </div>
+          <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{label}</span>
+          <div className="flex-1 h-px bg-amber-200 opacity-60"></div>
+          <svg className="w-3 h-3 text-amber-400 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
+          </svg>
+        </div>
+      )}
+      <div className={`${isEditMode ? 'pointer-events-none select-none' : ''}`}>
+        {children}
+      </div>
+    </div>
+  );
+};
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
