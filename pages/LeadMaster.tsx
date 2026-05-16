@@ -241,9 +241,9 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'DONE': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-      case 'CANCEL': return 'bg-[#F8F9FA] text-zinc-600 border-[#EAEAEA]';
-      default: return 'bg-blue-100 text-blue-700 border-blue-200';
+      case 'DONE': return 'bg-emerald-500/10 text-emerald-500';
+      case 'CANCEL': return 'bg-zinc-500/10 text-zinc-500';
+      default: return 'bg-blue-500/10 text-blue-500';
     }
   };
 
@@ -328,7 +328,7 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
                       PIC: {lead.requester}
                     </span>
                     <div className="flex items-center justify-between gap-1 mt-1">
-                      <span className={`text-[7px] font-bold px-1 rounded border border-zinc-300 bg-white/50 uppercase ${lead.status === 'DONE' ? 'text-emerald-600' : ''}`}>
+                      <span className={`text-[7px] font-bold px-1 rounded bg-zinc-100 text-zinc-600 uppercase ${lead.status === 'DONE' ? 'text-emerald-600 bg-emerald-100' : ''}`}>
                         {lead.status}
                       </span>
                       <span className="text-[7px] font-bold px-1 rounded bg-zinc-900 text-white uppercase">
@@ -508,14 +508,14 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
                         <div className="flex flex-col gap-1">
                           <div className="font-bold text-zinc-900 text-[10px] md:text-sm leading-tight">{l.lead_name}</div>
                           <div className="flex">
-                            <span className={`px-1.5 md:px-2 py-0.5 rounded-full border text-[7px] md:text-[8px] font-bold uppercase ${getStatusBadge(l.status)}`}>{l.status}</span>
+                            <span className={`px-1.5 md:px-2 py-0.5 rounded-full text-[7px] md:text-[8px] font-bold uppercase ${getStatusBadge(l.status)}`}>{l.status}</span>
                           </div>
                         </div>
                       </td>
                       <td className="px-2 md:px-6 py-2 md:py-4">
-                        <div className="text-[9px] md:text-[11px] font-bold text-zinc-800 leading-tight">{l.order_date} → <span className={`${isOverdue ? 'text-red-700 bg-red-100 px-1 py-0.5 rounded border border-red-200' : isToday ? 'text-amber-700 bg-amber-100 px-1 py-0.5 rounded border border-amber-200' : 'text-zinc-900'} font-bold`}>{l.deadline}</span></div>
+                        <div className="text-[9px] md:text-[11px] font-bold text-zinc-800 leading-tight">{l.order_date} → <span className={`${isOverdue ? 'text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded' : isToday ? 'text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded' : 'text-[var(--ink)]'} font-bold`}>{l.deadline}</span></div>
                         <div className="flex flex-wrap gap-1 mt-0.5">
-                          <span className={`px-1.5 py-0.5 rounded text-[7px] md:text-[8px] font-bold uppercase ${l.lead_grade === 'A' ? 'bg-orange-100 text-orange-700' : 'bg-indigo-100 text-zinc-800'}`}>Grade {l.lead_grade}</span>
+                          <span className={`px-1.5 py-0.5 rounded text-[7px] md:text-[8px] font-bold uppercase ${l.lead_grade === 'A' ? 'bg-orange-500/10 text-orange-500' : 'bg-[var(--s3)] text-[var(--ink-3)]'}`}>Grade {l.lead_grade}</span>
                         </div>
                       </td>
                       <td className="px-2 md:px-6 py-2 md:py-4">

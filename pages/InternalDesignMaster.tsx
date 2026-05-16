@@ -161,12 +161,12 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'NEW': return 'bg-blue-100 text-blue-700 border-blue-200';
-      case 'ON PROGRESS': return 'bg-amber-100 text-amber-700 border-amber-200';
-      case 'ON REVIEW': return 'bg-purple-100 text-purple-700 border-purple-200';
-      case 'DONE': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-      case 'ON HOLD': return 'bg-[#F8F9FA] text-zinc-600 border-[#EAEAEA]';
-      default: return 'bg-[#FCFCFC] text-zinc-500';
+      case 'NEW': return 'bg-blue-500/10 text-blue-500';
+      case 'ON PROGRESS': return 'bg-amber-500/10 text-amber-500';
+      case 'ON REVIEW': return 'bg-purple-500/10 text-purple-500';
+      case 'DONE': return 'bg-emerald-500/10 text-emerald-500';
+      case 'ON HOLD': return 'bg-zinc-500/10 text-zinc-500';
+      default: return 'bg-zinc-100 text-zinc-500';
     }
   };
 
@@ -198,12 +198,12 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
                 <div
                   key={task.id}
                   onClick={() => setSelectedTask(task)}
-                  className={`mx-1 cursor-pointer min-h-[40px] p-1.5 rounded-lg flex flex-col justify-center border transition-all hover:brightness-95 bg-white border-purple-200 shadow-sm`}
+                  className={`mx-1 cursor-pointer min-h-[40px] p-1.5 rounded-lg flex flex-col justify-center transition-all hover:brightness-95 bg-purple-50 shadow-sm`}
                 >
-                  <span className="text-[9px] font-bold truncate uppercase text-zinc-900 leading-tight">{task.task_name}</span>
+                  <span className="text-[9px] font-bold truncate uppercase text-purple-900 leading-tight">{task.task_name}</span>
                   <div className="flex items-center gap-1 mt-1">
                     <span className={`w-1.5 h-1.5 rounded-full ${task.status === 'DONE' ? 'bg-emerald-500' : 'bg-purple-500'}`}></span>
-                    <span className="text-[7px] font-bold text-zinc-400 uppercase tracking-tight">{getDeptName(task.department_id)}</span>
+                    <span className="text-[7px] font-bold text-purple-400 uppercase tracking-tight">{getDeptName(task.department_id)}</span>
                   </div>
                 </div>
               );
@@ -314,7 +314,7 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
                       <div className="flex flex-col gap-1">
                         <div className="font-bold text-zinc-900 text-[10px] md:text-sm leading-tight">{task.task_name}</div>
                         <div className="flex">
-                          <span className={`px-1.5 md:px-2 py-0.5 rounded-full border text-[7px] md:text-[8px] font-bold uppercase ${getStatusColor(task.status)}`}>{task.status}</span>
+                          <span className={`px-1.5 md:px-2 py-0.5 rounded-full text-[7px] md:text-[8px] font-bold uppercase ${getStatusColor(task.status)}`}>{task.status}</span>
                         </div>
                       </div>
                     </td>
@@ -323,7 +323,7 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
                       <div className="text-[8px] md:text-[10px] text-zinc-400 font-medium mt-0.5 tracking-tight">By: {task.requester_name}</div>
                     </td>
                     <td className="px-2 md:px-6 py-2 md:py-4">
-                      <span className={`text-[9px] md:text-xs font-bold leading-tight ${isOverdue ? 'text-red-700 bg-red-100 px-1 py-0.5 rounded border border-red-200' : isToday ? 'text-amber-700 bg-amber-100 px-1 py-0.5 rounded border border-amber-200' : 'text-zinc-700'}`}>
+                      <span className={`text-[9px] md:text-xs font-bold leading-tight ${isOverdue ? 'text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded' : isToday ? 'text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded' : 'text-[var(--ink-2)]'}`}>
                         {task.deadline}
                       </span>
                     </td>

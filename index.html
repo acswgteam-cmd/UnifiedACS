@@ -5,17 +5,20 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ACS Unified — Design Ops Platform</title>
-  <meta name="description" content="Discover, share, and manage design system files for your team. ACS Unified is the editorial precision interface for design operations.">
+  <meta name="description" content="ACS Unified is the central Design Ops platform for the studio — tracking artwork, projects, leads, and team performance.">
   <link rel="icon" type="image/png" href="/favicon.png">
 
-  <!-- Genesis Typography -->
-  <!-- General Sans (Display) from Fontshare -->
-  <link rel="preconnect" href="https://api.fontshare.com">
-  <link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&display=swap" rel="stylesheet">
-  <!-- DM Sans (Body) + JetBrains Mono (Code) from Google Fonts -->
+  <!-- Inter — closest open-source substitute to Linear's typeface -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600;700&display=swap" rel="stylesheet">
+  <!-- JetBrains Mono for code/mono contexts -->
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <style>
+    /* Prevent FOUC — match canvas color before CSS loads */
+    html { background-color: #010102; }
+  </style>
 </head>
 <body>
   <div id="root"></div>

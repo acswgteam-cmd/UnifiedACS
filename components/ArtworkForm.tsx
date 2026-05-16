@@ -67,21 +67,21 @@ const ArtworkForm: React.FC<Props> = ({ state, onSubmit }) => {
   };
 
   // Styles
-  const headerClass = "text-[9px] font-black text-indigo-400 uppercase tracking-widest px-1 pb-1";
-  const inputBase = "w-full text-xs font-bold bg-white border border-indigo-100 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 rounded-lg transition-all placeholder-slate-400 outline-none text-slate-700 shadow-sm";
+  const headerClass = "text-[9px] font-black text-[var(--color-ink-4)] uppercase tracking-widest px-1 pb-1";
+  const inputBase = "w-full text-xs font-bold bg-[var(--color-s1)] border border-[var(--color-hl)] focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 rounded-lg transition-all placeholder-[var(--color-ink-4)] outline-none text-[var(--color-ink)] shadow-sm";
   const selectBase = `${inputBase} py-2.5 px-2 cursor-pointer h-[38px]`;
   const textBase = `${inputBase} py-2.5 px-3 h-[38px]`;
 
   return (
     // Removed overflow-hidden and added z-30 to ensure datepicker pops out correctly
-    <div className="bg-indigo-50/50 rounded-2xl border border-indigo-100 p-5 mb-8 relative z-30">
+    <div className="bg-[var(--color-s2)] rounded-2xl border border-[var(--color-hl)] p-5 mb-8 relative z-30">
       
       <div className="flex items-center gap-2 mb-4">
-        <div className="w-6 h-6 rounded-md bg-indigo-100 text-indigo-600 flex items-center justify-center">
+        <div className="w-6 h-6 rounded-md bg-[var(--color-s3)] text-[var(--color-ink)] flex items-center justify-center">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4"/></svg>
         </div>
         <div>
-          <h2 className="text-xs font-black text-slate-800 uppercase tracking-wide">New Entry</h2>
+          <h2 className="text-xs font-black text-[var(--color-ink)] uppercase tracking-wide">New Entry</h2>
         </div>
       </div>
       
@@ -104,7 +104,7 @@ const ArtworkForm: React.FC<Props> = ({ state, onSubmit }) => {
           
           {/* Context */}
           <div className="w-full lg:w-24 shrink-0">
-            <select name="work_context" value={formData.work_context} onChange={handleChange} className={`${selectBase} text-indigo-700 bg-indigo-50/30`}>
+            <select name="work_context" value={formData.work_context} onChange={handleChange} className={selectBase}>
               <option value={WorkContext.PROJECT}>PROJECT</option>
               <option value={WorkContext.LEAD}>LEAD</option>
               <option value={WorkContext.INTERNAL}>INTERNAL</option>
