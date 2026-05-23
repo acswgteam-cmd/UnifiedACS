@@ -70,6 +70,11 @@ export interface Lead {
   status: 'ON PROGRESS' | 'DONE' | 'CANCEL';
 }
 
+export interface StatusHistoryEntry {
+  status: InternalStatus;
+  timestamp: string;
+}
+
 export interface InternalDesign {
   id: string;
   task_name: string;
@@ -79,6 +84,7 @@ export interface InternalDesign {
   brief: string;
   status: InternalStatus;
   created_at?: string;
+  status_history?: StatusHistoryEntry[];
 }
 
 export interface ArtworkLog {

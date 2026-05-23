@@ -108,24 +108,24 @@
   --primary-focus:  #5E6AD2;
   --primary-dim:    rgba(94,106,210,0.08);
 
-  --canvas:  #F9F9F9;
+  --canvas:  #F8FAFC;
   --s1:      #FFFFFF;
-  --s2:      #F5F5F5;
-  --s3:      #EBEBEB;
-  --s4:      #E0E0E0;
+  --s2:      #F1F5F9;
+  --s3:      #E2E8F0;
+  --s4:      #CBD5E1;
 
-  --hl:      #EBEBEB;
-  --hl-2:    #D4D4D4;
-  --hl-3:    #A3A3A3;
+  --hl:      rgba(15, 23, 42, 0.05); /* Extremely soft, translucent 5% slate border */
+  --hl-2:    rgba(15, 23, 42, 0.08); /* 8% slate border */
+  --hl-3:    rgba(15, 23, 42, 0.15); /* 15% slate border */
 
-  --ink:     #171717;
-  --ink-2:   #525252;
-  --ink-3:   #737373;
-  --ink-4:   #A1A1A1;
+  --ink:     #0F172A; /* Sleek dark slate instead of muddy neutral charcoal */
+  --ink-2:   #334155; /* Slate secondary */
+  --ink-3:   #64748B; /* Slate muted */
+  --ink-4:   #94A3B8; /* Slate disabled */
 
-  --success: #15803d;
-  --warning: #a16207;
-  --error:   #b91c1c;
+  --success: #10B981;
+  --warning: #F59E0B;
+  --error:   #EF4444;
 
   --color-bg:             var(--canvas);
   --color-canvas:         var(--canvas);
@@ -153,16 +153,20 @@
 
 /* ── Light mode: override Tailwind dark-bg utility overrides ── */
 [data-theme="light"] .bg-white            { background-color: var(--s1) !important; }
-[data-theme="light"] .bg-zinc-50, [data-theme="light"] .bg-slate-50, [data-theme="light"] .bg-gray-50   { background-color: var(--s2) !important; }
-[data-theme="light"] .bg-zinc-100,[data-theme="light"] .bg-slate-100,[data-theme="light"] .bg-gray-100  { background-color: var(--s3) !important; }
+[data-theme="light"] .bg-zinc-50, [data-theme="light"] .bg-slate-50, [data-theme="light"] .bg-gray-50   { background-color: var(--canvas) !important; }
+[data-theme="light"] .bg-zinc-100,[data-theme="light"] .bg-slate-100,[data-theme="light"] .bg-gray-100  { background-color: var(--s2) !important; }
+[data-theme="light"] .bg-zinc-200,[data-theme="light"] .bg-slate-200,[data-theme="light"] .bg-gray-200  { background-color: var(--s3) !important; }
 [data-theme="light"] .text-zinc-950,[data-theme="light"] .text-gray-950,
 [data-theme="light"] .text-zinc-900,[data-theme="light"] .text-gray-900 { color: var(--ink)   !important; }
 [data-theme="light"] .text-zinc-600,[data-theme="light"] .text-gray-600 { color: var(--ink-2) !important; }
 [data-theme="light"] .text-zinc-500,[data-theme="light"] .text-gray-500 { color: var(--ink-3) !important; }
 [data-theme="light"] .text-zinc-400,[data-theme="light"] .text-gray-400 { color: var(--ink-4) !important; }
-[data-theme="light"] .border-zinc-200,[data-theme="light"] .border-gray-200 { border-color: var(--hl-2) !important; }
-[data-theme="light"] .shadow-2xl { box-shadow: 0 8px 40px rgba(0,0,0,0.15), 0 0 0 1px var(--hl) !important; }
-[data-theme="light"] .shadow-sm  { box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important; }
+[data-theme="light"] .border { border-color: var(--hl) !important; }
+[data-theme="light"] .border-zinc-100, [data-theme="light"] .border-gray-100, [data-theme="light"] .border-slate-100 { border-color: var(--hl) !important; }
+[data-theme="light"] .border-zinc-200, [data-theme="light"] .border-gray-200, [data-theme="light"] .border-slate-200 { border-color: var(--hl-2) !important; }
+[data-theme="light"] .border-zinc-300, [data-theme="light"] .border-gray-300, [data-theme="light"] .border-slate-300 { border-color: var(--hl-2) !important; }
+[data-theme="light"] .shadow-2xl { box-shadow: 0 8px 40px rgba(0,0,0,0.06), 0 0 0 1px var(--hl) !important; }
+[data-theme="light"] .shadow-sm  { box-shadow: 0 1px 3px rgba(0,0,0,0.02) !important; }
 
 /* ── Light mode: badge colours ── */
 [data-theme="light"] .badge-success { background: rgba(21,128,61,0.10); color: #15803d; border-color: rgba(21,128,61,0.25); }
@@ -524,14 +528,22 @@ body {
 
 ::selection { background: rgba(94,106,210,0.28); color: #fff; }
 
-/* ── Force ALL Tailwind white/light backgrounds to Linear surfaces ── */
-/* This is the key "dark override" layer that fixes pages without touching each file */
-.bg-white            { background-color: var(--s1) !important; }
-.bg-zinc-50, .bg-slate-50, .bg-gray-50   { background-color: var(--s3) !important; }
-.bg-zinc-100,.bg-slate-100,.bg-gray-100  { background-color: var(--s2) !important; }
-.bg-zinc-200,.bg-slate-200,.bg-gray-200  { background-color: var(--s1) !important; }
-.bg-\[#FCFCFC\], .bg-\[#F8F9FA\], .bg-\[#f8f9fa\] { background-color: var(--s2) !important; }
-.bg-\[#1A1C20\]  { background-color: var(--s2) !important; }
+/* ── Force ALL Tailwind white/light backgrounds to Linear surfaces (Scoped by Theme) ── */
+/* Scoped for Dark Theme to provide correct contrasts */
+[data-theme="dark"] .bg-white            { background-color: var(--s1) !important; }
+[data-theme="dark"] .bg-zinc-50, [data-theme="dark"] .bg-slate-50, [data-theme="dark"] .bg-gray-50   { background-color: var(--s3) !important; }
+[data-theme="dark"] .bg-zinc-100,[data-theme="dark"] .bg-slate-100,[data-theme="dark"] .bg-gray-100  { background-color: var(--s2) !important; }
+[data-theme="dark"] .bg-zinc-200,[data-theme="dark"] .bg-slate-200,[data-theme="dark"] .bg-gray-200  { background-color: var(--s1) !important; }
+[data-theme="dark"] .bg-\[#FCFCFC\], [data-theme="dark"] .bg-\[#F8F9FA\], [data-theme="dark"] .bg-\[#f8f9fa\] { background-color: var(--s2) !important; }
+[data-theme="dark"] .bg-\[#1A1C20\]  { background-color: var(--s2) !important; }
+
+/* Scoped for Light Theme to provide correct light backgrounds */
+[data-theme="light"] .bg-white            { background-color: var(--s1) !important; }
+[data-theme="light"] .bg-zinc-50, [data-theme="light"] .bg-slate-50, [data-theme="light"] .bg-gray-50   { background-color: var(--canvas) !important; }
+[data-theme="light"] .bg-zinc-100,[data-theme="light"] .bg-slate-100,[data-theme="light"] .bg-gray-100  { background-color: var(--s2) !important; }
+[data-theme="light"] .bg-zinc-200,[data-theme="light"] .bg-slate-200,[data-theme="light"] .bg-gray-200  { background-color: var(--s3) !important; }
+[data-theme="light"] .bg-\[#FCFCFC\], [data-theme="light"] .bg-\[#F8F9FA\], [data-theme="light"] .bg-\[#f8f9fa\] { background-color: var(--s2) !important; }
+[data-theme="light"] .bg-\[#1A1C20\]  { background-color: var(--s2) !important; }
 
 /* Force ALL zinc/gray/slate text to Linear ink scale */
 .text-zinc-950,.text-gray-950,.text-slate-950,
