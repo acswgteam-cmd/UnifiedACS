@@ -542,8 +542,21 @@ body {
 [data-theme="light"] .bg-zinc-50, [data-theme="light"] .bg-slate-50, [data-theme="light"] .bg-gray-50   { background-color: var(--canvas) !important; }
 [data-theme="light"] .bg-zinc-100,[data-theme="light"] .bg-slate-100,[data-theme="light"] .bg-gray-100  { background-color: var(--s2) !important; }
 [data-theme="light"] .bg-zinc-200,[data-theme="light"] .bg-slate-200,[data-theme="light"] .bg-gray-200  { background-color: var(--s3) !important; }
-[data-theme="light"] .bg-\[#FCFCFC\], [data-theme="light"] .bg-\[#F8F9FA\], [data-theme="light"] .bg-\[#f8f9fa\] { background-color: var(--s2) !important; }
-[data-theme="light"] .bg-\[#1A1C20\]  { background-color: var(--s2) !important; }
+[data-theme="light"] .bg-\[\#FCFCFC\], [data-theme="light"] .bg-\[#F8F9FA\], [data-theme="light"] .bg-\[#f8f9fa\] { background-color: var(--s2) !important; }
+[data-theme="light"] .bg-\[\#1A1C20\]  { background-color: var(--s2) !important; }
+
+/* Fix white text on backgrounds that become light in light mode */
+[data-theme="light"] .bg-white.text-white,
+[data-theme="light"] .bg-zinc-50.text-white, [data-theme="light"] .bg-slate-50.text-white, [data-theme="light"] .bg-gray-50.text-white,
+[data-theme="light"] .bg-zinc-100.text-white, [data-theme="light"] .bg-slate-100.text-white, [data-theme="light"] .bg-gray-100.text-white,
+[data-theme="light"] .bg-zinc-200.text-white, [data-theme="light"] .bg-slate-200.text-white, [data-theme="light"] .bg-gray-200.text-white,
+[data-theme="light"] .bg-zinc-800.text-white, [data-theme="light"] .bg-slate-800.text-white, [data-theme="light"] .bg-gray-800.text-white,
+[data-theme="light"] .bg-zinc-900.text-white, [data-theme="light"] .bg-slate-900.text-white, [data-theme="light"] .bg-gray-900.text-white,
+[data-theme="light"] .bg-zinc-950.text-white, [data-theme="light"] .bg-slate-950.text-white, [data-theme="light"] .bg-gray-950.text-white,
+[data-theme="light"] .bg-\[\#FCFCFC\].text-white, [data-theme="light"] .bg-\[#F8F9FA\].text-white, [data-theme="light"] .bg-\[#f8f9fa\].text-white,
+[data-theme="light"] .bg-\[\#1A1C20\].text-white {
+  color: var(--ink) !important;
+}
 
 /* Force ALL zinc/gray/slate text to Linear ink scale */
 .text-zinc-950,.text-gray-950,.text-slate-950,

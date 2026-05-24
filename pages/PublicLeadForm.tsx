@@ -4,6 +4,7 @@ import { useParams, Link } from 'react-router-dom';
 import { Lead } from '../types';
 import { supabase } from '../lib/supabase';
 import { PUBLIC_FORM_SECRET } from '../data/mockData';
+import { getOffHourStatus } from '../lib/holidayUtils';
 
 interface Props {
   onHostSubmit?: (leads: Lead[]) => void;
@@ -13,6 +14,8 @@ interface Props {
 const PublicLeadForm: React.FC<Props> = ({ onHostSubmit, currentLeads = [] }) => {
   const { token } = useParams<{ token: string }>();
   const isAuthorized = token === PUBLIC_FORM_SECRET;
+
+  const offHourStatus = getOffHourStatus();
 
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -97,6 +100,12 @@ const PublicLeadForm: React.FC<Props> = ({ onHostSubmit, currentLeads = [] }) =>
   return (
     <div className="min-h-screen bg-[#F8F9FA] py-12 px-6">
       <div className="max-w-2xl mx-auto">
+        {offHourStatus.show && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl font-bold text-center shadow-sm flex items-center justify-center gap-3">
+            <svg className="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+            <span>{offHourStatus.message}</span>
+          </div>
+        )}
         <div className="text-center mb-10">
           <div className="inline-block px-4 py-1.5 bg-zinc-900 text-white rounded-full text-[10px] font-bold uppercase tracking-wider mb-4">
             Creative Support Request
