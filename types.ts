@@ -75,6 +75,27 @@ export interface StatusHistoryEntry {
   timestamp: string;
 }
 
+export type ChangelogChangeType =
+  | 'TASK_CREATED'
+  | 'STATUS_CHANGE'
+  | 'DEADLINE_CHANGE'
+  | 'DEPT_CHANGE'
+  | 'BRIEF_CHANGE'
+  | 'NOTE';
+
+export interface ChangelogEntry {
+  id: string;
+  internal_design_id: string;
+  change_type: ChangelogChangeType;
+  old_value?: string | null;
+  new_value?: string | null;
+  note?: string | null;
+  reference_link?: string | null;
+  image_url?: string | null;
+  changed_by?: string;
+  created_at: string;
+}
+
 export interface InternalDesign {
   id: string;
   task_name: string;
