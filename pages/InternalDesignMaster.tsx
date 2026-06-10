@@ -52,8 +52,12 @@ const serializeStatusHistory = (brief: string, history: StatusHistoryEntry[]): s
   const cleanBrief = brief.replace(/<!-- STATUS_HISTORY_START[\s\S]*?STATUS_HISTORY_END -->/, '').trim();
   return `${cleanBrief}\n\n<!-- STATUS_HISTORY_START\n${JSON.stringify(history, null, 2)}\nSTATUS_HISTORY_END -->`;
 };
-const getBriefText = (brief: string): string =>
-  brief.replace(/<!-- STATUS_HISTORY_START[\s\S]*?STATUS_HISTORY_END -->/, '').trim();
+const getBriefText = (brief: string): string => {
+  if (brief.includes('<!-- STATUS_HISTORY_START')) {
+    return brief.replace(/<!-- STATUS_HISTORY_START[\s\S]*?STATUS_HISTORY_END -->/, '').trim();
+  }
+  return brief;
+};
 
 // ─── Time helpers ─────────────────────────────────────────────────────────────
 const formatRelativeTime = (iso: string): string => {
@@ -181,7 +185,7 @@ const TaskNotesTooltip: React.FC<{
   const [isHovered, setIsHovered] = useState(false);
   const [coords, setCoords] = useState({ top: 0, left: 0 });
 
-  if (!nc || nc.total === 0) return <>{children}</>;
+  if (!nc || nc.notes.length === 0) return <>{children}</>;
 
   const handleMouseEnter = (e: React.MouseEvent) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -217,14 +221,25 @@ const TaskNotesTooltip: React.FC<{
         >
           <div className="text-[10px] font-black uppercase text-zinc-400 tracking-wider mb-2 border-b border-zinc-100 pb-1 flex justify-between items-center">
             <span>Catatan Tugas</span>
-            <span>{nc.done}/{nc.total} Selesai</span>
+            {nc.total > 0 ? (
+              <span>{nc.done}/{nc.total} Selesai</span>
+            ) : (
+              <span>{nc.notes.length} Catatan</span>
+            )}
           </div>
           <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar">
             {nc.notes.map(n => {
+              const isTask = n.note_status === 'OPEN' || n.note_status === 'DONE';
               const isNoteDone = n.note_status === 'DONE';
               return (
                 <div key={n.id} className="flex items-start gap-1.5 text-[11px] leading-snug">
-                  <span className="shrink-0 text-[10px] mt-0.5">{isNoteDone ? <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> : <Pin className="w-3.5 h-3.5 text-[var(--primary)] shrink-0" />}</span>
+                  <span className="shrink-0 text-[10px] mt-0.5">
+                    {isTask ? (
+                      isNoteDone ? <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> : <Pin className="w-3.5 h-3.5 text-[var(--primary)] shrink-0" />
+                    ) : (
+                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-zinc-400 mx-1 mt-1.5 shrink-0" />
+                    )}
+                  </span>
                   <div className="flex-1 min-w-0">
                     <div className={`font-bold ${isNoteDone ? 'text-zinc-400 line-through' : 'text-zinc-800'} truncate`}>
                       {n.note_title || 'Catatan Progress'}
@@ -311,9 +326,11 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
       data.forEach((item: any) => {
         const id = item.internal_design_id;
         const cur = map.get(id) || { total: 0, done: 0, urgent: 0, notes: [] };
-        cur.total++;
-        if (item.note_status === 'DONE') cur.done++;
-        if (item.note_status !== 'DONE' && item.note_deadline && item.note_deadline <= todayStr) cur.urgent++;
+        if ((item.note_status === 'OPEN' || item.note_status === 'DONE') && (item.note_title || item.note_deadline)) {
+          cur.total++;
+          if (item.note_status === 'DONE') cur.done++;
+          if (item.note_status !== 'DONE' && item.note_deadline && item.note_deadline <= todayStr) cur.urgent++;
+        }
         cur.notes.push(item as ChangelogEntry);
         map.set(id, cur);
       });
@@ -379,6 +396,7 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
 
   // ── CRUD & selection states ───────────────────────────────────────────────
   const [isFormOpen, setIsFormOpen]       = useState(false);
+  const [previewImage, setPreviewImage]   = useState<string | null>(null);
   const [editingTask, setEditingTask]     = useState<InternalDesign | null>(null);
   const [selectedTask, setSelectedTask]   = useState<InternalDesign | null>(null);
   const [isEditingInline, setIsEditingInline] = useState(false);
@@ -451,10 +469,19 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
       const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.webp`;
       const { data, error } = await supabase.storage
         .from('changelog-images').upload(fileName, blob, { contentType: 'image/webp', upsert: false });
-      if (error) { console.error(error); return null; }
+      if (error) {
+        console.error(error);
+        alert(`Gagal mengunggah foto: ${error.message}`);
+        return null;
+      }
       return supabase.storage.from('changelog-images').getPublicUrl(data.path).data?.publicUrl || null;
-    } catch (e) { console.error(e); return null; }
-    finally { setUploadingImage(false); }
+    } catch (e: any) {
+      console.error(e);
+      alert(`Terjadi kesalahan saat memproses foto: ${e.message || e}`);
+      return null;
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   const handleNoteImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -471,7 +498,13 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
     if (!noteTitle.trim() && !noteText.trim() && !noteLink.trim() && !noteImageFile) return;
     setIsSavingNote(true);
     let imageUrl: string | null = null;
-    if (noteImageFile) imageUrl = await uploadChangelogImage(noteImageFile);
+    if (noteImageFile) {
+      imageUrl = await uploadChangelogImage(noteImageFile);
+      if (!imageUrl) {
+        setIsSavingNote(false);
+        return; // Stop saving if the user intended to upload an image but the upload failed
+      }
+    }
     await insertChangelog(selectedTask.id, 'NOTE', {
       note_title:    noteTitle.trim() || null,
       note:          noteText.trim() || null,
@@ -590,13 +623,21 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
 
     if (editingTask) {
       const changes: Array<{ type: ChangelogChangeType; old_value?: string; new_value?: string }> = [];
+      const history = [...parseStatusHistory(editingTask.brief || '')];
+
       if (editingTask.status !== dataToSave.status) {
-        const history = [...parseStatusHistory(dataToSave.brief || '')];
-        if (!history.length) history.push({ status: editingTask.status, timestamp: editingTask.created_at ? new Date(editingTask.created_at).toISOString() : new Date().toISOString() });
+        if (!history.length) {
+          history.push({
+            status: editingTask.status,
+            timestamp: editingTask.created_at ? new Date(editingTask.created_at).toISOString() : new Date().toISOString()
+          });
+        }
         history.push({ status: dataToSave.status as InternalStatus, timestamp: new Date().toISOString() });
-        dataToSave.brief = serializeStatusHistory(dataToSave.brief || '', history);
         changes.push({ type: 'STATUS_CHANGE', old_value: editingTask.status, new_value: dataToSave.status as string });
       }
+
+      dataToSave.brief = serializeStatusHistory(dataToSave.brief || '', history);
+
       if ((editingTask.deadline || '') !== (dataToSave.deadline || ''))
         changes.push({ type: 'DEADLINE_CHANGE', old_value: editingTask.deadline || '(tidak ada)', new_value: dataToSave.deadline || '(tidak ada)' });
       if (editingTask.department_id !== dataToSave.department_id)
@@ -668,10 +709,10 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
                     <span className={`w-1.5 h-1.5 rounded-full ${task.status === 'DONE' ? 'bg-emerald-500' : 'bg-purple-500'}`} />
                     <span className="text-[7px] font-bold text-purple-400 uppercase">{getDeptName(task.department_id)}</span>
                   </div>
-                  {nc && nc.total > 0 && (
+                  {nc && nc.notes.length > 0 && (
                     <TaskNotesTooltip nc={nc}>
-                      <span className={`absolute right-1 top-1 w-3.5 h-3.5 rounded-full flex items-center justify-center text-[7.5px] font-black text-white shrink-0 shadow-sm ${nc.urgent > 0 ? 'bg-red-500 animate-pulse' : nc.done === nc.total ? 'bg-emerald-500' : 'bg-purple-500'}`}>
-                        {nc.total}
+                      <span className={`absolute right-1 top-1 w-3.5 h-3.5 rounded-full flex items-center justify-center text-[7.5px] font-black text-white shrink-0 shadow-sm ${nc.urgent > 0 ? 'bg-red-500 animate-pulse' : (nc.total > 0 && nc.done === nc.total) ? 'bg-emerald-500' : 'bg-purple-500'}`}>
+                        {nc.notes.length}
                       </span>
                     </TaskNotesTooltip>
                   )}
@@ -832,11 +873,11 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
                                 <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                                   <span className="text-[7.5px] font-bold text-[var(--ink-3)] font-mono uppercase">{getTaskCode(task)}</span>
                                   {!task.deadline && <span className="px-1.5 py-0.5 rounded text-[7px] font-bold bg-zinc-50 border border-zinc-200 text-zinc-400">∞</span>}
-                                  {nc && nc.total > 0 && (
+                                  {nc && nc.notes.length > 0 && (
                                     <TaskNotesTooltip nc={nc}>
-                                      <span className={`px-1.5 py-0.5 rounded text-[7px] font-bold border flex items-center gap-1 shrink-0 ${nc.urgent > 0 ? 'bg-red-50 border-red-100 text-red-600 animate-pulse' : nc.done === nc.total ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 'bg-purple-50 border-purple-100 text-purple-600'}`}>
-                                        <span>💬 {nc.total}</span>
-                                        <span className="opacity-60">({nc.done}/{nc.total})</span>
+                                      <span className={`px-1.5 py-0.5 rounded text-[7px] font-bold border flex items-center gap-1 shrink-0 ${nc.urgent > 0 ? 'bg-red-50 border-red-100 text-red-600 animate-pulse' : (nc.total > 0 && nc.done === nc.total) ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 'bg-purple-50 border-purple-100 text-purple-600'}`}>
+                                        <span>💬 {nc.notes.length}</span>
+                                        {nc.total > 0 && <span className="opacity-60">({nc.done}/{nc.total})</span>}
                                       </span>
                                     </TaskNotesTooltip>
                                   )}
@@ -1334,10 +1375,14 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
                                 {/* Image */}
                                 {entry.image_url && (
                                   <div className="mt-2">
-                                    <a href={entry.image_url} target="_blank" rel="noopener noreferrer">
-                                      <img src={entry.image_url} alt="Screenshot" className="max-h-48 w-full object-cover rounded-xl border border-zinc-200 hover:opacity-90 cursor-zoom-in transition-opacity" />
-                                    </a>
-                                    <p className="text-[8px] text-zinc-400 font-semibold mt-1">📎 Screenshot (WebP) — klik untuk buka</p>
+                                    <button
+                                      type="button"
+                                      onClick={() => setPreviewImage(entry.image_url)}
+                                      className="block focus:outline-none"
+                                    >
+                                      <img src={entry.image_url} alt="Screenshot" className="max-h-20 max-w-[160px] object-cover rounded-lg border border-zinc-200 hover:border-[var(--primary)] hover:brightness-95 cursor-zoom-in transition-all" />
+                                    </button>
+                                    <p className="text-[8px] text-zinc-400 font-semibold mt-1">📎 Klik untuk memperbesar</p>
                                   </div>
                                 )}
                               </div>
@@ -1477,13 +1522,13 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
                             : <span className="text-[9px] text-zinc-300 italic">—</span>}
                         </td>
                         <td className="px-4 md:px-6 py-3 md:py-4">
-                          {nc && nc.total > 0 ? (
+                          {nc && nc.notes.length > 0 ? (
                             <div className="flex items-center gap-2">
                               <TaskNotesTooltip nc={nc}>
-                                <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9px] font-extrabold border ${nc.urgent > 0 ? 'bg-red-50 border-red-100 text-red-600 animate-pulse' : nc.done === nc.total ? 'bg-[#edfce9] border-[#003c33]/20 text-[#003c33]' : 'bg-[#f1f5ff] border-[#1863dc]/20 text-[#1863dc]'}`}>
+                                <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9px] font-extrabold border ${nc.urgent > 0 ? 'bg-red-50 border-red-100 text-red-600 animate-pulse' : (nc.total > 0 && nc.done === nc.total) ? 'bg-[#edfce9] border-[#003c33]/20 text-[#003c33]' : 'bg-[#f1f5ff] border-[#1863dc]/20 text-[#1863dc]'}`}>
                                   <ChatBubble className="w-3.5 h-3.5 shrink-0" />
-                                  <span>{nc.total}</span>
-                                  <span className="opacity-60">({nc.done}/{nc.total})</span>
+                                  <span>{nc.notes.length}</span>
+                                  {nc.total > 0 && <span className="opacity-60">({nc.done}/{nc.total})</span>}
                                 </span>
                               </TaskNotesTooltip>
                             </div>
@@ -1552,14 +1597,14 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
                                   <span className="text-zinc-400 font-bold uppercase">Deadline</span>
                                   <span className={`font-bold tracking-tight ${isOverdue ? 'text-red-700 bg-red-100 px-1.5 py-0.5 rounded border border-red-200' : isToday ? 'text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded border border-amber-200' : 'text-zinc-800'}`}>{task.deadline || 'No deadline'}</span>
                                 </div>
-                                {nc && nc.total > 0 && (
+                                {nc && nc.notes.length > 0 && (
                                   <div className="flex justify-between text-[10px] items-center pt-2 border-t border-zinc-50/50 mt-1">
                                     <span className="text-zinc-400 font-bold uppercase">Catatan</span>
                                     <TaskNotesTooltip nc={nc}>
-                                      <span className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9px] font-extrabold border ${nc.urgent > 0 ? 'bg-red-500/10 border-red-500/20 text-red-600 animate-pulse' : nc.done === nc.total ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600' : 'bg-[var(--primary-dim)] border-[var(--primary)]/20 text-[var(--primary)]'}`}>
+                                      <span className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9px] font-extrabold border ${nc.urgent > 0 ? 'bg-red-500/10 border-red-500/20 text-red-600 animate-pulse' : (nc.total > 0 && nc.done === nc.total) ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600' : 'bg-[var(--primary-dim)] border-[var(--primary)]/20 text-[var(--primary)]'}`}>
                                         <ChatBubble className="w-3 h-3 text-current shrink-0" />
-                                        <span>{nc.total}</span>
-                                        <span className="opacity-60">({nc.done}/{nc.total})</span>
+                                        <span>{nc.notes.length}</span>
+                                        {nc.total > 0 && <span className="opacity-60">({nc.done}/{nc.total})</span>}
                                       </span>
                                     </TaskNotesTooltip>
                                   </div>
@@ -1657,6 +1702,30 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
                 <button type="button" onClick={() => setIsFormOpen(false)} className="flex-1 py-2 bg-[var(--s2)] text-[var(--ink-2)] border border-zinc-100 rounded-lg font-bold uppercase text-xs hover:bg-[var(--s3)] transition-all">Batal</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* ── Image Preview Modal ── */}
+      {previewImage && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[200] p-4 animate-in fade-in duration-200"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div
+            className="relative bg-[var(--s1)] rounded-[20px] shadow-2xl max-w-3xl max-h-[85vh] border border-zinc-100 overflow-hidden p-2 animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setPreviewImage(null)}
+              className="absolute top-4 right-4 p-2 bg-black/50 hover:bg-black/70 rounded-full text-white transition-colors z-10"
+            >
+              <Xmark className="w-5 h-5" />
+            </button>
+            <img
+              src={previewImage}
+              alt="Larger preview"
+              className="max-w-full max-h-[80vh] object-contain rounded-lg"
+            />
           </div>
         </div>
       )}

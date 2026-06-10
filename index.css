@@ -590,21 +590,21 @@ body {
 }
 .sidebar-link {
   display: flex; align-items: center;
-  border-radius: var(--r-sm);
-  padding: 5px 10px;
-  font-size: 13px; font-weight: 450;
+  border-radius: var(--r-md);
+  padding: 9px 12px;
+  font-size: 13.5px; font-weight: 500;
   color: var(--ink-3);
   text-decoration: none;
   transition: color 80ms, background-color 80ms;
   white-space: nowrap; letter-spacing: -0.01em;
 }
 .sidebar-link:hover { color: var(--ink); background-color: var(--hl); }
-.sidebar-link.active { color: var(--primary); background-color: var(--primary-dim); }
+.sidebar-link.active { color: var(--primary); background-color: var(--primary-dim); font-weight: 600; }
 
 /* Section label */
 .overline {
-  font-size: 11px; font-weight: 600;
-  letter-spacing: 0.06em; text-transform: uppercase;
+  font-size: 10.5px; font-weight: 600;
+  letter-spacing: 0.08em; text-transform: uppercase;
   color: var(--ink-4);
 }
 

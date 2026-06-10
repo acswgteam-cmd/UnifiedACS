@@ -194,9 +194,7 @@ const App: React.FC = () => {
               <div className={`flex items-center h-[48px] px-3 border-b ${collapsed ? 'justify-center' : 'justify-between'}`} style={{ borderColor: 'var(--color-hl)' }}>
                 {!collapsed && (
                   <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 rounded flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'var(--color-primary)' }}>
-                      <svg width="10" height="10" viewBox="0 0 12 12" fill="white"><rect x="1" y="1" width="4" height="4" rx="1"/><rect x="7" y="1" width="4" height="4" rx="1"/><rect x="1" y="7" width="4" height="4" rx="1"/><rect x="7" y="7" width="4" height="4" rx="1"/></svg>
-                    </div>
+                    <img src="/logo.png" alt="ACS Logo" className="w-5 h-5 rounded-full object-contain" />
                     <span style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 13, color: 'var(--color-ink)', letterSpacing: '-0.02em' }}>ACS Unified</span>
                   </div>
                 )}
@@ -210,7 +208,7 @@ const App: React.FC = () => {
               </div>
 
               {/* Nav */}
-              <nav className="flex-1 py-4 px-2 space-y-0.5 overflow-y-auto scrollbar-hide overflow-x-visible">
+              <nav className="flex-1 py-4 px-2 space-y-1.5 overflow-y-auto scrollbar-hide overflow-x-visible">
                 <SidebarLink to="/admin/dashboard" icon={<IconDashboard />} label="Dashboard" collapsed={collapsed} />
                 <SidebarLink to="/admin/reports"   icon={<IconReport />}    label="Report Gen" collapsed={collapsed} badge="BETA" />
                 <SidebarLink to="/admin/artwork-logs" icon={<IconArtwork />} label="Artwork Logs" collapsed={collapsed} />
@@ -244,9 +242,7 @@ const App: React.FC = () => {
               {/* Top bar (mobile logo + desktop right area) */}
               <header className="nav-top px-4 md:px-6 md:hidden">
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-btn flex items-center justify-center" style={{ backgroundColor: 'var(--color-primary)' }}>
-                    <svg width="12" height="12" viewBox="0 0 12 12" fill="white"><rect x="1" y="1" width="4" height="4" rx="1"/><rect x="7" y="1" width="4" height="4" rx="1"/><rect x="1" y="7" width="4" height="4" rx="1"/><rect x="7" y="7" width="4" height="4" rx="1"/></svg>
-                  </div>
+                  <img src="/logo.png" alt="ACS Logo" className="w-6 h-6 rounded-full object-contain" />
                   <span className="font-display font-bold text-sm tracking-tight" style={{ color: 'var(--color-text-primary)' }}>ACS Unified</span>
                 </div>
               </header>
