@@ -61,7 +61,7 @@ const DepartmentMaster: React.FC<Props> = ({ departments, onUpdate }) => {
     }
   };
 
-  const inputClass = "flex-1 rounded-lg border-zinc-300 text-zinc-900 text-sm p-2.5 border bg-white focus:ring-2 focus:ring-indigo-600 outline-none placeholder-slate-400 font-semibold shadow-sm";
+  const inputClass = "flex-1 rounded-lg border-zinc-300 text-zinc-900 text-sm p-2.5 border bg-white focus:ring-2 focus:ring-[var(--primary)] outline-none placeholder-slate-400 font-semibold shadow-sm";
 
   return (
     <div className="space-y-6">
@@ -72,7 +72,7 @@ const DepartmentMaster: React.FC<Props> = ({ departments, onUpdate }) => {
         </div>
         <button
           onClick={() => setIsAdding(true)}
-          className="px-4 py-2 bg-zinc-900 text-white rounded-lg text-sm font-bold flex items-center gap-2 shadow-sm border border-[#EAEAEA]"
+          className="px-4 py-2 bg-[var(--primary)] text-white rounded-lg text-sm font-bold flex items-center gap-2 shadow-sm border border-transparent hover:brightness-110 transition-all"
         >
           Add Dept
         </button>
@@ -87,7 +87,7 @@ const DepartmentMaster: React.FC<Props> = ({ departments, onUpdate }) => {
             onChange={(e) => setNewDeptName(e.target.value)}
             className={inputClass}
           />
-          <button onClick={handleAdd} className="px-6 py-2.5 bg-zinc-900 text-white rounded-lg text-sm font-bold shadow-md hover:bg-black transition-all">Save</button>
+          <button onClick={handleAdd} className="px-6 py-2.5 bg-[var(--primary)] text-white rounded-lg text-sm font-bold shadow-md hover:brightness-110 transition-all">Save</button>
           <button onClick={() => setIsAdding(false)} className="px-4 py-2.5 text-sm font-bold text-zinc-600 hover:text-zinc-900 uppercase tracking-wider text-[10px]">Cancel</button>
         </div>
       )}

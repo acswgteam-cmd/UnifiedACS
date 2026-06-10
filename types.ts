@@ -90,6 +90,9 @@ export interface ChangelogEntry {
   old_value?: string | null;
   new_value?: string | null;
   note?: string | null;
+  note_title?: string | null;           // judul catatan (opsional)
+  note_deadline?: string | null;        // deadline catatan (opsional)
+  note_status?: 'OPEN' | 'DONE' | null; // status catatan
   reference_link?: string | null;
   image_url?: string | null;
   changed_by?: string;
@@ -101,11 +104,26 @@ export interface InternalDesign {
   task_name: string;
   department_id: string;
   requester_name: string;
-  deadline: string;
+  deadline: string | null;   // nullable — task tanpa deadline diizinkan
   brief: string;
   status: InternalStatus;
   created_at?: string;
   status_history?: StatusHistoryEntry[];
+}
+
+// Sub-catatan per task — bisa punya deadline sendiri (opsional)
+export interface TaskNote {
+  id: string;
+  internal_design_id: string;
+  title: string;
+  content?: string | null;
+  deadline?: string | null;
+  status: 'OPEN' | 'DONE';
+  reference_link?: string | null;
+  image_url?: string | null;
+  created_by?: string;
+  created_at: string;
+  updated_at?: string;
 }
 
 export interface ArtworkLog {
