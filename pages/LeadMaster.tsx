@@ -5,6 +5,34 @@ import { jsPDF } from 'jspdf';
 import { supabase } from '../lib/supabase';
 import { PUBLIC_FORM_SECRET } from '../data/mockData';
 
+const getAvatarData = (name: string) => {
+  const colors = [
+    { bg: 'bg-indigo-50 text-indigo-700', border: 'border-indigo-100' },
+    { bg: 'bg-emerald-50 text-emerald-700', border: 'border-emerald-100' },
+    { bg: 'bg-rose-50 text-rose-700', border: 'border-rose-100' },
+    { bg: 'bg-amber-50 text-amber-700', border: 'border-amber-100' },
+    { bg: 'bg-purple-50 text-purple-700', border: 'border-purple-100' },
+    { bg: 'bg-sky-50 text-sky-700', border: 'border-sky-100' }
+  ];
+  let hash = 0;
+  const trimmed = name.trim();
+  for (let i = 0; i < trimmed.length; i++) hash = trimmed.charCodeAt(i) + ((hash << 5) - hash);
+  const color = colors[Math.abs(hash) % colors.length];
+  const parts = trimmed.split(' ').filter(Boolean);
+  const initials = parts.length > 1 ? (parts[0][0] + parts[1][0]).toUpperCase() : (parts[0]?.[0] || 'U').toUpperCase();
+  return { color, initials };
+};
+
+const formatDate = (dateStr?: string | null) => {
+  if (!dateStr) return '---';
+  try {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  } catch {
+    return dateStr;
+  }
+};
+
 interface Props {
   leads: Lead[];
   onUpdate: () => void;
@@ -135,6 +163,32 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
     });
     setEditingId(null);
     setIsAdding(false);
+  };
+
+  const handleAddFromBoard = (groupKey: string) => {
+    resetForm();
+    const cleanKey = groupKey.replace(/^GRADE\s+/i, '');
+    const newForm: Partial<Lead> = {
+      lead_name: '',
+      requester: '',
+      order_date: new Date().toISOString().split('T')[0],
+      deadline: '',
+      lead_grade: 'B',
+      brief: '',
+      drive_link: '',
+      status: 'ON PROGRESS'
+    };
+
+    if (boardGroup === 'status') {
+      newForm.status = cleanKey as any;
+    } else if (boardGroup === 'grade') {
+      newForm.lead_grade = cleanKey as any;
+    } else if (boardGroup === 'requester') {
+      newForm.requester = cleanKey;
+    }
+    setFormData(newForm);
+    setIsAdding(true);
+    setView('list');
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -545,67 +599,129 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
           </div>
         ) : view === 'board' ? (
           <div className="h-full flex flex-col pt-2 border-t border-[#EAEAEA] overflow-hidden">
-            <div className="flex items-center gap-3 mb-4 shrink-0 flex-wrap">
-              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Group By:</span>
-              <div className="flex bg-[#FAFAFA]200 p-1 rounded-xl">
+            <div className="flex items-center gap-5 mb-5 shrink-0 flex-wrap">
+              <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Group By:</span>
+              <div className="flex bg-[#F4F5F6] p-1 rounded-xl border border-zinc-200/50">
                 {[
                   { id: 'status', label: 'Status' },
                   { id: 'grade', label: 'Grade' },
                   { id: 'requester', label: 'Requester' },
                   { id: 'overdue', label: 'Deadline Alert' }
                 ].map(opt => (
-                  <button key={opt.id} onClick={() => setBoardGroup(opt.id as any)} className={`px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all ${boardGroup === opt.id ? 'bg-white text-[var(--primary)] shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}>{opt.label}</button>
+                  <button key={opt.id} onClick={() => setBoardGroup(opt.id as any)} className={`px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all ${boardGroup === opt.id ? 'bg-white text-zinc-800 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}>{opt.label}</button>
                 ))}
               </div>
             </div>
-            <div className="flex-1 overflow-x-auto flex gap-6 pb-4 items-start custom-scrollbar">
-              {Object.keys(leadBoardGroups).sort().map((groupKey, idx) => {
-                const headerColors = [
-                  'border-t-blue-500 bg-blue-50 text-blue-900',
-                  'border-t-emerald-500 bg-emerald-50 text-emerald-900',
-                  'border-t-purple-500 bg-purple-50 text-purple-900',
-                  'border-t-amber-500 bg-amber-50 text-amber-900',
-                  'border-t-rose-500 bg-rose-50 text-rose-900',
-                  'border-t-cyan-500 bg-cyan-50 text-cyan-900',
-                  'border-t-indigo-500 bg-indigo-50 text-indigo-900'
-                ];
-                const theme = headerColors[idx % headerColors.length];
+            <div className="flex-1 overflow-x-auto flex gap-6 pb-6 items-start custom-scrollbar">
+              {Object.keys(leadBoardGroups).sort().map((groupKey) => {
+                const columnLeads = leadBoardGroups[groupKey];
+                
+                const getHeaderIcon = (key: string) => {
+                  if (key === 'DONE') {
+                    return (
+                      <span className="w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center text-white shrink-0">
+                        <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
+                      </span>
+                    );
+                  }
+                  if (key === 'CANCEL') {
+                    return (
+                      <span className="w-4 h-4 rounded-full bg-rose-500 flex items-center justify-center text-white shrink-0">
+                        <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg>
+                      </span>
+                    );
+                  }
+                  return (
+                    <span className="w-4 h-4 rounded-full border border-zinc-400 border-t-zinc-900 animate-spin shrink-0" style={{ animationDuration: '3s' }} />
+                  );
+                };
+
                 return (
-                  <div key={groupKey} className="w-64 md:w-80 flex-shrink-0 bg-zinc-50/50 rounded-2xl flex flex-col max-h-full border border-zinc-100 shadow-sm">
-                    <div className={`p-4 border-b border-zinc-100 border-t-4 uppercase tracking-tight font-bold text-sm flex justify-between items-center rounded-t-2xl shrink-0 ${theme}`}>
-                      <span className="truncate pr-2">{groupKey}</span>
-                      <span className="bg-white/60 text-current text-[10px] px-2 py-0.5 rounded-full">{leadBoardGroups[groupKey].length}</span>
+                  <div key={groupKey} className="w-72 md:w-80 flex-shrink-0 bg-[#F4F5F6]/60 rounded-2xl flex flex-col max-h-full border border-zinc-200/50 shadow-sm">
+                    {/* Column Header */}
+                    <div className="p-4 flex justify-between items-center shrink-0">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        {getHeaderIcon(groupKey)}
+                        <span className="truncate font-bold text-zinc-800 text-sm uppercase tracking-tight">{groupKey}</span>
+                        <span className="text-zinc-400 font-semibold text-xs ml-0.5">{columnLeads.length}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => handleAddFromBoard(groupKey)} className="p-1 rounded-md hover:bg-zinc-200/50 text-zinc-500 hover:text-zinc-800 transition-colors" title="Add lead to this group">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" /></svg>
+                        </button>
+                      </div>
                     </div>
-                    <div className="p-3 flex-1 overflow-y-auto space-y-3 custom-scrollbar">
-                      {leadBoardGroups[groupKey].map(l => {
+
+                    {/* Column Cards */}
+                    <div className="px-3 pb-3 flex-1 overflow-y-auto space-y-3 custom-scrollbar min-h-0">
+                      {columnLeads.map(l => {
                         const todayStr = new Date().toISOString().split('T')[0];
                         const isOverdue = l.deadline < todayStr && l.status !== 'DONE';
                         const isToday = l.deadline === todayStr && l.status !== 'DONE';
+                        
+                        const avatar = getAvatarData(l.requester);
+
                         return (
-                          <div key={l.id} onClick={() => setSelectedLead(l)} className="bg-white p-4 rounded-xl shadow-sm border border-[#EAEAEA] cursor-pointer hover:shadow-md transition-shadow group">
-                            <div className="flex justify-between items-start mb-2">
-                              <span className={`px-2 py-0.5 rounded-md border text-[8px] font-bold uppercase ${getStatusBadge(l.status)}`}>{l.status}</span>
-                              <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onClick={(e) => { e.stopPropagation(); handleEdit(e, l); }} className="text-zinc-400 hover:text-indigo-600"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-5M16.5 3.5a2.121 2.121 0 113 3L7 19l-4 1 1-4L16.5 3.5z" /></svg></button>
+                          <div
+                            key={l.id}
+                            onClick={() => setSelectedLead(l)}
+                            className="bg-white p-4 rounded-xl shadow-xs border border-zinc-200/70 hover:border-zinc-350 hover:shadow-sm cursor-pointer hover:-translate-y-0.5 transition-all duration-200 group"
+                          >
+                            {/* Card Top Row */}
+                            <div className="flex justify-between items-center mb-2.5 text-[10px] text-zinc-400 font-semibold">
+                              <div className="flex items-center gap-1">
+                                <svg className={`w-3.5 h-3.5 ${isOverdue ? 'text-rose-500' : isToday ? 'text-amber-500' : 'text-zinc-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21v11h-8.5l-1-1H5a2 2 0 00-2 2zm9-11.5V9" />
+                                </svg>
+                                <span className={isOverdue ? 'text-rose-600 font-bold' : isToday ? 'text-amber-600 font-bold' : 'text-zinc-500'}>
+                                  {formatDate(l.order_date)} &rarr; {formatDate(l.deadline)}
+                                </span>
                               </div>
                             </div>
-                            <h4 className="font-bold text-zinc-900 text-sm uppercase leading-tight mb-2 tracking-tight line-clamp-2" title={l.lead_name}>{l.lead_name}</h4>
-                            <div className="flex flex-col gap-1.5 mt-3 pt-3 border-t border-zinc-50">
-                              <div className="flex justify-between text-[10px] items-center">
-                                <span className="text-zinc-400 font-bold uppercase">Requester</span>
-                                <span className="text-zinc-800 font-bold truncate max-w-[120px]">{l.requester}</span>
+
+                            {/* Card Title */}
+                            <h4 className="font-bold text-zinc-850 text-sm uppercase leading-snug mb-1.5 tracking-tight line-clamp-2" title={l.lead_name}>
+                              {l.lead_name}
+                            </h4>
+
+                            {/* Card PIC Details */}
+                            <div className="flex items-center gap-1.5 text-[11px] text-zinc-500 font-medium">
+                              <svg className="w-3.5 h-3.5 text-zinc-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                              <span className="truncate max-w-[120px] uppercase font-semibold text-zinc-700">{l.requester}</span>
+                              <span className="text-zinc-300 font-light">&bull;</span>
+                              <span className="text-[10px] font-bold text-zinc-400 uppercase">Grade {l.lead_grade}</span>
+                            </div>
+
+                            {/* Thin Divider */}
+                            <div className="my-3 border-t border-zinc-100" />
+
+                            {/* Card Footer Row */}
+                            <div className="flex justify-between items-center">
+                              <div className="text-[9px] font-semibold text-zinc-400 uppercase">
+                                {/* Empty space left side */}
                               </div>
-                              <div className="flex justify-between text-[10px] items-center">
-                                <span className="text-zinc-400 font-bold uppercase">Deadline</span>
-                                <span className={`font-bold tracking-tight ${isOverdue ? 'text-red-700 bg-red-100 px-1.5 py-0.5 rounded border border-red-200' : isToday ? 'text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded border border-amber-200' : 'text-zinc-800'}`}>{l.deadline}</span>
+                              {/* Requester initials avatar */}
+                              <div className={`w-6 h-6 rounded-full border ${avatar.color.bg} ${avatar.color.border} flex items-center justify-center text-[9px] font-bold tracking-tighter shrink-0`} title={l.requester}>
+                                {avatar.initials}
                               </div>
                             </div>
                           </div>
                         );
                       })}
                     </div>
+
+                    {/* Add Lead Footer Button */}
+                    <div className="p-2 border-t border-zinc-200/50 shrink-0">
+                      <button
+                        onClick={() => handleAddFromBoard(groupKey)}
+                        className="w-full py-2 flex items-center justify-center gap-1.5 text-xs font-bold text-zinc-500 hover:text-zinc-800 hover:bg-zinc-200/30 rounded-xl transition-all"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" /></svg>
+                        Add Lead
+                      </button>
+                    </div>
                   </div>
-                )
+                );
               })}
             </div>
           </div>

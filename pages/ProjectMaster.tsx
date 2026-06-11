@@ -101,6 +101,24 @@ const AddRow = ({ newItem, updateNewItem, onAdd, newRowInputClass }: any) => (
   </tr>
 );
 
+const getAvatarData = (name: string) => {
+  const colors = [
+    { bg: 'bg-indigo-50 text-indigo-700', border: 'border-indigo-100' },
+    { bg: 'bg-emerald-50 text-emerald-700', border: 'border-emerald-100' },
+    { bg: 'bg-rose-50 text-rose-700', border: 'border-rose-100' },
+    { bg: 'bg-amber-50 text-amber-700', border: 'border-amber-100' },
+    { bg: 'bg-purple-50 text-purple-700', border: 'border-purple-100' },
+    { bg: 'bg-sky-50 text-sky-700', border: 'border-sky-100' }
+  ];
+  let hash = 0;
+  const trimmed = name.trim();
+  for (let i = 0; i < trimmed.length; i++) hash = trimmed.charCodeAt(i) + ((hash << 5) - hash);
+  const color = colors[Math.abs(hash) % colors.length];
+  const parts = trimmed.split(' ').filter(Boolean);
+  const initials = parts.length > 1 ? (parts[0][0] + parts[1][0]).toUpperCase() : (parts[0]?.[0] || 'U').toUpperCase();
+  return { color, initials };
+};
+
 interface Props {
   projects: Project[];
   designers: Designer[];
@@ -343,6 +361,38 @@ IMPORTANT: Extract ALL rows. Return raw JSON only, no explanations.`;
     }
   };
   const resetForm = () => { setFormData({ project_name: '', start_date: '', end_date: '', locations: [], pic_designer_id: designers[0]?.id || '', support_designer_ids: [], project_type: 'EVENT', status: 'ON PROGRESS', notes: '' }); setEditingId(null); setIsAdding(false); setNewLocInput(''); };
+  const handleAddFromBoard = (groupKey: string) => {
+    resetForm();
+    const newForm: Partial<Project> = {
+      project_name: '',
+      start_date: new Date().toISOString().split('T')[0],
+      end_date: new Date().toISOString().split('T')[0],
+      locations: [],
+      pic_designer_id: designers[0]?.id || '',
+      support_designer_ids: [],
+      project_type: 'EVENT',
+      status: 'ON PROGRESS',
+      notes: ''
+    };
+
+    if (boardGroup === 'status') {
+      newForm.status = groupKey as any;
+    } else if (boardGroup === 'type') {
+      newForm.project_type = groupKey;
+    } else if (boardGroup === 'pic') {
+      const foundPic = designers.find(d => d.name.toUpperCase() === groupKey.toUpperCase());
+      if (foundPic) {
+        newForm.pic_designer_id = foundPic.id;
+      }
+    } else if (boardGroup === 'location') {
+      if (groupKey !== 'UNASSIGNED') {
+        newForm.locations = [groupKey];
+      }
+    }
+    setFormData(newForm);
+    setIsAdding(true);
+    setView('list');
+  };
   const handleSave = async (e: React.FormEvent) => { e.preventDefault(); if (!formData.project_name || !supabase) return; let finalLocations = [...(formData.locations || [])]; if (newLocInput.trim() && !finalLocations.includes(newLocInput.trim())) { finalLocations.push(newLocInput.trim()); } const savePayload = { project_name: formData.project_name, start_date: formData.start_date, end_date: formData.end_date, locations: finalLocations, pic_designer_id: formData.pic_designer_id, support_designer_ids: formData.support_designer_ids || [], project_type: formData.project_type, status: formData.status, notes: formData.notes }; if (editingId) { const { error } = await supabase.from('projects').update(savePayload).eq('id', editingId); if (error) alert(`Error: ${error.message}`); else { onUpdate(); resetForm(); } } else { const { error } = await supabase.from('projects').insert([savePayload]); if (error) alert(`Error: ${error.message}`); else { onUpdate(); resetForm(); } } };
   const handleEdit = (p: Project) => { let rawLocs = (p as any).locations || (p as any).location || []; let normalizedLocations = Array.isArray(rawLocs) ? rawLocs : (rawLocs ? [rawLocs] : []); setFormData({ ...p, support_designer_ids: p.support_designer_ids || [], locations: normalizedLocations }); setEditingId(p.id); setIsAdding(true); setView('list'); window.scrollTo({ top: 0, behavior: 'smooth' }); };
   const handleDelete = async (e: React.MouseEvent, id: string) => { e.stopPropagation(); if (!supabase || !confirm('Hapus project ini?')) return; const { error } = await supabase.from('projects').delete().eq('id', id); if (error) alert(error.message); else onUpdate(); };
@@ -1084,74 +1134,145 @@ IMPORTANT: Extract ALL rows. Return raw JSON only, no explanations.`;
           <div className="bg-[#F8F9FA] p-4 rounded-[20px] flex flex-wrap items-center gap-4 border border-[#EAEAEA]">{[['Status', filterStatus, setFilterStatus, ['ALL', 'ON PROGRESS', 'ON HOLD', 'DONE']], ['Type', filterType, setFilterType, ['ALL', 'EVENT', 'TRAVEL', 'WELLNESS', 'CREATIVE', 'TRAINING']], ['PIC', filterPIC, setFilterPIC, ['ALL', ...designers.map(d => d.id)]], ['Location', filterLocation, setFilterLocation, ['ALL', ...uniqueLocations]]].map(([lbl, val, set, opts]: any) => (<div key={lbl as string} className="flex flex-col gap-1"><span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider px-1">{lbl as string}</span><select value={val as string} onChange={e => (set as any)(e.target.value)} className="text-[10px] font-bold border-[#EAEAEA] rounded-lg p-2 bg-white outline-none focus:ring-2 focus:ring-indigo-500 uppercase tracking-tight cursor-pointer">{opts.map((o: any) => <option key={o} value={o}>{o === 'ALL' ? `All ${lbl}` : (lbl === 'PIC' ? getDesignerName(o) : o)}</option>)}</select></div>))}</div>
           {isAdding && (<form onSubmit={handleSave} className="bg-white p-8 rounded-[20px] border border-[#EAEAEA] shadow-sm border border-[#EAEAEA] animate-in zoom-in duration-200 flex-shrink-0 mb-6"><h2 className="font-bold text-zinc-900 mb-8 uppercase tracking-tight flex items-center gap-2"><span className="w-2 h-2 bg-zinc-900 rounded-full"></span>{editingId ? 'Edit Project' : 'New Project'}</h2><div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8"><div className="md:col-span-2"><label className={labelClass}>Project Name</label><input type="text" required value={formData.project_name} onChange={e => setFormData({ ...formData, project_name: e.target.value })} className={inputClass} placeholder="Annual Event 2024" /></div><div><label className={labelClass}>Status</label><select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value as any })} className={inputClass}><option value="ON PROGRESS">ON PROGRESS</option><option value="ON HOLD">ON HOLD</option><option value="DONE">DONE</option></select></div><div><label className={labelClass}>Project Type</label><select value={formData.project_type} onChange={e => setFormData({ ...formData, project_type: e.target.value })} className={inputClass}><option value="EVENT">EVENT</option><option value="TRAVEL">TRAVEL</option><option value="WELLNESS">WELLNESS</option><option value="CREATIVE">CREATIVE</option><option value="TRAINING">TRAINING</option></select></div><div><label className={labelClass}>Start Date</label><input type="date" required value={formData.start_date} onChange={e => setFormData({ ...formData, start_date: e.target.value })} className={inputClass} /></div><div><label className={labelClass}>End Date</label><input type="date" required value={formData.end_date} onChange={e => setFormData({ ...formData, end_date: e.target.value })} className={inputClass} /></div><div className="md:col-span-1"><label className={labelClass}>Locations</label><div className="flex gap-2 mb-2"><input type="text" list="loc-suggestions" placeholder="Pilih/Ketik..." value={newLocInput} onChange={e => setNewLocInput(e.target.value)} className={inputClass} onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addLocation())} /><button type="button" onClick={addLocation} className="px-5 bg-[#1A1C20] text-white rounded-lg text-sm font-bold uppercase tracking-wider">ADD</button></div><div className="flex flex-wrap gap-2 p-3 bg-[#FCFCFC] border border-[#EAEAEA] rounded-xl min-h-[58px] items-center">{formData.locations?.map(loc => (<span key={loc} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-zinc-300 text-zinc-800 rounded-lg text-[10px] font-bold uppercase shadow-sm">{loc}<button type="button" onClick={() => removeLocation(loc)} className="text-red-500"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg></button></span>))}</div><datalist id="loc-suggestions">{uniqueLocations.map(loc => <option key={loc} value={loc} />)}</datalist></div><div><label className={labelClass}>PIC Designer</label><select value={formData.pic_designer_id} onChange={e => setFormData({ ...formData, pic_designer_id: e.target.value })} className={inputClass}>{designers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select></div><div className="md:col-span-1"><label className={labelClass}>Support Designers</label><div className="flex flex-wrap gap-2 p-3 bg-[#FCFCFC] border border-[#EAEAEA] rounded-xl min-h-[58px]">{designers.map(d => { if (d.id === formData.pic_designer_id) return null; const isSelected = formData.support_designer_ids?.includes(d.id); return (<button key={d.id} type="button" onClick={() => toggleSupportDesigner(d.id)} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase border transition-all ${isSelected ? 'bg-zinc-900 border-indigo-600 text-white shadow-md' : 'bg-white border-zinc-300 text-zinc-500 hover:border-indigo-400'}`}>{d.name}</button>); })}</div></div><div className="md:col-span-3"><label className={labelClass}>Notes / Keterangan</label><SimpleRichTextEditor initialValue={formData.notes || ''} onSave={(val) => setFormData({ ...formData, notes: val })} placeholder="Catatan project (bisa format list, bold, dll)..." /></div></div><div className="flex justify-end gap-4 pt-6 border-t border-zinc-100"><button type="button" onClick={resetForm} className="px-6 py-2.5 text-sm font-bold text-zinc-700 uppercase">Cancel</button><button type="submit" className="px-8 py-2.5 bg-zinc-900 text-white rounded-lg text-sm font-bold shadow-sm border border-[#EAEAEA] uppercase tracking-wider">{editingId ? 'Update' : 'Save'}</button></div></form>)}
           <div className="flex-1 min-h-0">{view === 'list' ? (<div className="bg-white rounded-[16px] md:rounded-[20px] border border-[#EAEAEA] shadow-sm overflow-hidden flex flex-col h-full"><div className="overflow-auto max-h-full"><table className="w-full text-left text-[10px] md:text-sm border-collapse min-w-[420px] md:min-w-0"><thead className="sticky top-0 z-10 bg-[#F8F9FA] font-bold uppercase text-[9px] md:text-[10px] tracking-wider border-b border-[#EAEAEA]"><tr><th className="px-2 md:px-6 py-2.5 md:py-4">Name & Status</th><th className="px-2 md:px-6 py-2.5 md:py-4">Timeline</th><th className="px-2 md:px-6 py-2.5 md:py-4">PIC</th><th className="px-2 md:px-6 py-2.5 md:py-4 text-right">Act</th></tr></thead><tbody className="divide-y divide-slate-200 font-bold text-zinc-900">{filteredProjects.map(p => { const locs = (p as any).locations || (p as any).location || []; const normalizedLocs = Array.isArray(locs) ? locs : [locs]; return (<tr key={p.id} onClick={() => { setSelectedProject(p); setActiveTab('details'); }} className="hover:bg-[#FCFCFC] transition-colors cursor-pointer"><td className="px-2 md:px-6 py-2 md:py-4"><div className="flex flex-col gap-1"><span className={`px-1.5 md:px-2 py-0.5 rounded-full text-[7px] md:text-[8px] font-bold uppercase self-start ${getStatusBadge(p.status).replace('border', '')}`}>{p.status}</span><span className="font-bold uppercase text-[10px] md:text-sm leading-tight">{p.project_name}</span></div></td><td className="px-2 md:px-6 py-2 md:py-4"><div className="flex flex-col"><span className="text-[9px] md:text-[11px] font-bold">{p.start_date} → {p.end_date}</span><div className="flex flex-wrap gap-1 mt-0.5">{normalizedLocs.map(l => <span key={l} className="text-[7px] md:text-[8px] bg-[var(--s3)] text-[var(--ink-2)] px-1.5 py-0.5 rounded uppercase font-bold border-none">{l}</span>)}</div></div></td><td className="px-2 md:px-6 py-2 md:py-4"><div className="flex flex-col gap-1"><div className="flex items-center gap-1"><span className="w-1.5 h-1.5 bg-zinc-900 rounded-full"></span><span className="text-[9px] md:text-xs uppercase">{getDesignerName(p.pic_designer_id)}</span></div><div className="flex flex-wrap gap-0.5 md:gap-1">{p.support_designer_ids?.map(sid => (<span key={sid} className="px-1.5 py-0.5 bg-[var(--s3)] text-[var(--ink-4)] text-[7px] md:text-[8px] rounded uppercase font-bold border-none">{getDesignerName(sid)}</span>))}</div></div></td><td className="px-2 md:px-6 py-2 md:py-4 text-right"><div className="flex justify-end gap-1.5 md:gap-4"><button onClick={(e) => { e.stopPropagation(); handleEdit(p); }} className="text-zinc-800 p-1 rounded hover:bg-zinc-100" title="Edit"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-5M16.5 3.5a2.121 2.121 0 113 3L7 19l-4 1 1-4L16.5 3.5z" /></svg></button><button onClick={(e) => { e.stopPropagation(); handleDelete(e, p.id); }} className="text-red-500 p-1 rounded hover:bg-red-50" title="Delete"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button></div></td></tr>); })}</tbody></table></div></div>) : view === 'board' ? (
-            <div className="h-full flex flex-col pt-2 border-t border-[#EAEAEA] overflow-hidden">
-              <div className="flex items-center gap-3 mb-4 shrink-0 flex-wrap">
-                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Group By:</span>
-                <div className="flex bg-[#FAFAFA]200 p-1 rounded-xl">
-                  {[
-                    { id: 'status', label: 'Status' },
-                    { id: 'type', label: 'Type' },
-                    { id: 'pic', label: 'PIC Designer' },
-                    { id: 'location', label: 'Location' }
-                  ].map(opt => (
-                    <button key={opt.id} onClick={() => setBoardGroup(opt.id as any)} className={`px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all ${boardGroup === opt.id ? 'bg-white text-indigo-700 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}>{opt.label}</button>
-                  ))}
-                </div>
-              </div>
-              <div className="flex-1 overflow-x-auto flex gap-6 pb-4 items-start custom-scrollbar">
-                {Object.keys(projectBoardGroups).sort().map((groupKey, idx) => {
-                  const headerColors = [
-                    'border-t-blue-500 bg-blue-50 text-blue-900',
-                    'border-t-emerald-500 bg-emerald-50 text-emerald-900',
-                    'border-t-purple-500 bg-purple-50 text-purple-900',
-                    'border-t-amber-500 bg-amber-50 text-amber-900',
-                    'border-t-rose-500 bg-rose-50 text-rose-900',
-                    'border-t-cyan-500 bg-cyan-50 text-cyan-900',
-                    'border-t-indigo-500 bg-indigo-50 text-indigo-900'
-                  ];
-                  const theme = headerColors[idx % headerColors.length];
-                  return (
-                    <div key={groupKey} className="w-64 md:w-80 flex-shrink-0 bg-zinc-50/50 rounded-2xl flex flex-col max-h-full border border-zinc-100 shadow-sm">
-                      <div className={`p-4 border-b border-zinc-100 border-t-4 uppercase tracking-tight font-bold text-sm flex justify-between items-center rounded-t-2xl shrink-0 ${theme}`}>
-                        <span className="truncate pr-2">{groupKey}</span>
-                        <span className="bg-white/60 text-current text-[10px] px-2 py-0.5 rounded-full">{projectBoardGroups[groupKey].length}</span>
-                      </div>
-                      <div className="p-3 flex-1 overflow-y-auto space-y-3 custom-scrollbar">
-                        {projectBoardGroups[groupKey].map(p => {
-                          const locs = (p as any).locations || (p as any).location || [];
-                          const normalizedLocs = Array.isArray(locs) ? locs : [locs];
-                          return (
-                            <div key={p.id} onClick={() => { setSelectedProject(p); setActiveTab('details'); }} className="bg-white p-4 rounded-xl shadow-sm border border-[#EAEAEA] cursor-pointer hover:shadow-md transition-shadow group">
-                              <div className="flex justify-between items-start mb-2">
-                                <span className={`px-2 py-0.5 rounded-md text-[8px] font-bold uppercase ${getStatusBadge(p.status).replace('border', '')}`}>{p.status}</span>
-                                <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <button onClick={(e) => { e.stopPropagation(); handleEdit(p); }} className="text-zinc-400 hover:text-indigo-600"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-5M16.5 3.5a2.121 2.121 0 113 3L7 19l-4 1 1-4L16.5 3.5z" /></svg></button>
-                                </div>
-                              </div>
-                              <h4 className="font-bold text-zinc-900 text-sm uppercase leading-tight mb-2 tracking-tight line-clamp-2" title={p.project_name}>{p.project_name}</h4>
-                              <div className="flex flex-col gap-1.5 mt-3 pt-3 border-t border-zinc-50">
-                                <div className="flex justify-between text-[10px]">
-                                  <span className="text-zinc-400 font-bold uppercase">Timeline</span>
-                                  <span className="text-zinc-800 font-bold tracking-tight">{p.start_date.slice(5)} to {p.end_date.slice(5)}</span>
-                                </div>
-                                <div className="flex justify-between text-[10px] items-center">
-                                  <span className="text-zinc-400 font-bold uppercase">PIC Lead</span>
-                                  <div className="flex items-center gap-1">
-                                    <span className="w-1.5 h-1.5 bg-zinc-800 rounded-full"></span>
-                                    <span className="text-zinc-800 font-bold uppercase truncate max-w-[100px]">{getDesignerName(p.pic_designer_id)}</span>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )
-                })}
+          <div className="h-full flex flex-col pt-2 border-t border-[#EAEAEA] overflow-hidden">
+            <div className="flex items-center gap-5 mb-5 shrink-0 flex-wrap">
+              <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Group By:</span>
+              <div className="flex bg-[#F4F5F6] p-1 rounded-xl border border-zinc-200/50">
+                {[
+                  { id: 'status', label: 'Status' },
+                  { id: 'type', label: 'Type' },
+                  { id: 'pic', label: 'PIC Designer' },
+                  { id: 'location', label: 'Location' }
+                ].map(opt => (
+                  <button key={opt.id} onClick={() => setBoardGroup(opt.id as any)} className={`px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all ${boardGroup === opt.id ? 'bg-white text-zinc-800 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}>{opt.label}</button>
+                ))}
               </div>
             </div>
-          ) : (<div className="bg-white rounded-[20px] border border-[#EAEAEA] shadow-sm overflow-hidden h-full flex flex-col"><div className="p-4 border-b border-[#EAEAEA] bg-[#FCFCFC] flex items-center justify-between"><h3 className="font-bold text-zinc-900 text-sm uppercase">{monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</h3><div className="flex gap-2"><button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))} className="p-1.5 hover:bg-[#FAFAFA]300 rounded-lg"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" /></svg></button><button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))} className="p-1.5 hover:bg-[#FAFAFA]300 rounded-lg"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" /></svg></button></div></div><div className="overflow-y-auto flex-1"><div className="grid grid-cols-7 border-l border-[#EAEAEA]">{renderCalendar()}</div></div></div>)}</div>
+            <div className="flex-1 overflow-x-auto flex gap-6 pb-6 items-start custom-scrollbar">
+              {Object.keys(projectBoardGroups).sort().map((groupKey) => {
+                const columnProjects = projectBoardGroups[groupKey];
+                
+                const getHeaderIcon = (key: string) => {
+                  if (key === 'DONE') {
+                    return (
+                      <span className="w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center text-white shrink-0">
+                        <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
+                      </span>
+                    );
+                  }
+                  if (key === 'ON HOLD') {
+                    return (
+                      <span className="w-4 h-4 rounded-full bg-amber-500 flex items-center justify-center text-white shrink-0">
+                        <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                      </span>
+                    );
+                  }
+                  return (
+                    <span className="w-4 h-4 rounded-full border border-zinc-400 border-t-zinc-900 animate-spin shrink-0" style={{ animationDuration: '3s' }} />
+                  );
+                };
+
+                return (
+                  <div key={groupKey} className="w-72 md:w-80 flex-shrink-0 bg-[#F4F5F6]/60 rounded-2xl flex flex-col max-h-full border border-zinc-200/50 shadow-sm">
+                    {/* Column Header */}
+                    <div className="p-4 flex justify-between items-center shrink-0">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        {getHeaderIcon(groupKey)}
+                        <span className="truncate font-bold text-zinc-800 text-sm uppercase tracking-tight">{groupKey}</span>
+                        <span className="text-zinc-400 font-semibold text-xs ml-0.5">{columnProjects.length}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => handleAddFromBoard(groupKey)} className="p-1 rounded-md hover:bg-zinc-200/50 text-zinc-500 hover:text-zinc-800 transition-colors" title="Add project to this group">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" /></svg>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Column Cards */}
+                    <div className="px-3 pb-3 flex-1 overflow-y-auto space-y-3 custom-scrollbar min-h-0">
+                      {columnProjects.map(p => {
+                        const todayStr = new Date().toISOString().split('T')[0];
+                        const isOverdue = p.end_date < todayStr && p.status !== 'DONE';
+                        const isToday = p.end_date === todayStr && p.status !== 'DONE';
+
+                        const formatDeadline = (dlStr: string) => {
+                          if (!dlStr) return '---';
+                          try {
+                            const date = new Date(dlStr);
+                            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                          } catch {
+                            return dlStr;
+                          }
+                        };
+
+                        const designerName = getDesignerName(p.pic_designer_id);
+                        const avatar = getAvatarData(designerName);
+
+                        return (
+                          <div
+                            key={p.id}
+                            onClick={() => { setSelectedProject(p); setActiveTab('details'); }}
+                            className="bg-white p-4 rounded-xl shadow-xs border border-zinc-200/70 hover:border-zinc-350 hover:shadow-sm cursor-pointer hover:-translate-y-0.5 transition-all duration-200 group"
+                          >
+                            {/* Card Top Row */}
+                            <div className="flex justify-between items-center mb-2.5 text-[10px] text-zinc-400 font-semibold">
+                              <div className="flex items-center gap-1">
+                                <svg className={`w-3.5 h-3.5 ${isOverdue ? 'text-rose-500' : isToday ? 'text-amber-500' : 'text-zinc-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21v11h-8.5l-1-1H5a2 2 0 00-2 2zm9-11.5V9" />
+                                </svg>
+                                <span className={isOverdue ? 'text-rose-600 font-bold' : isToday ? 'text-amber-600 font-bold' : 'text-zinc-500'}>
+                                  {formatDeadline(p.start_date)} &rarr; {formatDeadline(p.end_date)}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Card Title */}
+                            <h4 className="font-bold text-zinc-850 text-sm uppercase leading-snug mb-1.5 tracking-tight line-clamp-2" title={p.project_name}>
+                              {p.project_name}
+                            </h4>
+
+                            {/* Card PIC Details */}
+                            <div className="flex items-center gap-1.5 text-[11px] text-zinc-500 font-medium">
+                              <svg className="w-3.5 h-3.5 text-zinc-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                              <span className="truncate max-w-[120px] uppercase font-semibold text-zinc-700">{designerName}</span>
+                              <span className="text-zinc-300 font-light">&bull;</span>
+                              <span className="text-[10px] font-bold text-zinc-400 uppercase">{p.project_type}</span>
+                            </div>
+
+                            {/* Thin Divider */}
+                            <div className="my-3 border-t border-zinc-100" />
+
+                            {/* Card Footer Row */}
+                            <div className="flex justify-between items-center">
+                              <div className="text-[9px] font-semibold text-zinc-400 uppercase">
+                                {/* Empty space left side */}
+                              </div>
+                              {/* PIC designer avatar */}
+                              <div className={`w-6 h-6 rounded-full border ${avatar.color.bg} ${avatar.color.border} flex items-center justify-center text-[9px] font-bold tracking-tighter shrink-0`} title={designerName}>
+                                {avatar.initials}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Add Project Footer Button */}
+                    <div className="p-2 border-t border-zinc-200/50 shrink-0">
+                      <button
+                        onClick={() => handleAddFromBoard(groupKey)}
+                        className="w-full py-2 flex items-center justify-center gap-1.5 text-xs font-bold text-zinc-500 hover:text-zinc-800 hover:bg-zinc-200/30 rounded-xl transition-all"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" /></svg>
+                        Add Project
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : (<div className="bg-white rounded-[20px] border border-[#EAEAEA] shadow-sm overflow-hidden h-full flex flex-col"><div className="p-4 border-b border-[#EAEAEA] bg-[#FCFCFC] flex items-center justify-between"><h3 className="font-bold text-zinc-900 text-sm uppercase">{monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</h3><div className="flex gap-2"><button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))} className="p-1.5 hover:bg-[#FAFAFA]300 rounded-lg"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" /></svg></button><button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))} className="p-1.5 hover:bg-[#FAFAFA]300 rounded-lg"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" /></svg></button></div></div><div className="overflow-y-auto flex-1"><div className="grid grid-cols-7 border-l border-[#EAEAEA]">{renderCalendar()}</div></div></div>)}</div>
         </>
       )}
     </div>

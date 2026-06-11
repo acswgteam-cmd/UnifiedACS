@@ -309,6 +309,7 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
   const [copySuccess, setCopySuccess] = useState(false);
   const [zoomMode, setZoomMode] = useState<'day' | 'week' | 'month'>('day');
   const [collapsedDepts, setCollapsedDepts] = useState<Record<string, boolean>>({});
+  const [expandedTasks, setExpandedTasks] = useState<Record<string, boolean>>({});
 
   // Note counts per task for badges: { total, done, urgent, notes: ChangelogEntry[] }
   const [noteCounts, setNoteCounts] = useState<Map<string, { total: number; done: number; urgent: number; notes: ChangelogEntry[] }>>(new Map());
@@ -444,6 +445,14 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
     setNoteImageFile(null); setNoteImagePreview(null);
     loadChangelog(task.id);
   }, [loadChangelog]);
+
+  const toggleExpandTask = useCallback((taskId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedTasks(prev => ({
+      ...prev,
+      [taskId]: !prev[taskId]
+    }));
+  }, []);
 
   // ── Insert changelog helper ───────────────────────────────────────────────
   const insertChangelog = async (
@@ -1482,74 +1491,240 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
             ))}
           </div>
 
-          {/* ── List view ───────────────────────────────────────────────── */}
+          {/* ── List view (Accordion) ───────────────────────────────────────────────── */}
           {view === 'list' && (
-            <div className="bg-[var(--s1)] rounded-[24px] border border-zinc-100 shadow-sm overflow-hidden overflow-x-auto animate-in fade-in duration-300">
-              <table className="w-full text-left border-collapse min-w-[500px]">
-                <thead className="bg-[var(--s2)] border-b border-zinc-100 text-[9px] md:text-[10px] font-bold uppercase text-[var(--ink-3)] tracking-wider">
-                  <tr>
-                    <th className="px-4 md:px-6 py-3 md:py-4">Task & Status</th>
-                    <th className="px-4 md:px-6 py-3 md:py-4">Dept & Req</th>
-                    <th className="px-4 md:px-6 py-3 md:py-4">Due</th>
-                    <th className="px-4 md:px-6 py-3 md:py-4">Catatan</th>
-                    <th className="px-4 md:px-6 py-3 md:py-4 text-right">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-100">
-                  {filteredTasks.map(task => {
-                    const todayStr = new Date().toISOString().split('T')[0];
-                    const isOverdue = task.deadline && task.deadline < todayStr && task.status !== 'DONE';
-                    const isToday   = task.deadline === todayStr && task.status !== 'DONE';
-                    const nc = noteCounts.get(task.id);
-                    return (
-                      <tr key={task.id} onClick={() => handleSelectTask(task)} className="hover:bg-zinc-50 transition-colors cursor-pointer group font-bold text-zinc-800 uppercase">
-                        <td className="px-4 md:px-6 py-3 md:py-4">
-                          <div className="flex flex-col gap-1">
-                            <div className="font-bold text-zinc-900 text-[10px] md:text-sm leading-tight">{task.task_name}</div>
-                            <div className="flex gap-1 flex-wrap">
-                              <span className={`px-1.5 md:px-2 py-0.5 rounded-full text-[7px] md:text-[8px] font-bold uppercase ${getStatusColor(task.status)}`}>{task.status}</span>
-                              {!task.deadline && <span className="px-1.5 py-0.5 rounded-full text-[7px] font-bold bg-zinc-100 text-zinc-400">∞ No Deadline</span>}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-4 md:px-6 py-3 md:py-4">
-                          <div className="text-[9px] md:text-[11px] font-bold text-zinc-800">{getDeptName(task.department_id)}</div>
-                          <div className="text-[8px] md:text-[10px] text-zinc-400 font-medium mt-0.5">By: {task.requester_name}</div>
-                        </td>
-                        <td className="px-4 md:px-6 py-3 md:py-4">
-                          {task.deadline
-                            ? <span className={`text-[9px] md:text-xs font-bold ${isOverdue ? 'text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded' : isToday ? 'text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded' : 'text-[var(--ink-2)]'}`}>{task.deadline}</span>
-                            : <span className="text-[9px] text-zinc-300 italic">—</span>}
-                        </td>
-                        <td className="px-4 md:px-6 py-3 md:py-4">
+            <div className="bg-[var(--s1)] rounded-[24px] border border-zinc-100 shadow-sm overflow-hidden animate-in fade-in duration-300">
+              {/* Header row (Desktop only) */}
+              <div className="hidden md:grid grid-cols-12 gap-4 bg-[var(--s2)] border-b border-zinc-100 text-[9px] md:text-[10px] font-bold uppercase text-[var(--ink-3)] tracking-wider px-6 py-3.5">
+                <div className="col-span-1"></div> {/* Arrow column */}
+                <div className="col-span-4">Task & Status</div>
+                <div className="col-span-3">Dept & Req</div>
+                <div className="col-span-2">Due</div>
+                <div className="col-span-1">Subtasks</div>
+                <div className="col-span-1 text-right">Aksi</div>
+              </div>
+              
+              <div className="divide-y divide-zinc-100">
+                {filteredTasks.map(task => {
+                  const todayStr = new Date().toISOString().split('T')[0];
+                  const isOverdue = task.deadline && task.deadline < todayStr && task.status !== 'DONE';
+                  const isToday   = task.deadline === todayStr && task.status !== 'DONE';
+                  const nc = noteCounts.get(task.id);
+                  const isExpanded = !!expandedTasks[task.id] && !!nc && nc.notes.length > 0;
+                  
+                  return (
+                    <div key={task.id} className="group transition-colors duration-150">
+                      {/* Accordion Header Row */}
+                      <div 
+                        onClick={() => handleSelectTask(task)} 
+                        className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center px-4 md:px-6 py-4 hover:bg-zinc-50/50 cursor-pointer font-bold text-zinc-800 uppercase"
+                      >
+                        {/* Expand Chevron Icon Button */}
+                        <div className="col-span-1 flex items-center" onClick={e => e.stopPropagation()}>
                           {nc && nc.notes.length > 0 ? (
-                            <div className="flex items-center gap-2">
+                            <button 
+                              onClick={(e) => toggleExpandTask(task.id, e)}
+                              className="p-1 rounded-lg hover:bg-[var(--s2)] text-zinc-400 hover:text-[var(--ink)] transition-all flex items-center justify-center border border-transparent hover:border-zinc-200 shadow-sm hover:shadow"
+                              title={isExpanded ? 'Collapse' : 'Expand'}
+                            >
+                              <NavArrowDown className={`w-4 h-4 transition-transform duration-250 ${isExpanded ? 'transform rotate-180 text-[var(--primary)]' : ''}`} />
+                            </button>
+                          ) : (
+                            <div className="w-6 h-6" />
+                          )}
+                        </div>
+
+                        {/* Task & Status */}
+                        <div className="col-span-1 md:col-span-4 flex flex-col gap-1">
+                          <div className="font-bold text-zinc-900 text-sm leading-tight group-hover:text-[var(--primary)] transition-colors">{task.task_name}</div>
+                          <div className="flex gap-1 flex-wrap items-center">
+                            <span className={`px-2 py-0.5 rounded-full text-[8px] font-bold uppercase ${getStatusColor(task.status)}`}>{task.status}</span>
+                            {!task.deadline && <span className="px-1.5 py-0.5 rounded-full text-[7px] font-bold bg-zinc-100 text-zinc-400">∞ No Deadline</span>}
+                          </div>
+                        </div>
+
+                        {/* Dept & Req */}
+                        <div className="col-span-1 md:col-span-3">
+                          <div className="text-[11px] font-bold text-zinc-800">{getDeptName(task.department_id)}</div>
+                          <div className="text-[10px] text-zinc-400 font-medium mt-0.5">By: {task.requester_name}</div>
+                        </div>
+
+                        {/* Due Date */}
+                        <div className="col-span-1 md:col-span-2">
+                          {task.deadline ? (
+                            <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${isOverdue ? 'text-red-600 bg-red-500/10 border border-red-500/20' : isToday ? 'text-amber-600 bg-amber-500/10 border border-amber-500/20' : 'text-[var(--ink-2)] bg-[var(--s2)] border border-zinc-100'}`}>
+                              {task.deadline}
+                            </span>
+                          ) : (
+                            <span className="text-[9px] text-zinc-300 italic">—</span>
+                          )}
+                        </div>
+
+                        {/* Subtasks progress quick badge */}
+                        <div className="col-span-1 md:col-span-1">
+                          {nc && nc.notes.length > 0 ? (
+                            <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
                               <TaskNotesTooltip nc={nc}>
-                                <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9px] font-extrabold border ${nc.urgent > 0 ? 'bg-red-50 border-red-100 text-red-600 animate-pulse' : (nc.total > 0 && nc.done === nc.total) ? 'bg-[#edfce9] border-[#003c33]/20 text-[#003c33]' : 'bg-[#f1f5ff] border-[#1863dc]/20 text-[#1863dc]'}`}>
+                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-extrabold border ${nc.urgent > 0 ? 'bg-red-50 border-red-100 text-red-600 animate-pulse' : (nc.total > 0 && nc.done === nc.total) ? 'bg-[#edfce9] border-[#003c33]/20 text-[#003c33]' : 'bg-[#f1f5ff] border-[#1863dc]/20 text-[#1863dc]'}`}>
                                   <ChatBubble className="w-3.5 h-3.5 shrink-0" />
                                   <span>{nc.notes.length}</span>
                                   {nc.total > 0 && <span className="opacity-60">({nc.done}/{nc.total})</span>}
                                 </span>
                               </TaskNotesTooltip>
                             </div>
-                          ) : <span className="text-[9px] text-zinc-300">—</span>}
-                        </td>
-                        <td className="px-4 md:px-6 py-3 md:py-4 text-right" onClick={e => e.stopPropagation()}>
+                          ) : (
+                            <span className="text-[9px] text-zinc-300">—</span>
+                          )}
+                        </div>
+
+                        {/* Quick actions */}
+                        <div className="col-span-1 md:col-span-1 text-right" onClick={e => e.stopPropagation()}>
                           <div className="flex items-center justify-end gap-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                             <button onClick={() => handleOpenEdit(task)} className="text-[var(--primary)] p-1 rounded-full hover:bg-[var(--s2)]" title="Edit"><Edit className="w-4 h-4" /></button>
                             <button onClick={() => handleDelete(task.id)} className="text-red-500 p-1 rounded-full hover:bg-red-50" title="Delete"><Trash className="w-4 h-4" /></button>
                             <select value={task.status} onChange={e => updateStatus(task.id, e.target.value as InternalStatus)} className="text-[8px] font-bold border-zinc-100 rounded-full p-1 bg-[var(--s1)] text-[var(--ink)] outline-none focus:ring-2 focus:ring-[var(--primary)] uppercase cursor-pointer">
-                              <option value="NEW">NEW</option><option value="ON PROGRESS">PROG</option>
-                              <option value="ON REVIEW">REV</option><option value="ON HOLD">HOLD</option><option value="DONE">DONE</option>
+                              <option value="NEW">NEW</option>
+                              <option value="ON PROGRESS">PROG</option>
+                              <option value="ON REVIEW">REV</option>
+                              <option value="ON HOLD">HOLD</option>
+                              <option value="DONE">DONE</option>
                             </select>
                           </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-              {filteredTasks.length === 0 && <div className="p-20 text-center text-zinc-400 font-bold italic">No requests matching filters.</div>}
+                        </div>
+                      </div>
+
+                      {/* Accordion expanded content panel */}
+                      {isExpanded && (
+                        <div className="px-6 pb-6 pt-3 bg-[var(--s2)]/40 border-t border-zinc-150/30 animate-in slide-in-from-top-2 duration-250 space-y-4">
+                          {/* Progress summary (Progression) */}
+                          {nc && nc.total > 0 ? (() => {
+                            const pct = Math.round((nc.done / nc.total) * 100);
+                            return (
+                              <div className="flex flex-col sm:flex-row sm:items-center gap-4 bg-[var(--s1)] border border-zinc-100/80 px-4 py-3 rounded-2xl shadow-sm">
+                                <div className="flex items-center gap-3">
+                                  <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-[var(--primary-dim)] text-[var(--primary)] font-extrabold text-xs border border-[var(--hl-3)] shrink-0">
+                                    {pct}%
+                                  </div>
+                                  <div>
+                                    <div className="text-[10px] font-extrabold text-[var(--ink-3)] uppercase tracking-wider">Progress Catatan / Subtask</div>
+                                    <div className="text-xs font-bold text-[var(--ink-2)]">{nc.done} dari {nc.total} Selesai</div>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-3 flex-1 min-w-[200px]">
+                                  <div className="h-2 flex-1 rounded-full bg-zinc-200/50 overflow-hidden">
+                                    <div className="h-full rounded-full bg-gradient-to-r from-[var(--primary)] to-emerald-500 transition-all duration-500" style={{ width: `${pct}%` }} />
+                                  </div>
+                                  {nc.urgent > 0 && (
+                                    <span className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-extrabold bg-red-500/10 text-red-600 border border-red-500/20 animate-pulse">
+                                      ⚠ {nc.urgent} TELAT
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })() : (
+                            <div className="text-xs font-bold text-zinc-400 italic bg-[var(--s1)] px-4 py-3 rounded-2xl border border-zinc-100/80">
+                              Belum ada subtask checklist untuk task ini.
+                            </div>
+                          )}
+
+                          {/* Checklist & Notes details */}
+                          {nc && nc.notes.length > 0 ? (
+                            <div className="space-y-2.5">
+                              <h4 className="text-[10px] font-extrabold text-[var(--ink-3)] uppercase tracking-wider ml-1">Daftar Subtask & Catatan</h4>
+                              <div className="grid grid-cols-1 gap-2.5 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                                {nc.notes.map((entry) => {
+                                  const isNoteCard = (entry.note_status === 'OPEN' || entry.note_status === 'DONE') && !!(entry.note_title || entry.note_deadline);
+                                  return (
+                                    <div 
+                                      key={entry.id}
+                                      onClick={(e) => e.stopPropagation()} 
+                                      className={`flex gap-3 items-start p-3 rounded-xl border shadow-sm transition-colors bg-[var(--s1)] border-zinc-100/80 hover:border-zinc-200 ${
+                                        isNoteCard && entry.note_status === 'DONE' ? 'opacity-65' : ''
+                                      }`}
+                                    >
+                                      {/* Interactive Checkbox for Checklist item */}
+                                      {isNoteCard ? (
+                                        <button
+                                          onClick={() => handleToggleNoteStatus(entry)}
+                                          disabled={togglingId === entry.id}
+                                          className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all group/chk ${
+                                            entry.note_status === 'DONE'
+                                              ? 'bg-emerald-500 border-emerald-500 text-white shadow-emerald-500/10'
+                                              : getNoteDeadlineStatus(entry) === 'overdue'
+                                              ? 'border-red-300 hover:border-red-500 bg-red-50/20 text-red-500'
+                                              : 'border-zinc-300 hover:border-[var(--primary)] text-[var(--ink-2)]'
+                                          }`}
+                                          title={entry.note_status === 'DONE' ? 'Buka kembali' : 'Tandai selesai'}
+                                        >
+                                          {togglingId === entry.id ? (
+                                            <span className="w-2.5 h-2.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                          ) : entry.note_status === 'DONE' ? (
+                                            <Check className="w-3.5 h-3.5" strokeWidth={3} />
+                                          ) : (
+                                            <>
+                                              <span className="w-1.5 h-1.5 rounded bg-current group-hover/chk:hidden" />
+                                              <Check className="w-3.5 h-3.5 hidden group-hover/chk:block" strokeWidth={3} />
+                                            </>
+                                          )}
+                                        </button>
+                                      ) : (
+                                        <div className="w-6 h-6 rounded-lg bg-[var(--s2)] border border-zinc-100 flex items-center justify-center shrink-0 mt-0.5 text-zinc-400">
+                                          <ChatBubble className="w-3 h-3" />
+                                        </div>
+                                      )}
+
+                                      {/* Detail text & links */}
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-start justify-between gap-2">
+                                          <div className="font-bold text-xs text-[var(--ink)]">
+                                            {entry.note_title || (isNoteCard ? 'Subtask Tanpa Judul' : 'Catatan')}
+                                          </div>
+                                          {isNoteCard && <NoteDeadlineBadge entry={entry} />}
+                                        </div>
+                                        {entry.note && (
+                                          <p className="text-xs text-[var(--ink-2)] font-medium mt-1 leading-relaxed whitespace-pre-wrap">
+                                            {entry.note}
+                                          </p>
+                                        )}
+                                        {entry.reference_link && (
+                                          <a href={entry.reference_link} target="_blank" rel="noopener noreferrer"
+                                            className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-bold text-blue-600 hover:text-blue-800 hover:underline">
+                                            <Link className="w-3 h-3 shrink-0" />
+                                            <span className="truncate max-w-[200px]">{entry.reference_link}</span>
+                                          </a>
+                                        )}
+                                        {entry.image_url && (
+                                          <div className="mt-2">
+                                            <button
+                                              type="button"
+                                              onClick={() => setPreviewImage(entry.image_url)}
+                                              className="block focus:outline-none"
+                                            >
+                                              <img src={entry.image_url} alt="Screenshot" className="max-h-16 max-w-[120px] object-cover rounded border border-zinc-200 hover:border-[var(--primary)] hover:brightness-95 cursor-zoom-in transition-all" />
+                                            </button>
+                                          </div>
+                                        )}
+                                        <div className="text-[9px] text-zinc-400 font-semibold mt-1">
+                                          {formatAbsoluteTime(entry.created_at)} · By {entry.changed_by || 'Admin'}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ) : null}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              
+              {filteredTasks.length === 0 && (
+                <div className="p-20 text-center text-zinc-400 font-bold italic">No requests matching filters.</div>
+              )}
             </div>
           )}
 
