@@ -323,6 +323,8 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, d
   const [boardGroup, setBoardGroup] = useState<'status' | 'dept' | 'overdue'>('status');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [filterDept, setFilterDept] = useState<string>('ALL');
+  const [listSortOrder, setListSortOrder] = useState<string>('CREATED_DESC');
+  const [latestUpdates, setLatestUpdates] = useState<Record<string, string>>({});
   const [currentDate, setCurrentDate] = useState(new Date());
   const [copySuccess, setCopySuccess] = useState(false);
   const [zoomMode, setZoomMode] = useState<'day' | 'week' | 'month'>('day');
@@ -357,7 +359,27 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, d
     }
   }, []);
 
-  useEffect(() => { loadNoteCounts(); }, [internalDesigns, loadNoteCounts]);
+  const loadLatestUpdates = useCallback(async () => {
+    if (!supabase) return;
+    const { data, error } = await supabase
+      .from('internal_design_changelog')
+      .select('internal_design_id, created_at')
+      .order('created_at', { ascending: false });
+    if (!error && data) {
+      const map: Record<string, string> = {};
+      data.forEach((item: any) => {
+        if (!map[item.internal_design_id]) {
+          map[item.internal_design_id] = item.created_at;
+        }
+      });
+      setLatestUpdates(map);
+    }
+  }, []);
+
+  useEffect(() => { 
+    loadNoteCounts(); 
+    loadLatestUpdates();
+  }, [internalDesigns, loadNoteCounts, loadLatestUpdates]);
 
   const getTaskCode = useCallback((task: InternalDesign) => {
     const shortId = task.id.split('-')[0].substring(0, 4).toUpperCase();
@@ -567,6 +589,7 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, d
     if (noteImageInputRef.current) noteImageInputRef.current.value = '';
     await loadChangelog(selectedTask.id);
     await loadNoteCounts();
+    await loadLatestUpdates();
     setIsSavingNote(false);
   };
 
@@ -578,6 +601,7 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, d
     await supabase.from('internal_design_changelog').update({ note_status: newStatus }).eq('id', entry.id);
     setTaskChangelog(prev => prev.map(e => e.id === entry.id ? { ...e, note_status: newStatus } : e));
     await loadNoteCounts();
+    await loadLatestUpdates();
     setTogglingId(null);
   };
 
@@ -604,10 +628,24 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, d
       return matchStatus && matchDept;
     }), [internalDesigns, filterStatus, filterDept]);
 
+  const sortedTasks = useMemo(() => {
+    let sorted = [...filteredTasks];
+    if (listSortOrder === 'UPDATE_DESC') {
+      sorted.sort((a, b) => {
+        const timeA = latestUpdates[a.id] ? new Date(latestUpdates[a.id]).getTime() : new Date(a.created_at || 0).getTime();
+        const timeB = latestUpdates[b.id] ? new Date(latestUpdates[b.id]).getTime() : new Date(b.created_at || 0).getTime();
+        return timeB - timeA;
+      });
+    } else {
+      sorted.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+    }
+    return sorted;
+  }, [filteredTasks, listSortOrder, latestUpdates]);
+
   const internalBoardGroups = useMemo(() => {
     const todayStr = new Date().toISOString().split('T')[0];
     const groups: Record<string, InternalDesign[]> = {};
-    filteredTasks.forEach(t => {
+    sortedTasks.forEach(t => {
       let key = 'UNASSIGNED';
       if (boardGroup === 'status') key = t.status || 'UNASSIGNED';
       else if (boardGroup === 'dept') key = getDeptName(t.department_id) || 'UNASSIGNED';
@@ -697,6 +735,7 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, d
       const { error } = await supabase.from('internal_designs').update(dataToSave).eq('id', editingTask.id);
       if (error) { alert(error.message); return; }
       for (const c of changes) await insertChangelog(editingTask.id, c.type, { old_value: c.old_value, new_value: c.new_value });
+      await loadLatestUpdates();
       onUpdate(); setIsFormOpen(false); setIsEditingInline(false); setEditingTask(null);
       if (selectedTask?.id === editingTask.id) {
         loadChangelog(editingTask.id);
@@ -708,6 +747,7 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, d
       const { data: inserted, error } = await supabase.from('internal_designs').insert([dataToSave]).select().single();
       if (error) { alert(error.message); return; }
       if (inserted) await insertChangelog(inserted.id, 'TASK_CREATED');
+      await loadLatestUpdates();
       onUpdate(); setIsFormOpen(false);
     }
   };
@@ -723,6 +763,7 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, d
     const { error } = await supabase.from('internal_designs').update({ status: newStatus, brief: updatedBrief }).eq('id', id);
     if (error) { alert(error.message); return; }
     await insertChangelog(id, 'STATUS_CHANGE', { old_value: task.status, new_value: newStatus });
+    await loadLatestUpdates();
     onUpdate();
     if (selectedTask?.id === id) { setSelectedTask({ ...selectedTask, status: newStatus, brief: updatedBrief }); loadChangelog(id); }
   };
@@ -1566,6 +1607,8 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, d
                 options: [['ALL','All Status'],['NEW','NEW'],['ON HOLD','ON HOLD'],['ON PROGRESS','ON PROGRESS'],['ON REVIEW','ON REVIEW'],['DONE','DONE']] },
               { label:'Requester Dept', value: filterDept, onChange: setFilterDept, widthClass: 'w-56',
                 options: [['ALL','All Departments'], ...departments.map(d => [d.id, d.department_name])] },
+              { label:'Urutkan', value: listSortOrder, onChange: setListSortOrder as any, widthClass: 'w-48',
+                options: [['CREATED_DESC','Task Terbaru'],['UPDATE_DESC','Update / Catatan Terbaru']] },
             ].map(f => (
               <div key={f.label} className="flex flex-col gap-1">
                 <span className="text-[9px] font-bold text-[var(--ink-3)] uppercase tracking-wider px-1">{f.label}</span>
@@ -1594,7 +1637,7 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, d
               </div>
               
               <div className="divide-y divide-zinc-100">
-                {filteredTasks.map(task => {
+                {sortedTasks.map(task => {
                   const todayStr = new Date().toISOString().split('T')[0];
                   const isOverdue = task.deadline && task.deadline < todayStr && task.status !== 'DONE';
                   const isToday   = task.deadline === todayStr && task.status !== 'DONE';
@@ -1606,7 +1649,7 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, d
                       {/* Accordion Header Row */}
                       <div 
                         onClick={() => handleSelectTask(task)} 
-                        className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center px-4 md:px-6 py-4 hover:bg-zinc-50/50 cursor-pointer font-bold text-zinc-800 uppercase"
+                        className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center px-4 md:px-6 py-4 hover:bg-[var(--hl)] cursor-pointer font-bold text-[var(--ink)] uppercase"
                       >
                         {/* Expand Chevron Icon Button */}
                         <div className="col-span-1 flex items-center" onClick={e => e.stopPropagation()}>
