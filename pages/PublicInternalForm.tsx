@@ -5,6 +5,7 @@ import { InternalDesign, Department } from '../types';
 import { supabase } from '../lib/supabase';
 import { INTERNAL_FORM_SECRET } from '../data/mockData';
 import { getOffHourStatus } from '../lib/holidayUtils';
+import { Dropdown } from '../components/Dropdown';
 
 interface Props {
   onHostSubmit?: () => void;
@@ -106,10 +107,15 @@ const PublicInternalForm: React.FC<Props> = ({ onHostSubmit, departments }) => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className={labelClass}>Your Department</label>
-                  <select required value={formData.department_id} onChange={e => setFormData({...formData, department_id: e.target.value})} className={inputClass}>
-                    <option value="">Select Department...</option>
-                    {departments.filter(d => d.active).map(d => <option key={d.id} value={d.id}>{d.department_name}</option>)}
-                  </select>
+                  <Dropdown
+                    value={formData.department_id || ''}
+                    onChange={val => setFormData({ ...formData, department_id: val })}
+                    options={[
+                      { value: '', label: 'Select Department...' },
+                      ...departments.filter(d => d.active).map(d => ({ value: d.id, label: d.department_name }))
+                    ]}
+                    placeholder="Select Department..."
+                  />
                 </div>
                 <div>
                   <label className={labelClass}>PIC Requester</label>

@@ -95,6 +95,7 @@ export interface ChangelogEntry {
   note_status?: 'OPEN' | 'DONE' | null; // status catatan
   reference_link?: string | null;
   image_url?: string | null;
+  pic_designer_id?: string | null;
   changed_by?: string;
   created_at: string;
 }
@@ -121,6 +122,7 @@ export interface TaskNote {
   status: 'OPEN' | 'DONE';
   reference_link?: string | null;
   image_url?: string | null;
+  pic_designer_id?: string | null;
   created_by?: string;
   created_at: string;
   updated_at?: string;

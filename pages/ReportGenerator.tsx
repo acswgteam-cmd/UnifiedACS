@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { AppState, WorkContext } from '../types';
+import { Dropdown } from '../components/Dropdown';
 
 interface Props {
   state: AppState;
@@ -1487,19 +1488,27 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
             {!isFullYear && (
               <div>
                 <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest block mb-1">Month</label>
-                <select value={targetMonth} onChange={e => setTargetMonth(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm font-medium">
-                  {Array.from({length: 12}).map((_, i) => (
-                    <option key={i+1} value={String(i+1).padStart(2,'0')}>{new Date(0, i).toLocaleString('id-ID', { month: 'long' })}</option>
-                  ))}
-                </select>
+                <Dropdown
+                  value={targetMonth}
+                  onChange={setTargetMonth}
+                  options={Array.from({ length: 12 }).map((_, i) => {
+                    const val = String(i + 1).padStart(2, '0');
+                    return {
+                      value: val,
+                      label: new Date(0, i).toLocaleString('id-ID', { month: 'long' }),
+                    };
+                  })}
+                />
               </div>
             )}
             
             <div>
               <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest block mb-1">Year</label>
-              <select value={targetYear} onChange={e => setTargetYear(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm font-medium">
-                {['2024','2025','2026','2027'].map(y => <option key={y} value={y}>{y}</option>)}
-              </select>
+              <Dropdown
+                value={targetYear}
+                onChange={setTargetYear}
+                options={['2024', '2025', '2026', '2027'].map(y => ({ value: y, label: y }))}
+              />
             </div>
           </div>
 

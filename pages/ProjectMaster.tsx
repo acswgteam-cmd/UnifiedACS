@@ -4,6 +4,7 @@ import { Project, Designer, ProjectSurvey, ProjectChecklist, ChecklistTemplate, 
 import { supabase } from '../lib/supabase';
 import { SURVEY_FORM_SECRET } from '../data/mockData';
 import { ProjectEvaluationView } from '../components/ProjectEvaluationView';
+import { Dropdown } from '../components/Dropdown';
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 
@@ -84,7 +85,17 @@ const TableRow = ({ cl, idx, cellInputClass, onUpdate, onDelete }: any) => (
     <td className="px-3 py-2"><input className={cellInputClass} defaultValue={cl.size || ''} onBlur={(e) => onUpdate(cl.id, 'size', e.target.value)} placeholder="Size" /></td>
     <td className="px-3 py-2 text-center"><input type="number" className={`${cellInputClass} text-center`} defaultValue={cl.quantity} onBlur={(e) => onUpdate(cl.id, 'quantity', parseInt(e.target.value) || 0)} /></td>
     <td className="px-3 py-2"><input className={cellInputClass} defaultValue={cl.notes || ''} onBlur={(e) => onUpdate(cl.id, 'notes', e.target.value)} placeholder="Notes" /></td>
-    <td className="px-3 py-2"><select value={cl.status} onChange={(e) => onUpdate(cl.id, 'status', e.target.value)} className={`w-full text-[10px] font-bold uppercase rounded py-1 px-1 outline-none cursor-pointer transition-colors bg-transparent hover:bg-[#F8F9FA] ${cl.status === 'DONE' ? 'text-emerald-600' : cl.status === 'ON PROGRESS' ? 'text-amber-600' : 'text-zinc-400'}`}><option value="NONE">Not Started</option><option value="ON PROGRESS">On Progress</option><option value="DONE">Done</option></select></td>
+    <td className="px-3 py-2 min-w-[120px]">
+      <Dropdown
+        value={cl.status}
+        onChange={(val) => onUpdate(cl.id, 'status', val)}
+        options={[
+          { value: 'NONE', label: 'Not Started' },
+          { value: 'ON PROGRESS', label: 'On Progress' },
+          { value: 'DONE', label: 'Done' }
+        ]}
+      />
+    </td>
     <td className="px-3 py-2 text-right"><button onClick={() => onDelete(cl.id)} className="text-zinc-300 hover:text-red-500 text-[10px] font-bold uppercase transition-colors p-1 opacity-0 group-hover:opacity-100" title="Delete"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button></td>
   </tr>
 );
@@ -591,10 +602,16 @@ IMPORTANT: Extract ALL rows. Return raw JSON only, no explanations.`;
               <p className="text-[10px] md:text-xs font-bold text-zinc-500 uppercase">{selectedProject.start_date} → {selectedProject.end_date} &bull; {selectedProject.project_type}</p>
             </div>
           </div>
-          <div className="w-full md:w-auto">
-            <select value={selectedProject.status} onChange={(e) => handleStatusUpdate(e.target.value)} className={`w-full md:w-48 px-4 py-2.5 rounded-xl border-2 text-sm font-bold uppercase outline-none cursor-pointer hover:opacity-90 transition-all shadow-sm appearance-none text-center ${selectedProject.status === 'DONE' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : selectedProject.status === 'ON HOLD' ? 'bg-amber-100 text-amber-800 border-amber-300' : 'bg-blue-100 text-blue-800 border-blue-300'}`}>
-              <option value="ON PROGRESS">ON PROGRESS</option><option value="ON HOLD">ON HOLD</option><option value="DONE">DONE</option>
-            </select>
+          <div className="w-full md:w-48">
+            <Dropdown
+              value={selectedProject.status}
+              onChange={val => handleStatusUpdate(val)}
+              options={[
+                { value: 'ON PROGRESS', label: 'ON PROGRESS' },
+                { value: 'ON HOLD', label: 'ON HOLD' },
+                { value: 'DONE', label: 'DONE' }
+              ]}
+            />
           </div>
         </div>
 
@@ -666,17 +683,23 @@ IMPORTANT: Extract ALL rows. Return raw JSON only, no explanations.`;
                         </div>
                         <div>
                           <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Type</label>
-                          <select value={artworkFormData.artwork_type || '2D Design'} onChange={e => setArtworkFormData(p => ({ ...p, artwork_type: e.target.value }))} className="w-full rounded-lg border border-zinc-300 text-sm p-2.5 font-semibold outline-none focus:ring-2 focus:ring-indigo-600">
-                            <option value="2D Design">2D Design</option>
-                            <option value="3D Design">3D Design</option>
-                            <option value="Video">Video</option>
-                          </select>
+                          <Dropdown
+                            value={artworkFormData.artwork_type || '2D Design'}
+                            onChange={val => setArtworkFormData(p => ({ ...p, artwork_type: val }))}
+                            options={[
+                              { value: '2D Design', label: '2D Design' },
+                              { value: '3D Design', label: '3D Design' },
+                              { value: 'Video', label: 'Video' }
+                            ]}
+                          />
                         </div>
                         <div>
                           <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">PIC Designer</label>
-                          <select value={artworkFormData.pic_designer_id || ''} onChange={e => setArtworkFormData(p => ({ ...p, pic_designer_id: e.target.value }))} className="w-full rounded-lg border border-zinc-300 text-sm p-2.5 font-semibold outline-none focus:ring-2 focus:ring-indigo-600">
-                            {designers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                          </select>
+                          <Dropdown
+                            value={artworkFormData.pic_designer_id || ''}
+                            onChange={val => setArtworkFormData(p => ({ ...p, pic_designer_id: val }))}
+                            options={designers.map(d => ({ value: d.id, label: d.name }))}
+                          />
                         </div>
                       </div>
                       <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-3">
@@ -1131,8 +1154,130 @@ IMPORTANT: Extract ALL rows. Return raw JSON only, no explanations.`;
             </div>
           </div>
 
-          <div className="bg-[#F8F9FA] p-4 rounded-[20px] flex flex-wrap items-center gap-4 border border-[#EAEAEA]">{[['Status', filterStatus, setFilterStatus, ['ALL', 'ON PROGRESS', 'ON HOLD', 'DONE']], ['Type', filterType, setFilterType, ['ALL', 'EVENT', 'TRAVEL', 'WELLNESS', 'CREATIVE', 'TRAINING']], ['PIC', filterPIC, setFilterPIC, ['ALL', ...designers.map(d => d.id)]], ['Location', filterLocation, setFilterLocation, ['ALL', ...uniqueLocations]]].map(([lbl, val, set, opts]: any) => (<div key={lbl as string} className="flex flex-col gap-1"><span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider px-1">{lbl as string}</span><select value={val as string} onChange={e => (set as any)(e.target.value)} className="text-[10px] font-bold border-[#EAEAEA] rounded-lg p-2 bg-white outline-none focus:ring-2 focus:ring-indigo-500 uppercase tracking-tight cursor-pointer">{opts.map((o: any) => <option key={o} value={o}>{o === 'ALL' ? `All ${lbl}` : (lbl === 'PIC' ? getDesignerName(o) : o)}</option>)}</select></div>))}</div>
-          {isAdding && (<form onSubmit={handleSave} className="bg-white p-8 rounded-[20px] border border-[#EAEAEA] shadow-sm border border-[#EAEAEA] animate-in zoom-in duration-200 flex-shrink-0 mb-6"><h2 className="font-bold text-zinc-900 mb-8 uppercase tracking-tight flex items-center gap-2"><span className="w-2 h-2 bg-zinc-900 rounded-full"></span>{editingId ? 'Edit Project' : 'New Project'}</h2><div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8"><div className="md:col-span-2"><label className={labelClass}>Project Name</label><input type="text" required value={formData.project_name} onChange={e => setFormData({ ...formData, project_name: e.target.value })} className={inputClass} placeholder="Annual Event 2024" /></div><div><label className={labelClass}>Status</label><select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value as any })} className={inputClass}><option value="ON PROGRESS">ON PROGRESS</option><option value="ON HOLD">ON HOLD</option><option value="DONE">DONE</option></select></div><div><label className={labelClass}>Project Type</label><select value={formData.project_type} onChange={e => setFormData({ ...formData, project_type: e.target.value })} className={inputClass}><option value="EVENT">EVENT</option><option value="TRAVEL">TRAVEL</option><option value="WELLNESS">WELLNESS</option><option value="CREATIVE">CREATIVE</option><option value="TRAINING">TRAINING</option></select></div><div><label className={labelClass}>Start Date</label><input type="date" required value={formData.start_date} onChange={e => setFormData({ ...formData, start_date: e.target.value })} className={inputClass} /></div><div><label className={labelClass}>End Date</label><input type="date" required value={formData.end_date} onChange={e => setFormData({ ...formData, end_date: e.target.value })} className={inputClass} /></div><div className="md:col-span-1"><label className={labelClass}>Locations</label><div className="flex gap-2 mb-2"><input type="text" list="loc-suggestions" placeholder="Pilih/Ketik..." value={newLocInput} onChange={e => setNewLocInput(e.target.value)} className={inputClass} onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addLocation())} /><button type="button" onClick={addLocation} className="px-5 bg-[#1A1C20] text-white rounded-lg text-sm font-bold uppercase tracking-wider">ADD</button></div><div className="flex flex-wrap gap-2 p-3 bg-[#FCFCFC] border border-[#EAEAEA] rounded-xl min-h-[58px] items-center">{formData.locations?.map(loc => (<span key={loc} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-zinc-300 text-zinc-800 rounded-lg text-[10px] font-bold uppercase shadow-sm">{loc}<button type="button" onClick={() => removeLocation(loc)} className="text-red-500"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg></button></span>))}</div><datalist id="loc-suggestions">{uniqueLocations.map(loc => <option key={loc} value={loc} />)}</datalist></div><div><label className={labelClass}>PIC Designer</label><select value={formData.pic_designer_id} onChange={e => setFormData({ ...formData, pic_designer_id: e.target.value })} className={inputClass}>{designers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select></div><div className="md:col-span-1"><label className={labelClass}>Support Designers</label><div className="flex flex-wrap gap-2 p-3 bg-[#FCFCFC] border border-[#EAEAEA] rounded-xl min-h-[58px]">{designers.map(d => { if (d.id === formData.pic_designer_id) return null; const isSelected = formData.support_designer_ids?.includes(d.id); return (<button key={d.id} type="button" onClick={() => toggleSupportDesigner(d.id)} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase border transition-all ${isSelected ? 'bg-zinc-900 border-indigo-600 text-white shadow-md' : 'bg-white border-zinc-300 text-zinc-500 hover:border-indigo-400'}`}>{d.name}</button>); })}</div></div><div className="md:col-span-3"><label className={labelClass}>Notes / Keterangan</label><SimpleRichTextEditor initialValue={formData.notes || ''} onSave={(val) => setFormData({ ...formData, notes: val })} placeholder="Catatan project (bisa format list, bold, dll)..." /></div></div><div className="flex justify-end gap-4 pt-6 border-t border-zinc-100"><button type="button" onClick={resetForm} className="px-6 py-2.5 text-sm font-bold text-zinc-700 uppercase">Cancel</button><button type="submit" className="px-8 py-2.5 bg-zinc-900 text-white rounded-lg text-sm font-bold shadow-sm border border-[#EAEAEA] uppercase tracking-wider">{editingId ? 'Update' : 'Save'}</button></div></form>)}
+          <div className="bg-[#F8F9FA] p-4 rounded-[20px] flex flex-wrap items-center gap-4 border border-[#EAEAEA]">
+            {[
+              ['Status', filterStatus, setFilterStatus, ['ALL', 'ON PROGRESS', 'ON HOLD', 'DONE'], 'w-40'],
+              ['Type', filterType, setFilterType, ['ALL', 'EVENT', 'TRAVEL', 'WELLNESS', 'CREATIVE', 'TRAINING'], 'w-32'],
+              ['PIC', filterPIC, setFilterPIC, ['ALL', ...designers.map(d => d.id)], 'w-44'],
+              ['Location', filterLocation, setFilterLocation, ['ALL', ...uniqueLocations], 'w-44']
+            ].map(([lbl, val, set, opts, widthClass]: any) => (
+              <div key={lbl as string} className="flex flex-col gap-1">
+                <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider px-1">{lbl as string}</span>
+                <div className={widthClass}>
+                  <Dropdown
+                    value={val as string}
+                    onChange={v => (set as any)(v)}
+                    options={opts.map((o: any) => ({
+                      value: o,
+                      label: o === 'ALL' ? `All ${lbl}` : (lbl === 'PIC' ? getDesignerName(o) : o)
+                    }))}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+          {isAdding && (
+            <form onSubmit={handleSave} className="bg-white p-8 rounded-[20px] border border-[#EAEAEA] shadow-sm animate-in zoom-in duration-200 flex-shrink-0 mb-6">
+              <h2 className="font-bold text-zinc-900 mb-8 uppercase tracking-tight flex items-center gap-2">
+                <span className="w-2 h-2 bg-zinc-900 rounded-full"></span>
+                {editingId ? 'Edit Project' : 'New Project'}
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+                <div className="md:col-span-2">
+                  <label className={labelClass}>Project Name</label>
+                  <input type="text" required value={formData.project_name} onChange={e => setFormData({ ...formData, project_name: e.target.value })} className={inputClass} placeholder="Annual Event 2024" />
+                </div>
+                <div>
+                  <label className={labelClass}>Status</label>
+                  <Dropdown
+                    value={formData.status || ''}
+                    onChange={val => setFormData({ ...formData, status: val as any })}
+                    options={[
+                      { value: 'ON PROGRESS', label: 'ON PROGRESS' },
+                      { value: 'ON HOLD', label: 'ON HOLD' },
+                      { value: 'DONE', label: 'DONE' }
+                    ]}
+                  />
+                </div>
+                <div>
+                  <label className={labelClass}>Project Type</label>
+                  <Dropdown
+                    value={formData.project_type || ''}
+                    onChange={val => setFormData({ ...formData, project_type: val })}
+                    options={[
+                      { value: 'EVENT', label: 'EVENT' },
+                      { value: 'TRAVEL', label: 'TRAVEL' },
+                      { value: 'WELLNESS', label: 'WELLNESS' },
+                      { value: 'CREATIVE', label: 'CREATIVE' },
+                      { value: 'TRAINING', label: 'TRAINING' }
+                    ]}
+                  />
+                </div>
+                <div>
+                  <label className={labelClass}>Start Date</label>
+                  <input type="date" required value={formData.start_date} onChange={e => setFormData({ ...formData, start_date: e.target.value })} className={inputClass} />
+                </div>
+                <div>
+                  <label className={labelClass}>End Date</label>
+                  <input type="date" required value={formData.end_date} onChange={e => setFormData({ ...formData, end_date: e.target.value })} className={inputClass} />
+                </div>
+                <div className="md:col-span-1">
+                  <label className={labelClass}>Locations</label>
+                  <div className="flex gap-2 mb-2">
+                    <input type="text" list="loc-suggestions" placeholder="Pilih/Ketik..." value={newLocInput} onChange={e => setNewLocInput(e.target.value)} className={inputClass} onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addLocation())} />
+                    <button type="button" onClick={addLocation} className="px-5 bg-[#1A1C20] text-white rounded-lg text-sm font-bold uppercase tracking-wider">ADD</button>
+                  </div>
+                  <div className="flex flex-wrap gap-2 p-3 bg-[#FCFCFC] border border-[#EAEAEA] rounded-xl min-h-[58px] items-center">
+                    {formData.locations?.map(loc => (
+                      <span key={loc} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-zinc-300 text-zinc-800 rounded-lg text-[10px] font-bold uppercase shadow-sm">
+                        {loc}
+                        <button type="button" onClick={() => removeLocation(loc)} className="text-red-500">
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                  <datalist id="loc-suggestions">
+                    {uniqueLocations.map(loc => <option key={loc} value={loc} />)}
+                  </datalist>
+                </div>
+                <div>
+                  <label className={labelClass}>PIC Designer</label>
+                  <Dropdown
+                    value={formData.pic_designer_id || ''}
+                    onChange={val => setFormData({ ...formData, pic_designer_id: val })}
+                    options={designers.map(d => ({ value: d.id, label: d.name }))}
+                  />
+                </div>
+                <div className="md:col-span-1">
+                  <label className={labelClass}>Support Designers</label>
+                  <div className="flex flex-wrap gap-2 p-3 bg-[#FCFCFC] border border-[#EAEAEA] rounded-xl min-h-[58px]">
+                    {designers.map(d => {
+                      if (d.id === formData.pic_designer_id) return null;
+                      const isSelected = formData.support_designer_ids?.includes(d.id);
+                      return (
+                        <button key={d.id} type="button" onClick={() => toggleSupportDesigner(d.id)} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase border transition-all ${isSelected ? 'bg-zinc-900 border-indigo-600 text-white shadow-md' : 'bg-white border-zinc-300 text-zinc-500 hover:border-indigo-400'}`}>
+                          {d.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="md:col-span-3">
+                  <label className={labelClass}>Notes / Keterangan</label>
+                  <SimpleRichTextEditor initialValue={formData.notes || ''} onSave={(val) => setFormData({ ...formData, notes: val })} placeholder="Catatan project (bisa format list, bold, dll)..." />
+                </div>
+              </div>
+              <div className="flex justify-end gap-4 pt-6 border-t border-zinc-100">
+                <button type="button" onClick={resetForm} className="px-6 py-2.5 text-sm font-bold text-zinc-700 uppercase">Cancel</button>
+                <button type="submit" className="px-8 py-2.5 bg-zinc-900 text-white rounded-lg text-sm font-bold shadow-sm border border-[#EAEAEA] uppercase tracking-wider">
+                  {editingId ? 'Update' : 'Save'}
+                </button>
+              </div>
+            </form>
+          )}
           <div className="flex-1 min-h-0">{view === 'list' ? (<div className="bg-white rounded-[16px] md:rounded-[20px] border border-[#EAEAEA] shadow-sm overflow-hidden flex flex-col h-full"><div className="overflow-auto max-h-full"><table className="w-full text-left text-[10px] md:text-sm border-collapse min-w-[420px] md:min-w-0"><thead className="sticky top-0 z-10 bg-[#F8F9FA] font-bold uppercase text-[9px] md:text-[10px] tracking-wider border-b border-[#EAEAEA]"><tr><th className="px-2 md:px-6 py-2.5 md:py-4">Name & Status</th><th className="px-2 md:px-6 py-2.5 md:py-4">Timeline</th><th className="px-2 md:px-6 py-2.5 md:py-4">PIC</th><th className="px-2 md:px-6 py-2.5 md:py-4 text-right">Act</th></tr></thead><tbody className="divide-y divide-slate-200 font-bold text-zinc-900">{filteredProjects.map(p => { const locs = (p as any).locations || (p as any).location || []; const normalizedLocs = Array.isArray(locs) ? locs : [locs]; return (<tr key={p.id} onClick={() => { setSelectedProject(p); setActiveTab('details'); }} className="hover:bg-[#FCFCFC] transition-colors cursor-pointer"><td className="px-2 md:px-6 py-2 md:py-4"><div className="flex flex-col gap-1"><span className={`px-1.5 md:px-2 py-0.5 rounded-full text-[7px] md:text-[8px] font-bold uppercase self-start ${getStatusBadge(p.status).replace('border', '')}`}>{p.status}</span><span className="font-bold uppercase text-[10px] md:text-sm leading-tight">{p.project_name}</span></div></td><td className="px-2 md:px-6 py-2 md:py-4"><div className="flex flex-col"><span className="text-[9px] md:text-[11px] font-bold">{p.start_date} → {p.end_date}</span><div className="flex flex-wrap gap-1 mt-0.5">{normalizedLocs.map(l => <span key={l} className="text-[7px] md:text-[8px] bg-[var(--s3)] text-[var(--ink-2)] px-1.5 py-0.5 rounded uppercase font-bold border-none">{l}</span>)}</div></div></td><td className="px-2 md:px-6 py-2 md:py-4"><div className="flex flex-col gap-1"><div className="flex items-center gap-1"><span className="w-1.5 h-1.5 bg-zinc-900 rounded-full"></span><span className="text-[9px] md:text-xs uppercase">{getDesignerName(p.pic_designer_id)}</span></div><div className="flex flex-wrap gap-0.5 md:gap-1">{p.support_designer_ids?.map(sid => (<span key={sid} className="px-1.5 py-0.5 bg-[var(--s3)] text-[var(--ink-4)] text-[7px] md:text-[8px] rounded uppercase font-bold border-none">{getDesignerName(sid)}</span>))}</div></div></td><td className="px-2 md:px-6 py-2 md:py-4 text-right"><div className="flex justify-end gap-1.5 md:gap-4"><button onClick={(e) => { e.stopPropagation(); handleEdit(p); }} className="text-zinc-800 p-1 rounded hover:bg-zinc-100" title="Edit"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-5M16.5 3.5a2.121 2.121 0 113 3L7 19l-4 1 1-4L16.5 3.5z" /></svg></button><button onClick={(e) => { e.stopPropagation(); handleDelete(e, p.id); }} className="text-red-500 p-1 rounded hover:bg-red-50" title="Delete"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button></div></td></tr>); })}</tbody></table></div></div>) : view === 'board' ? (
           <div className="h-full flex flex-col pt-2 border-t border-[#EAEAEA] overflow-hidden">
             <div className="flex items-center gap-5 mb-5 shrink-0 flex-wrap">

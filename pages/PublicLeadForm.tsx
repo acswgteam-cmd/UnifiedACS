@@ -5,6 +5,7 @@ import { Lead } from '../types';
 import { supabase } from '../lib/supabase';
 import { PUBLIC_FORM_SECRET } from '../data/mockData';
 import { getOffHourStatus } from '../lib/holidayUtils';
+import { Dropdown } from '../components/Dropdown';
 
 interface Props {
   onHostSubmit?: (leads: Lead[]) => void;
@@ -134,16 +135,17 @@ const PublicLeadForm: React.FC<Props> = ({ onHostSubmit, currentLeads = [] }) =>
                   <label className={labelClass}>Deadline</label>
                   <input type="date" required value={formData.deadline} onChange={e => setFormData({...formData, deadline: e.target.value})} className={inputClass} />
                 </div>
-                <div className="relative">
+                <div>
                   <label className={labelClass}>Grade</label>
-                  <select value={formData.lead_grade} onChange={e => setFormData({...formData, lead_grade: e.target.value})} className={inputClass}>
-                    <option value="A">Grade A (High)</option>
-                    <option value="B">Grade B (Standard)</option>
-                    <option value="C">Grade C (Low)</option>
-                  </select>
-                  <div className="pointer-events-none absolute right-4 top-[50px] text-zinc-400">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"/></svg>
-                  </div>
+                  <Dropdown
+                    value={formData.lead_grade || 'B'}
+                    onChange={val => setFormData({ ...formData, lead_grade: val })}
+                    options={[
+                      { value: 'A', label: 'Grade A (High)' },
+                      { value: 'B', label: 'Grade B (Standard)' },
+                      { value: 'C', label: 'Grade C (Low)' }
+                    ]}
+                  />
                 </div>
               </div>
             </section>

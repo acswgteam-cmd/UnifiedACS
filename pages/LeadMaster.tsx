@@ -4,6 +4,7 @@ import { Lead } from '../types';
 import { jsPDF } from 'jspdf';
 import { supabase } from '../lib/supabase';
 import { PUBLIC_FORM_SECRET } from '../data/mockData';
+import { Dropdown } from '../components/Dropdown';
 
 const getAvatarData = (name: string) => {
   const colors = [
@@ -469,28 +470,46 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
       <div className="bg-[#F8F9FA] p-4 rounded-[20px] flex flex-wrap items-center gap-4 border border-[#EAEAEA] shadow-inner">
         <div className="flex flex-col gap-1">
           <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider px-1">Status</span>
-          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className={filterSelectClass}>
-            <option value="ALL">All Statuses</option>
-            <option value="ON PROGRESS">ON PROGRESS</option>
-            <option value="DONE">DONE</option>
-            <option value="CANCEL">CANCEL</option>
-          </select>
+          <div className="w-40">
+            <Dropdown
+              value={filterStatus}
+              onChange={val => setFilterStatus(val)}
+              options={[
+                { value: 'ALL', label: 'All Statuses' },
+                { value: 'ON PROGRESS', label: 'ON PROGRESS' },
+                { value: 'DONE', label: 'DONE' },
+                { value: 'CANCEL', label: 'CANCEL' }
+              ]}
+            />
+          </div>
         </div>
         <div className="flex flex-col gap-1">
           <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider px-1">Grade</span>
-          <select value={filterGrade} onChange={e => setFilterGrade(e.target.value)} className={filterSelectClass}>
-            <option value="ALL">All Grades</option>
-            <option value="A">Grade A</option>
-            <option value="B">Grade B</option>
-            <option value="C">Grade C</option>
-          </select>
+          <div className="w-32">
+            <Dropdown
+              value={filterGrade}
+              onChange={val => setFilterGrade(val)}
+              options={[
+                { value: 'ALL', label: 'All Grades' },
+                { value: 'A', label: 'Grade A' },
+                { value: 'B', label: 'Grade B' },
+                { value: 'C', label: 'Grade C' }
+              ]}
+            />
+          </div>
         </div>
         <div className="flex flex-col gap-1">
           <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider px-1">Requester</span>
-          <select value={filterRequester} onChange={e => setFilterRequester(e.target.value)} className={filterSelectClass}>
-            <option value="ALL">All Requesters</option>
-            {uniqueRequesters.map(req => <option key={req} value={req}>{req}</option>)}
-          </select>
+          <div className="w-44">
+            <Dropdown
+              value={filterRequester}
+              onChange={val => setFilterRequester(val)}
+              options={[
+                { value: 'ALL', label: 'All Requesters' },
+                ...uniqueRequesters.map(req => ({ value: req, label: req }))
+              ]}
+            />
+          </div>
         </div>
       </div>
 
@@ -503,11 +522,15 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
             </div>
             <div>
               <label className={labelClass}>Status</label>
-              <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value as any })} className={inputClass}>
-                <option value="ON PROGRESS">ON PROGRESS</option>
-                <option value="DONE">DONE</option>
-                <option value="CANCEL">CANCEL</option>
-              </select>
+              <Dropdown
+                value={formData.status || ''}
+                onChange={val => setFormData({ ...formData, status: val as any })}
+                options={[
+                  { value: 'ON PROGRESS', label: 'ON PROGRESS' },
+                  { value: 'DONE', label: 'DONE' },
+                  { value: 'CANCEL', label: 'CANCEL' }
+                ]}
+              />
             </div>
             <div>
               <label className={labelClass}>Requester</label>
@@ -515,11 +538,15 @@ const LeadMaster: React.FC<Props> = ({ leads, onUpdate }) => {
             </div>
             <div>
               <label className={labelClass}>Grade</label>
-              <select value={formData.lead_grade} onChange={e => setFormData({ ...formData, lead_grade: e.target.value })} className={inputClass}>
-                <option value="A">Grade A (High)</option>
-                <option value="B">Grade B (Standard)</option>
-                <option value="C">Grade C (Low)</option>
-              </select>
+              <Dropdown
+                value={formData.lead_grade || ''}
+                onChange={val => setFormData({ ...formData, lead_grade: val as any })}
+                options={[
+                  { value: 'A', label: 'Grade A (High)' },
+                  { value: 'B', label: 'Grade B (Standard)' },
+                  { value: 'C', label: 'Grade C (Low)' }
+                ]}
+              />
             </div>
             <div>
               <label className={labelClass}>Deadline</label>

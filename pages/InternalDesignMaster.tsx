@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { InternalDesign, Department, InternalStatus, StatusHistoryEntry, ChangelogEntry, ChangelogChangeType } from '../types';
+import { InternalDesign, Department, InternalStatus, StatusHistoryEntry, ChangelogEntry, ChangelogChangeType, Designer } from '../types';
+import { Dropdown } from '../components/Dropdown';
 import { supabase } from '../lib/supabase';
 import { INTERNAL_FORM_SECRET } from '../data/mockData';
 import {
@@ -37,6 +38,7 @@ import {
 interface Props {
   internalDesigns: InternalDesign[];
   departments: Department[];
+  designers: Designer[];
   onUpdate: () => void;
 }
 
@@ -300,7 +302,7 @@ const getBoardHeaderColor = (group: string) => {
 };
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, onUpdate }) => {
+const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, designers, onUpdate }) => {
   const [view, setView] = useState<'list' | 'calendar' | 'board' | 'timeline'>('list');
   const [boardGroup, setBoardGroup] = useState<'status' | 'dept' | 'overdue'>('status');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
@@ -415,6 +417,7 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
   const [noteText, setNoteText]             = useState('');
   const [noteDeadline, setNoteDeadline]     = useState('');
   const [noteLink, setNoteLink]             = useState('');
+  const [notePic, setNotePic]               = useState('');
   const [noteImageFile, setNoteImageFile]   = useState<File | null>(null);
   const [noteImagePreview, setNoteImagePreview] = useState<string | null>(null);
   const [isSavingNote, setIsSavingNote]     = useState(false);
@@ -424,6 +427,10 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
   const noteImageInputRef = useRef<HTMLInputElement>(null);
 
   const getDeptName = (id: string) => departments.find(d => d.id === id)?.department_name || 'N/A';
+  const getDesignerName = (id: string | null | undefined) => {
+    if (!id) return '';
+    return designers.find(d => d.id === id)?.name || '';
+  };
 
   // ── Load changelog ────────────────────────────────────────────────────────
   const loadChangelog = useCallback(async (taskId: string) => {
@@ -441,7 +448,7 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
   const handleSelectTask = useCallback((task: InternalDesign) => {
     setSelectedTask(task);
     setIsEditingInline(false);
-    setNoteTitle(''); setNoteText(''); setNoteDeadline(''); setNoteLink('');
+    setNoteTitle(''); setNoteText(''); setNoteDeadline(''); setNoteLink(''); setNotePic('');
     setNoteImageFile(null); setNoteImagePreview(null);
     loadChangelog(task.id);
   }, [loadChangelog]);
@@ -521,8 +528,9 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
       note_status:   (noteTitle.trim() || noteDeadline) ? 'OPEN' : null,
       reference_link: noteLink.trim() || null,
       image_url:     imageUrl,
+      pic_designer_id: notePic || null,
     });
-    setNoteTitle(''); setNoteText(''); setNoteDeadline(''); setNoteLink('');
+    setNoteTitle(''); setNoteText(''); setNoteDeadline(''); setNoteLink(''); setNotePic('');
     setNoteImageFile(null); setNoteImagePreview(null);
     if (noteImageInputRef.current) noteImageInputRef.current.value = '';
     await loadChangelog(selectedTask.id);
@@ -1016,24 +1024,19 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
           <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 border-b border-zinc-100 pb-5">
             <div className="flex-1 min-w-0">
               <div className="flex flex-wrap items-center gap-2 mb-2">
-                <select
-                  value={selectedTask.status}
-                  onChange={e => updateStatus(selectedTask.id, e.target.value as InternalStatus)}
-                  className={`px-3 py-1 rounded-full border text-[10px] font-extrabold uppercase cursor-pointer outline-none appearance-none pr-6 transition-all hover:brightness-95 shadow-sm ${getStatusColor(selectedTask.status)}`}
-                  style={{
-                    width: 'fit-content',
-                    backgroundImage: `url("data:image/svg+xml;charset=US-ASCII,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`,
-                    backgroundPosition: 'right 8px center',
-                    backgroundRepeat: 'no-repeat',
-                    backgroundSize: '8px 5px'
-                  }}
-                >
-                  <option value="NEW" className="text-zinc-800 bg-white">NEW</option>
-                  <option value="ON PROGRESS" className="text-zinc-800 bg-white">ON PROGRESS</option>
-                  <option value="ON REVIEW" className="text-zinc-800 bg-white">ON REVIEW</option>
-                  <option value="ON HOLD" className="text-zinc-800 bg-white">ON HOLD</option>
-                  <option value="DONE" className="text-zinc-800 bg-white">DONE</option>
-                </select>
+                <div className="w-44">
+                  <Dropdown
+                    value={selectedTask.status}
+                    onChange={val => updateStatus(selectedTask.id, val as InternalStatus)}
+                    options={[
+                      { value: 'NEW', label: 'NEW' },
+                      { value: 'ON PROGRESS', label: 'ON PROGRESS' },
+                      { value: 'ON REVIEW', label: 'ON REVIEW' },
+                      { value: 'ON HOLD', label: 'ON HOLD' },
+                      { value: 'DONE', label: 'DONE' }
+                    ]}
+                  />
+                </div>
                 {!selectedTask.deadline && <span className="px-2.5 py-1 rounded-full border text-[9px] font-extrabold bg-zinc-50 text-zinc-400 border-zinc-200 shadow-sm">∞ No Deadline</span>}
                 {selectedTask.created_at && <span className="text-[10px] text-[var(--ink-3)] font-semibold">Dibuat: {formatAbsoluteTime(selectedTask.created_at)}</span>}
               </div>
@@ -1106,16 +1109,25 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
                     </div>
                     <div>
                       <label className="text-[10px] font-bold text-zinc-400 uppercase block mb-1">Department</label>
-                      <select required value={formData.department_id||''} onChange={e => setFormData({...formData, department_id: e.target.value})} className="w-full px-3 py-2 rounded-lg border border-zinc-100 bg-[var(--s2)] text-[var(--ink)] text-sm font-bold outline-none focus:ring-2 focus:ring-[var(--primary)] uppercase">
-                        {departments.map(d => <option key={d.id} value={d.id}>{d.department_name}</option>)}
-                      </select>
+                      <Dropdown
+                        value={formData.department_id || ''}
+                        onChange={val => setFormData({ ...formData, department_id: val })}
+                        options={departments.map(d => ({ value: d.id, label: d.department_name }))}
+                      />
                     </div>
                     <div>
                       <label className="text-[10px] font-bold text-zinc-400 uppercase block mb-1">Status</label>
-                      <select required value={formData.status||''} onChange={e => setFormData({...formData, status: e.target.value as InternalStatus})} className="w-full px-3 py-2 rounded-lg border border-zinc-100 bg-[var(--s2)] text-[var(--ink)] text-sm font-bold outline-none focus:ring-2 focus:ring-[var(--primary)] uppercase">
-                        <option value="NEW">NEW</option><option value="ON PROGRESS">ON PROGRESS</option>
-                        <option value="ON REVIEW">ON REVIEW</option><option value="ON HOLD">ON HOLD</option><option value="DONE">DONE</option>
-                      </select>
+                      <Dropdown
+                        value={formData.status || ''}
+                        onChange={val => setFormData({ ...formData, status: val as InternalStatus })}
+                        options={[
+                          { value: 'NEW', label: 'NEW' },
+                          { value: 'ON PROGRESS', label: 'ON PROGRESS' },
+                          { value: 'ON REVIEW', label: 'ON REVIEW' },
+                          { value: 'ON HOLD', label: 'ON HOLD' },
+                          { value: 'DONE', label: 'DONE' }
+                        ]}
+                      />
                     </div>
                     <div>
                       <label className="text-[10px] font-bold text-zinc-400 uppercase block mb-1">Brief Description</label>
@@ -1228,6 +1240,18 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
                           value={noteDeadline}
                           onChange={e => setNoteDeadline(e.target.value)}
                           className="w-full h-[38px] px-2.5 rounded-xl border border-zinc-200 bg-[var(--s1)] text-[var(--ink)] text-xs font-semibold outline-none focus:ring-2 focus:ring-[var(--primary)]"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1 flex-1 min-w-[130px]">
+                        <label className="text-[9px] font-bold text-zinc-400 uppercase px-1">PIC <span className="text-zinc-300">(Opsional)</span></label>
+                        <Dropdown
+                          value={notePic}
+                          onChange={val => setNotePic(val)}
+                          options={[
+                            { value: '', label: 'Pilih PIC...' },
+                            ...designers.map(d => ({ value: d.id, label: d.name }))
+                          ]}
+                          placeholder="Pilih PIC..."
                         />
                       </div>
                       <div className="flex flex-col gap-1 flex-[2] min-w-[140px]">
@@ -1354,6 +1378,12 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
                                     </div>
                                     {/* Deadline badge (only for note cards) */}
                                     {isNoteCard && <NoteDeadlineBadge entry={entry} />}
+                                    {/* PIC Designer */}
+                                    {entry.pic_designer_id && (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-zinc-100 text-zinc-700 border border-zinc-200 uppercase">
+                                        PIC: {getDesignerName(entry.pic_designer_id)}
+                                      </span>
+                                    )}
                                   </div>
                                   <span className="text-[9px] font-bold text-zinc-400 shrink-0" title={formatAbsoluteTime(entry.created_at)}>
                                     {formatRelativeTime(entry.created_at)}
@@ -1477,16 +1507,20 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
           {/* Filters */}
           <div className="bg-[var(--s2)] p-4 rounded-[24px] flex flex-wrap items-center gap-4 border border-zinc-100 shadow-inner">
             {[
-              { label:'Status Filter', value: filterStatus, onChange: setFilterStatus,
+              { label:'Status Filter', value: filterStatus, onChange: setFilterStatus, widthClass: 'w-40',
                 options: [['ALL','All Status'],['NEW','NEW'],['ON HOLD','ON HOLD'],['ON PROGRESS','ON PROGRESS'],['ON REVIEW','ON REVIEW'],['DONE','DONE']] },
-              { label:'Requester Dept', value: filterDept, onChange: setFilterDept,
+              { label:'Requester Dept', value: filterDept, onChange: setFilterDept, widthClass: 'w-56',
                 options: [['ALL','All Departments'], ...departments.map(d => [d.id, d.department_name])] },
             ].map(f => (
               <div key={f.label} className="flex flex-col gap-1">
                 <span className="text-[9px] font-bold text-[var(--ink-3)] uppercase tracking-wider px-1">{f.label}</span>
-                <select value={f.value} onChange={e => f.onChange(e.target.value)} className="text-[10px] font-bold border-zinc-100 rounded-full p-2 bg-[var(--s1)] text-[var(--ink)] outline-none focus:ring-2 focus:ring-[var(--primary)] shadow-sm uppercase cursor-pointer">
-                  {f.options.map(([v,l]) => <option key={v} value={v}>{l}</option>)}
-                </select>
+                <div className={f.widthClass}>
+                  <Dropdown
+                    value={f.value}
+                    onChange={val => f.onChange(val)}
+                    options={f.options.map(([v, l]) => ({ value: v, label: l }))}
+                  />
+                </div>
               </div>
             ))}
           </div>
@@ -1582,13 +1616,19 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
                           <div className="flex items-center justify-end gap-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                             <button onClick={() => handleOpenEdit(task)} className="text-[var(--primary)] p-1 rounded-full hover:bg-[var(--s2)]" title="Edit"><Edit className="w-4 h-4" /></button>
                             <button onClick={() => handleDelete(task.id)} className="text-red-500 p-1 rounded-full hover:bg-red-50" title="Delete"><Trash className="w-4 h-4" /></button>
-                            <select value={task.status} onChange={e => updateStatus(task.id, e.target.value as InternalStatus)} className="text-[8px] font-bold border-zinc-100 rounded-full p-1 bg-[var(--s1)] text-[var(--ink)] outline-none focus:ring-2 focus:ring-[var(--primary)] uppercase cursor-pointer">
-                              <option value="NEW">NEW</option>
-                              <option value="ON PROGRESS">PROG</option>
-                              <option value="ON REVIEW">REV</option>
-                              <option value="ON HOLD">HOLD</option>
-                              <option value="DONE">DONE</option>
-                            </select>
+                            <div className="w-28 text-left">
+                              <Dropdown
+                                value={task.status}
+                                onChange={val => updateStatus(task.id, val as InternalStatus)}
+                                options={[
+                                  { value: 'NEW', label: 'NEW' },
+                                  { value: 'ON PROGRESS', label: 'PROG' },
+                                  { value: 'ON REVIEW', label: 'REV' },
+                                  { value: 'ON HOLD', label: 'HOLD' },
+                                  { value: 'DONE', label: 'DONE' }
+                                ]}
+                              />
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -1856,16 +1896,25 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, o
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-[10px] font-bold text-zinc-400 uppercase block mb-1">Department *</label>
-                  <select required value={formData.department_id||''} onChange={e => setFormData({...formData, department_id: e.target.value})} className="w-full px-3 py-2 rounded-lg border border-zinc-100 bg-[var(--s2)] text-[var(--ink)] text-sm font-bold outline-none focus:ring-2 focus:ring-[var(--primary)] uppercase">
-                    {departments.map(d => <option key={d.id} value={d.id}>{d.department_name}</option>)}
-                  </select>
+                  <Dropdown
+                    value={formData.department_id || ''}
+                    onChange={val => setFormData({ ...formData, department_id: val })}
+                    options={departments.map(d => ({ value: d.id, label: d.department_name }))}
+                  />
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-zinc-400 uppercase block mb-1">Status</label>
-                  <select value={formData.status||'NEW'} onChange={e => setFormData({...formData, status: e.target.value as InternalStatus})} className="w-full px-3 py-2 rounded-lg border border-zinc-100 bg-[var(--s2)] text-[var(--ink)] text-sm font-bold outline-none focus:ring-2 focus:ring-[var(--primary)] uppercase">
-                    <option value="NEW">NEW</option><option value="ON PROGRESS">ON PROGRESS</option>
-                    <option value="ON REVIEW">ON REVIEW</option><option value="ON HOLD">ON HOLD</option><option value="DONE">DONE</option>
-                  </select>
+                  <Dropdown
+                    value={formData.status || ''}
+                    onChange={val => setFormData({ ...formData, status: val as InternalStatus })}
+                    options={[
+                      { value: 'NEW', label: 'NEW' },
+                      { value: 'ON PROGRESS', label: 'ON PROGRESS' },
+                      { value: 'ON REVIEW', label: 'ON REVIEW' },
+                      { value: 'ON HOLD', label: 'ON HOLD' },
+                      { value: 'DONE', label: 'DONE' }
+                    ]}
+                  />
                 </div>
               </div>
               <div>

@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { WorkContext, ArtworkLog, AppState } from '../types';
+import { Dropdown } from './Dropdown';
 
 interface Props {
   state: AppState;
@@ -144,20 +145,32 @@ const ArtworkTable: React.FC<Props> = ({ state, onUpdate, onDelete }) => {
 
         <div className="flex items-center gap-2 border-l border-slate-300 pl-4">
           <label className="text-[10px] font-black text-slate-700 uppercase">Context</label>
-          <select value={filterContext} onChange={(e) => setFilterContext(e.target.value)} className="text-[10px] font-bold border-slate-400 rounded-lg p-1.5 bg-white border">
-            <option value="ALL">All Context</option>
-            <option value={WorkContext.PROJECT}>Projects</option>
-            <option value={WorkContext.LEAD}>Leads</option>
-            <option value={WorkContext.INTERNAL}>Internal</option>
-          </select>
+          <div className="w-32">
+            <Dropdown
+              value={filterContext}
+              onChange={val => setFilterContext(val)}
+              options={[
+                { value: 'ALL', label: 'All Context' },
+                { value: WorkContext.PROJECT, label: 'Projects' },
+                { value: WorkContext.LEAD, label: 'Leads' },
+                { value: WorkContext.INTERNAL, label: 'Internal' }
+              ]}
+            />
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
           <label className="text-[10px] font-black text-slate-700 uppercase">PIC</label>
-          <select value={filterDesigner} onChange={(e) => setFilterDesigner(e.target.value)} className="text-[10px] font-bold border-slate-400 rounded-lg p-1.5 bg-white border">
-            <option value="ALL">All Designers</option>
-            {state.designers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-          </select>
+          <div className="w-40">
+            <Dropdown
+              value={filterDesigner}
+              onChange={val => setFilterDesigner(val)}
+              options={[
+                { value: 'ALL', label: 'All Designers' },
+                ...state.designers.map(d => ({ value: d.id, label: d.name }))
+              ]}
+            />
+          </div>
         </div>
       </div>
 
@@ -187,22 +200,27 @@ const ArtworkTable: React.FC<Props> = ({ state, onUpdate, onDelete }) => {
                         className={`${editInputClass} mb-2`}
                         placeholder="Artwork Name"
                       />
-                      <select
-                        name="artwork_type"
-                        value={editFormData.artwork_type}
-                        onChange={handleEditChange}
-                        className={editInputClass}
-                      >
-                        <option value="2D Design">2D Design</option>
-                        <option value="3D Design">3D Design</option>
-                        <option value="Video">Video</option>
-                      </select>
+                      <div className="w-full">
+                        <Dropdown
+                          value={editFormData.artwork_type || ''}
+                          onChange={val => handleEditChange({ target: { name: 'artwork_type', value: val } } as any)}
+                          options={[
+                            { value: '2D Design', label: '2D Design' },
+                            { value: '3D Design', label: '3D Design' },
+                            { value: 'Video', label: 'Video' }
+                          ]}
+                        />
+                      </div>
                     </td>
                     <td className="px-6 py-4"><div className="text-[10px] font-black text-slate-400 uppercase">{log.work_context}</div></td>
                     <td className="px-6 py-4">
-                      <select name="pic_designer_id" value={editFormData.pic_designer_id} onChange={handleEditChange} className={editInputClass}>
-                        {state.designers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                      </select>
+                      <div className="w-full min-w-[120px]">
+                        <Dropdown
+                          value={editFormData.pic_designer_id || ''}
+                          onChange={val => handleEditChange({ target: { name: 'pic_designer_id', value: val } } as any)}
+                          options={state.designers.map(d => ({ value: d.id, label: d.name }))}
+                        />
+                      </div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-1">

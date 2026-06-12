@@ -271,7 +271,7 @@ const App: React.FC = () => {
                       />
                     } />
                     <Route path="/masters/leads"    element={<LeadMaster leads={state.leads} onUpdate={fetchData} />} />
-                    <Route path="/masters/internal" element={<InternalDesignMaster internalDesigns={state.internalDesigns} departments={state.departments} onUpdate={fetchData} />} />
+                    <Route path="/masters/internal" element={<InternalDesignMaster internalDesigns={state.internalDesigns} departments={state.departments} designers={state.designers} onUpdate={fetchData} />} />
                   </Routes>
                 </div>
               </div>

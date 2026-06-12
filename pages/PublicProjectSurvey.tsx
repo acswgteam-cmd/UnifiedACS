@@ -4,6 +4,7 @@ import { useParams } from 'react-router-dom';
 import { Project, ProjectChecklist, ChecklistTemplate, ChecklistTemplateItem, ProjectSurvey, Designer, DesignerEvaluation } from '../types';
 import { supabase } from '../lib/supabase';
 import { SURVEY_FORM_SECRET } from '../data/mockData';
+import { Dropdown } from '../components/Dropdown';
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 
@@ -73,22 +74,20 @@ const TableRow: React.FC<TableRowProps> = ({ cl, idx, isEditable, cellInputClass
     </td>
     <td className="px-6 py-2">
       {isEditable ? (
-        <select
-          value={cl.status}
-          onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-            const val = e.target.value;
-            handleLocalChange(cl.id, 'status', val);
-            handleSaveItem(cl.id, 'status', val);
-          }}
-          className={`w-full text-[10px] font-bold uppercase rounded py-1 px-1 outline-none cursor-pointer transition-colors bg-transparent hover:bg-[#F8F9FA] ${cl.status === 'DONE' ? 'text-emerald-600' :
-            cl.status === 'ON PROGRESS' ? 'text-amber-600' :
-              'text-zinc-400'
-            }`}
-        >
-          <option value="NONE">Not Started</option>
-          <option value="ON PROGRESS">On Progress</option>
-          <option value="DONE">Done</option>
-        </select>
+        <div className="w-full min-w-[120px]">
+          <Dropdown
+            value={cl.status}
+            onChange={(val) => {
+              handleLocalChange(cl.id, 'status', val);
+              handleSaveItem(cl.id, 'status', val);
+            }}
+            options={[
+              { value: 'NONE', label: 'Not Started' },
+              { value: 'ON PROGRESS', label: 'On Progress' },
+              { value: 'DONE', label: 'Done' }
+            ]}
+          />
+        </div>
       ) : (
         <span className={`text-[9px] font-bold uppercase px-2 py-1 rounded border ${cl.status === 'DONE' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
           cl.status === 'ON PROGRESS' ? 'bg-amber-100 text-amber-700 border-amber-200' :

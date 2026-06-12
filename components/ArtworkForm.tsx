@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { WorkContext, ArtworkLog, AppState } from '../types';
 import DateRangePicker from './DateRangePicker';
+import { Dropdown } from './Dropdown';
 
 interface Props {
   state: AppState;
@@ -104,37 +105,65 @@ const ArtworkForm: React.FC<Props> = ({ state, onSubmit }) => {
           
           {/* Context */}
           <div className="w-full lg:w-24 shrink-0">
-            <select name="work_context" value={formData.work_context} onChange={handleChange} className={selectBase}>
-              <option value={WorkContext.PROJECT}>PROJECT</option>
-              <option value={WorkContext.LEAD}>LEAD</option>
-              <option value={WorkContext.INTERNAL}>INTERNAL</option>
-            </select>
+            <Dropdown
+              value={formData.work_context || ''}
+              onChange={val => handleChange({ target: { name: 'work_context', value: val } } as any)}
+              options={[
+                { value: WorkContext.PROJECT, label: 'PROJECT' },
+                { value: WorkContext.LEAD, label: 'LEAD' },
+                { value: WorkContext.INTERNAL, label: 'INTERNAL' },
+              ]}
+            />
           </div>
 
           {/* Dynamic Reference Selector */}
           <div className="w-full lg:flex-1 lg:min-w-[140px]">
             {formData.work_context === WorkContext.PROJECT && (
-              <select name="project_id" value={formData.project_id || ""} onChange={handleChange} required className={selectBase}>
-                <option value="">Select Project...</option>
-                {state.projects.map(p => <option key={p.id} value={p.id}>{p.project_name}</option>)}
-              </select>
+              <Dropdown
+                value={formData.project_id || ''}
+                onChange={val => handleChange({ target: { name: 'project_id', value: val } } as any)}
+                options={[
+                  { value: '', label: 'Select Project...' },
+                  ...state.projects.map(p => ({ value: p.id, label: p.project_name }))
+                ]}
+                placeholder="Select Project..."
+              />
             )}
             {formData.work_context === WorkContext.LEAD && (
-              <select name="lead_id" value={formData.lead_id || ""} onChange={handleChange} required className={selectBase}>
-                <option value="">Select Lead...</option>
-                {state.leads.map(l => <option key={l.id} value={l.id}>{l.lead_name}</option>)}
-              </select>
+              <Dropdown
+                value={formData.lead_id || ''}
+                onChange={val => handleChange({ target: { name: 'lead_id', value: val } } as any)}
+                options={[
+                  { value: '', label: 'Select Lead...' },
+                  ...state.leads.map(l => ({ value: l.id, label: l.lead_name }))
+                ]}
+                placeholder="Select Lead..."
+              />
             )}
             {formData.work_context === WorkContext.INTERNAL && (
-              <div className="flex gap-2">
-                 <select name="internal_design_id" value={formData.internal_design_id || ""} onChange={handleChange} className={`${selectBase} w-1/2`}>
-                  <option value="">Link Task...</option>
-                  {state.internalDesigns.map(id => <option key={id.id} value={id.id}>{id.task_name}</option>)}
-                </select>
-                <select name="department_id" value={formData.department_id || ""} onChange={handleChange} required className={`${selectBase} w-1/2`}>
-                  <option value="">Dept...</option>
-                  {state.departments.filter(d => d.active).map(d => <option key={d.id} value={d.id}>{d.department_name}</option>)}
-                </select>
+              <div className="flex gap-2 w-full">
+                <div className="w-1/2">
+                  <Dropdown
+                    value={formData.internal_design_id || ''}
+                    onChange={val => handleChange({ target: { name: 'internal_design_id', value: val } } as any)}
+                    options={[
+                      { value: '', label: 'Link Task...' },
+                      ...state.internalDesigns.map(id => ({ value: id.id, label: id.task_name }))
+                    ]}
+                    placeholder="Link Task..."
+                  />
+                </div>
+                <div className="w-1/2">
+                  <Dropdown
+                    value={formData.department_id || ''}
+                    onChange={val => handleChange({ target: { name: 'department_id', value: val } } as any)}
+                    options={[
+                      { value: '', label: 'Dept...' },
+                      ...state.departments.filter(d => d.active).map(d => ({ value: d.id, label: d.department_name }))
+                    ]}
+                    placeholder="Dept..."
+                  />
+                </div>
               </div>
             )}
           </div>
@@ -146,18 +175,24 @@ const ArtworkForm: React.FC<Props> = ({ state, onSubmit }) => {
 
           {/* Type */}
           <div className="w-full lg:w-24 shrink-0">
-            <select name="artwork_type" value={formData.artwork_type} onChange={handleChange} className={selectBase}>
-              <option value="2D Design">2D</option>
-              <option value="3D Design">3D</option>
-              <option value="Video">Video</option>
-            </select>
+            <Dropdown
+              value={formData.artwork_type || ''}
+              onChange={val => handleChange({ target: { name: 'artwork_type', value: val } } as any)}
+              options={[
+                { value: '2D Design', label: '2D' },
+                { value: '3D Design', label: '3D' },
+                { value: 'Video', label: 'Video' }
+              ]}
+            />
           </div>
 
           {/* PIC */}
           <div className="w-full lg:w-28 shrink-0">
-            <select name="pic_designer_id" value={formData.pic_designer_id} onChange={handleChange} className={selectBase}>
-              {state.designers.filter(d => d.active).map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-            </select>
+            <Dropdown
+              value={formData.pic_designer_id || ''}
+              onChange={val => handleChange({ target: { name: 'pic_designer_id', value: val } } as any)}
+              options={state.designers.filter(d => d.active).map(d => ({ value: d.id, label: d.name }))}
+            />
           </div>
 
           {/* Timeline - Merged into single DateRangePicker */}
