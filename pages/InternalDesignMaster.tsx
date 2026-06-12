@@ -90,6 +90,22 @@ const convertToWebP = (file: File): Promise<Blob> =>
     img.src = url;
   });
 
+const getImages = (imageUrl: string | null | undefined): string[] => {
+  if (!imageUrl) return [];
+  if (imageUrl.startsWith('[') && imageUrl.endsWith(']')) {
+    try {
+      return JSON.parse(imageUrl);
+    } catch (e) {
+      // fallback
+    }
+  }
+  if (imageUrl.includes(',')) {
+    return imageUrl.split(',').map(s => s.trim()).filter(Boolean);
+  }
+  return [imageUrl];
+};
+
+
 // ─── Changelog icon / label helpers ──────────────────────────────────────────
 const getChangelogIcon = (entry: ChangelogEntry) => {
   const type = entry.change_type;
@@ -418,8 +434,8 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, d
   const [noteDeadline, setNoteDeadline]     = useState('');
   const [noteLink, setNoteLink]             = useState('');
   const [notePic, setNotePic]               = useState('');
-  const [noteImageFile, setNoteImageFile]   = useState<File | null>(null);
-  const [noteImagePreview, setNoteImagePreview] = useState<string | null>(null);
+  const [noteImageFiles, setNoteImageFiles] = useState<File[]>([]);
+  const [noteImagePreviews, setNoteImagePreviews] = useState<string[]>([]);
   const [isSavingNote, setIsSavingNote]     = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [isDragging, setIsDragging]         = useState(false);
@@ -449,7 +465,7 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, d
     setSelectedTask(task);
     setIsEditingInline(false);
     setNoteTitle(''); setNoteText(''); setNoteDeadline(''); setNoteLink(''); setNotePic('');
-    setNoteImageFile(null); setNoteImagePreview(null);
+    setNoteImageFiles([]); setNoteImagePreviews([]);
     loadChangelog(task.id);
   }, [loadChangelog]);
 
@@ -501,26 +517,42 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, d
   };
 
   const handleNoteImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]; if (!file) return;
-    setNoteImageFile(file);
-    const reader = new FileReader();
-    reader.onload = ev => setNoteImagePreview(ev.target?.result as string);
-    reader.readAsDataURL(file);
+    const files = Array.from(e.target.files || []).filter(f => f.type.startsWith('image/'));
+    if (files.length === 0) return;
+    setNoteImageFiles(prev => [...prev, ...files]);
+    
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = ev => {
+        if (ev.target?.result) {
+          setNoteImagePreviews(prev => [...prev, ev.target!.result as string]);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
   };
 
   // ── Save unified note/log ─────────────────────────────────────────────────
   const handleSaveNote = async () => {
     if (!selectedTask) return;
-    if (!noteTitle.trim() && !noteText.trim() && !noteLink.trim() && !noteImageFile) return;
+    if (!noteTitle.trim() && !noteText.trim() && !noteLink.trim() && noteImageFiles.length === 0) return;
     setIsSavingNote(true);
-    let imageUrl: string | null = null;
-    if (noteImageFile) {
-      imageUrl = await uploadChangelogImage(noteImageFile);
-      if (!imageUrl) {
-        setIsSavingNote(false);
-        return; // Stop saving if the user intended to upload an image but the upload failed
+    
+    const imageUrls: string[] = [];
+    if (noteImageFiles.length > 0) {
+      for (const file of noteImageFiles) {
+        const url = await uploadChangelogImage(file);
+        if (url) {
+          imageUrls.push(url);
+        } else {
+          setIsSavingNote(false);
+          return; // Stop saving if any upload fails
+        }
       }
     }
+    
+    const imageUrl = imageUrls.length > 0 ? JSON.stringify(imageUrls) : null;
+    
     await insertChangelog(selectedTask.id, 'NOTE', {
       note_title:    noteTitle.trim() || null,
       note:          noteText.trim() || null,
@@ -531,7 +563,7 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, d
       pic_designer_id: notePic || null,
     });
     setNoteTitle(''); setNoteText(''); setNoteDeadline(''); setNoteLink(''); setNotePic('');
-    setNoteImageFile(null); setNoteImagePreview(null);
+    setNoteImageFiles([]); setNoteImagePreviews([]);
     if (noteImageInputRef.current) noteImageInputRef.current.value = '';
     await loadChangelog(selectedTask.id);
     await loadNoteCounts();
@@ -1198,12 +1230,18 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, d
                   onDrop={(e) => {
                     e.preventDefault();
                     setIsDragging(false);
-                    const file = e.dataTransfer.files?.[0];
-                    if (file && file.type.startsWith('image/')) {
-                      setNoteImageFile(file);
-                      const reader = new FileReader();
-                      reader.onload = ev => setNoteImagePreview(ev.target?.result as string);
-                      reader.readAsDataURL(file);
+                    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+                    if (files.length > 0) {
+                      setNoteImageFiles(prev => [...prev, ...files]);
+                      files.forEach(file => {
+                        const reader = new FileReader();
+                        reader.onload = ev => {
+                          if (ev.target?.result) {
+                            setNoteImagePreviews(prev => [...prev, ev.target!.result as string]);
+                          }
+                        };
+                        reader.readAsDataURL(file);
+                      });
                     }
                   }}
                   className={`relative rounded-2xl bg-[var(--s2)]/50 border overflow-hidden transition-all duration-200 ${isDragging ? 'border-[var(--primary)] bg-[var(--primary-dim)]/15 scale-[1.005]' : 'border-zinc-100'}`}
@@ -1269,20 +1307,33 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, d
                         <button
                           onClick={() => noteImageInputRef.current?.click()}
                           type="button"
-                          className={`h-[38px] px-4 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${noteImageFile ? 'bg-emerald-50 border-emerald-400 text-emerald-700' : 'bg-[var(--s1)] border-zinc-200 text-zinc-500 hover:border-[var(--primary)] hover:text-[var(--primary)]'}`}
+                          className={`h-[38px] px-4 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${noteImageFiles.length > 0 ? 'bg-emerald-50 border-emerald-400 text-emerald-700' : 'bg-[var(--s1)] border-zinc-200 text-zinc-500 hover:border-[var(--primary)] hover:text-[var(--primary)]'}`}
                         >
                           <Attachment className="w-4 h-4" />
-                          {noteImageFile ? <><Check className="w-3.5 h-3.5 text-emerald-700" /> Foto</> : 'Pilih Foto'}
+                          {noteImageFiles.length > 0 ? <><Check className="w-3.5 h-3.5 text-emerald-700" /> {noteImageFiles.length} Foto</> : 'Pilih Foto'}
                         </button>
-                        <input ref={noteImageInputRef} type="file" accept="image/*" className="hidden" onChange={handleNoteImageChange} />
+                        <input ref={noteImageInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleNoteImageChange} />
                       </div>
                     </div>
-                    {/* Image preview */}
-                    {noteImagePreview && (
-                      <div className="relative inline-block">
-                        <img src={noteImagePreview} alt="preview" className="max-h-20 rounded-lg border border-zinc-200 object-cover" />
-                        <button onClick={() => {setNoteImageFile(null); setNoteImagePreview(null); if(noteImageInputRef.current) noteImageInputRef.current.value='';}} className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-5 h-5 text-[10px] flex items-center justify-center font-bold hover:bg-red-600">✕</button>
-                        <span className="absolute bottom-1 left-1 bg-black/60 text-white text-[8px] font-bold px-1.5 py-0.5 rounded">→ WebP</span>
+                    {/* Image previews */}
+                    {noteImagePreviews.length > 0 && (
+                      <div className="flex flex-wrap gap-2.5 mt-2">
+                        {noteImagePreviews.map((preview, idx) => (
+                          <div key={idx} className="relative inline-block">
+                            <img src={preview} alt={`preview ${idx}`} className="max-h-20 rounded-lg border border-zinc-200 object-cover" />
+                            <button
+                              onClick={() => {
+                                setNoteImageFiles(prev => prev.filter((_, i) => i !== idx));
+                                setNoteImagePreviews(prev => prev.filter((_, i) => i !== idx));
+                                if (noteImageInputRef.current) noteImageInputRef.current.value = '';
+                              }}
+                              className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-5 h-5 text-[10px] flex items-center justify-center font-bold hover:bg-red-600"
+                            >
+                              ✕
+                            </button>
+                            <span className="absolute bottom-1 left-1 bg-black/60 text-white text-[8px] font-bold px-1.5 py-0.5 rounded">→ WebP</span>
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
@@ -1290,7 +1341,7 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, d
                   <div className="flex justify-end p-3 bg-[var(--s2)]/40 border-t border-zinc-100/50 rounded-b-2xl">
                     <button
                       onClick={handleSaveNote}
-                      disabled={isSavingNote || uploadingImage || (!noteTitle.trim() && !noteText.trim() && !noteLink.trim() && !noteImageFile)}
+                      disabled={isSavingNote || uploadingImage || (!noteTitle.trim() && !noteText.trim() && !noteLink.trim() && noteImageFiles.length === 0)}
                       className="px-6 py-2 bg-[var(--primary)] text-white text-xs font-bold uppercase tracking-wider hover:brightness-110 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm"
                     >
                       {(isSavingNote || uploadingImage) ? (
@@ -1413,15 +1464,19 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, d
 
                                 {/* Image */}
                                 {entry.image_url && (
-                                  <div className="mt-2">
-                                    <button
-                                      type="button"
-                                      onClick={() => setPreviewImage(entry.image_url)}
-                                      className="block focus:outline-none"
-                                    >
-                                      <img src={entry.image_url} alt="Screenshot" className="max-h-20 max-w-[160px] object-cover rounded-lg border border-zinc-200 hover:border-[var(--primary)] hover:brightness-95 cursor-zoom-in transition-all" />
-                                    </button>
-                                    <p className="text-[8px] text-zinc-400 font-semibold mt-1">📎 Klik untuk memperbesar</p>
+                                  <div className="mt-2 flex flex-wrap gap-2">
+                                    {getImages(entry.image_url).map((url, i) => (
+                                      <div key={i} className="flex flex-col">
+                                        <button
+                                          type="button"
+                                          onClick={() => setPreviewImage(url)}
+                                          className="block focus:outline-none"
+                                        >
+                                          <img src={url} alt={`Screenshot ${i + 1}`} className="max-h-20 max-w-[160px] object-cover rounded-lg border border-zinc-200 hover:border-[var(--primary)] hover:brightness-95 cursor-zoom-in transition-all" />
+                                        </button>
+                                      </div>
+                                    ))}
+                                    <p className="w-full text-[8px] text-zinc-400 font-semibold mt-1">📎 Klik untuk memperbesar</p>
                                   </div>
                                 )}
                               </div>
@@ -1735,14 +1790,17 @@ const InternalDesignMaster: React.FC<Props> = ({ internalDesigns, departments, d
                                           </a>
                                         )}
                                         {entry.image_url && (
-                                          <div className="mt-2">
-                                            <button
-                                              type="button"
-                                              onClick={() => setPreviewImage(entry.image_url)}
-                                              className="block focus:outline-none"
-                                            >
-                                              <img src={entry.image_url} alt="Screenshot" className="max-h-16 max-w-[120px] object-cover rounded border border-zinc-200 hover:border-[var(--primary)] hover:brightness-95 cursor-zoom-in transition-all" />
-                                            </button>
+                                          <div className="mt-2 flex flex-wrap gap-1.5">
+                                            {getImages(entry.image_url).map((url, i) => (
+                                              <button
+                                                key={i}
+                                                type="button"
+                                                onClick={() => setPreviewImage(url)}
+                                                className="block focus:outline-none"
+                                              >
+                                                <img src={url} alt={`Screenshot ${i + 1}`} className="max-h-16 max-w-[120px] object-cover rounded border border-zinc-200 hover:border-[var(--primary)] hover:brightness-95 cursor-zoom-in transition-all" />
+                                              </button>
+                                            ))}
                                           </div>
                                         )}
                                         <div className="text-[9px] text-zinc-400 font-semibold mt-1">
