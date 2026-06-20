@@ -14,6 +14,7 @@ import PublicInternalForm from './pages/PublicInternalForm';
 import PublicProjectSurvey from './pages/PublicProjectSurvey';
 import Dashboard from './pages/Dashboard';
 import ReportGenerator from './pages/ReportGenerator';
+import GamificationWorld from './pages/GamificationWorld';
 
 import { supabase, isSupabaseConfigured } from './lib/supabase';
 import { INITIAL_STATE } from './data/mockData';
@@ -188,7 +189,7 @@ const App: React.FC = () => {
 
             {/* — Desktop Sidebar — */}
             <aside
-              className={`hidden md:flex flex-col flex-shrink-0 h-full transition-all duration-300 sidebar ${collapsed ? 'w-[64px]' : 'w-[220px]'}`}
+              className={`hidden md:flex flex-col flex-shrink-0 h-full transition-all duration-300 sidebar relative z-30 ${collapsed ? 'w-[64px]' : 'w-[220px]'}`}
             >
               {/* Logo */}
               <div className={`flex items-center h-[48px] px-3 border-b ${collapsed ? 'justify-center' : 'justify-between'}`} style={{ borderColor: 'var(--color-hl)' }}>
@@ -247,34 +248,7 @@ const App: React.FC = () => {
                 </div>
               </header>
 
-              <div className="flex-1 overflow-y-auto" style={{ backgroundColor: 'var(--color-canvas)' }}>
-                <div className="p-4 md:p-6">
-                  <Routes>
-                    <Route path="/"                   element={<Navigate to="/admin/dashboard" replace />} />
-                    <Route path="/dashboard"          element={<Dashboard state={state} />} />
-                    <Route path="/reports"            element={<ReportGenerator state={state} />} />
-
-                    <Route path="/artwork-logs"       element={<ArtworkLogPage state={state} onAdd={handleAddLog} onUpdate={handleUpdateLog} onDelete={handleDeleteLog} />} />
-                    <Route path="/masters/departments" element={<DepartmentMaster departments={state.departments} onUpdate={fetchData} />} />
-                    <Route path="/masters/designers"   element={<DesignerMaster designers={state.designers} onUpdate={fetchData} />} />
-                    <Route path="/masters/projects"    element={
-                      <ProjectMaster
-                        projects={state.projects}
-                        designers={state.designers}
-                        artworkLogs={state.artworkLogs}
-                        designerEvaluations={state.designerEvaluations}
-                        projectSurveys={state.projectSurveys}
-                        projectChecklists={state.projectChecklists}
-                        checklistTemplates={state.checklistTemplates}
-                        checklistTemplateItems={state.checklistTemplateItems}
-                        onUpdate={fetchData}
-                      />
-                    } />
-                    <Route path="/masters/leads"    element={<LeadMaster leads={state.leads} onUpdate={fetchData} />} />
-                    <Route path="/masters/internal" element={<InternalDesignMaster internalDesigns={state.internalDesigns} departments={state.departments} designers={state.designers} onUpdate={fetchData} />} />
-                  </Routes>
-                </div>
-              </div>
+              <RouteAwarePadding state={state} fetchData={fetchData} handleAddLog={handleAddLog} handleUpdateLog={handleUpdateLog} handleDeleteLog={handleDeleteLog} />
             </main>
 
             <nav
@@ -307,6 +281,52 @@ const App: React.FC = () => {
       </Routes>
     </HashRouter>
     </ThemeProvider>
+  );
+};
+
+/* ── RouteAwarePadding ── */
+const RouteAwarePadding: React.FC<{
+  state: AppState;
+  fetchData: () => void;
+  handleAddLog: (log: ArtworkLog) => void;
+  handleUpdateLog: (log: ArtworkLog) => void;
+  handleDeleteLog: (id: string) => void;
+}> = ({ state, fetchData, handleAddLog, handleUpdateLog, handleDeleteLog }) => {
+  const location = useLocation();
+  const isWorld = location.pathname === '/admin/world';
+  return (
+    <div
+      className={`flex-1 ${isWorld ? 'overflow-hidden' : 'overflow-y-auto'}`}
+      style={{ backgroundColor: 'var(--color-canvas)' }}
+    >
+      <div className={isWorld ? 'h-full' : 'p-4 md:p-6'}>
+        <Routes>
+          <Route path="/"                   element={<Navigate to="/admin/dashboard" replace />} />
+          <Route path="/dashboard"          element={<Dashboard state={state} />} />
+          <Route path="/reports"            element={<ReportGenerator state={state} />} />
+          <Route path="/world"              element={<GamificationWorld state={state} />} />
+
+          <Route path="/artwork-logs"       element={<ArtworkLogPage state={state} onAdd={handleAddLog} onUpdate={handleUpdateLog} onDelete={handleDeleteLog} />} />
+          <Route path="/masters/departments" element={<DepartmentMaster departments={state.departments} onUpdate={fetchData} />} />
+          <Route path="/masters/designers"   element={<DesignerMaster designers={state.designers} onUpdate={fetchData} />} />
+          <Route path="/masters/projects"    element={
+            <ProjectMaster
+              projects={state.projects}
+              designers={state.designers}
+              artworkLogs={state.artworkLogs}
+              designerEvaluations={state.designerEvaluations}
+              projectSurveys={state.projectSurveys}
+              projectChecklists={state.projectChecklists}
+              checklistTemplates={state.checklistTemplates}
+              checklistTemplateItems={state.checklistTemplateItems}
+              onUpdate={fetchData}
+            />
+          } />
+          <Route path="/masters/leads"    element={<LeadMaster leads={state.leads} onUpdate={fetchData} />} />
+          <Route path="/masters/internal" element={<InternalDesignMaster internalDesigns={state.internalDesigns} departments={state.departments} designers={state.designers} onUpdate={fetchData} />} />
+        </Routes>
+      </div>
+    </div>
   );
 };
 

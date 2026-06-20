@@ -1,5 +1,6 @@
 
 import React, { useMemo, useState, useCallback, useRef, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import html2canvas from 'html2canvas';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
@@ -1148,7 +1149,30 @@ const Dashboard: React.FC<Props> = ({ state }) => {
 
               {widgetId === 'team-stats' && (
                 <section id="team-stats" className="col-span-12">
-                  <span className="text-[12px] font-medium text-[var(--color-ink-2)] mb-3 block tracking-tight">Team Output & Performance</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 0 }}>
+                    <span className="text-[12px] font-medium text-[var(--color-ink-2)] tracking-tight">Team Output & Performance</span>
+                    <Link
+                      to="/admin/world"
+                      title="Open ACS World"
+                      className="flex items-center gap-1.5 transition-all hover:scale-105"
+                      style={{
+                        padding: '3px 8px',
+                        borderRadius: 5,
+                        background: 'linear-gradient(135deg, rgba(99,102,241,0.12) 0%, rgba(139,92,246,0.12) 100%)',
+                        border: '1px solid rgba(99,102,241,0.28)',
+                        textDecoration: 'none',
+                      }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg, rgba(99,102,241,0.28) 0%, rgba(139,92,246,0.28) 100%)'; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg, rgba(99,102,241,0.12) 0%, rgba(139,92,246,0.12) 100%)'; }}
+                    >
+                      <svg width="11" height="11" viewBox="0 0 14 14" fill="none">
+                        <polygon points="7,1 13,4.5 13,9.5 7,13 1,9.5 1,4.5" fill="rgba(99,102,241,0.3)" stroke="rgba(165,180,252,0.8)" strokeWidth="1" />
+                        <polygon points="7,1 13,4.5 7,8 1,4.5" fill="rgba(99,102,241,0.5)" stroke="rgba(165,180,252,0.5)" strokeWidth="0.5" />
+                        <circle cx="7" cy="7" r="1.5" fill="rgba(165,180,252,0.9)" />
+                      </svg>
+                      <span style={{ fontSize: 9, fontWeight: 700, color: 'rgba(165,180,252,0.8)', letterSpacing: '0.06em', fontFamily: 'monospace' }}>ACS WORLD</span>
+                    </Link>
+                  </div>
                   <div className="flex overflow-x-auto flex-nowrap gap-4 md:gap-5 mt-3 pb-4 snap-x scrollbar-thin scrollbar-thumb-[var(--color-hl-2)]">
                     {analytics.teamStats.map(ds => (
                       <div key={ds.id} id={`team-stat-${ds.id}`} className="relative flex-shrink-0 w-[260px] md:w-[280px] snap-start bg-[var(--color-s1)] p-4 rounded-md border border-[var(--color-hl)] shadow-card group hover:border-[var(--color-hl-2)] transition-colors">
