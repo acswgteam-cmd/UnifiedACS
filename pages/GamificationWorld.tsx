@@ -17,6 +17,104 @@ function g2s(gx: number, gy: number) {
   };
 }
 
+// ── Color helpers ─────────────────────────────────────────────────────────────
+function darkenHex(hex: string, f = 0.7): string {
+  const m = hex.match(/^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+  if (!m) return hex;
+  return `rgb(${Math.floor(parseInt(m[1],16)*f)},${Math.floor(parseInt(m[2],16)*f)},${Math.floor(parseInt(m[3],16)*f)})`;
+}
+function lightenHex(hex: string, f = 0.3): string {
+  const m = hex.match(/^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+  if (!m) return hex;
+  const r = parseInt(m[1],16), g = parseInt(m[2],16), b = parseInt(m[3],16);
+  return `rgb(${Math.min(255,r+Math.floor((255-r)*f))},${Math.min(255,g+Math.floor((255-g)*f))},${Math.min(255,b+Math.floor((255-b)*f))})`;
+}
+
+// ── Terrain System ────────────────────────────────────────────────────────────
+function hash2d(x: number, y: number): number {
+  const n = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
+  return n - Math.floor(n);
+}
+function smoothNoise(x: number, y: number): number {
+  const ix = Math.floor(x), iy = Math.floor(y);
+  const fx = x - ix, fy = y - iy;
+  const ux = fx * fx * (3 - 2 * fx);
+  const uy = fy * fy * (3 - 2 * fy);
+  const a = hash2d(ix, iy), b = hash2d(ix + 1, iy);
+  const c = hash2d(ix, iy + 1), d = hash2d(ix + 1, iy + 1);
+  return a + (b - a) * ux + (c - a) * uy + (a - b - c + d) * ux * uy;
+}
+function terrainHeight(gx: number, gy: number): number {
+  return smoothNoise(gx * 0.07, gy * 0.07) * 0.5 +
+         smoothNoise(gx * 0.14 + 50, gy * 0.14 + 50) * 0.3 +
+         smoothNoise(gx * 0.28 + 100, gy * 0.28 + 100) * 0.2;
+}
+
+interface BiomeColors { top: string; left: string; right: string; stroke: string; }
+
+const BLOCK_H = 32;
+
+function getBiome(h: number, gx: number, gy: number): BiomeColors {
+  if (h < 0.22) {
+    // Water
+    return { top: '#2ba5d1', left: '#1c7394', right: '#258cb3', stroke: 'rgba(28,115,148,0.3)' };
+  }
+  if (h < 0.28) {
+    // Sand / Shore
+    return { top: '#ecd699', left: '#cbb376', right: '#dfc585', stroke: 'rgba(203,179,118,0.25)' };
+  }
+  if (h < 0.48) {
+    // Grass Tier 1
+    const alt = (gx + gy) % 2 === 0;
+    return {
+      top: alt ? '#85be3b' : '#7cab30',
+      left: '#78522e',
+      right: '#96683c',
+      stroke: 'rgba(90,130,40,0.12)',
+    };
+  }
+  if (h < 0.65) {
+    // Grass Tier 2 (Hills)
+    return {
+      top: '#75a932',
+      left: '#6b4625',
+      right: '#885b32',
+      stroke: 'rgba(80,115,35,0.15)',
+    };
+  }
+  if (h < 0.78) {
+    // Path / Dirt
+    return {
+      top: '#d6993a',
+      left: '#9b6c22',
+      right: '#b8822f',
+      stroke: 'rgba(155,108,34,0.18)',
+    };
+  }
+  // Mountain Peak
+  return {
+    top: '#e9e2d3',
+    left: '#8a7b6e',
+    right: '#a8998b',
+    stroke: 'rgba(138,123,110,0.2)',
+  };
+}
+
+function getElevation(h: number): number {
+  if (h < 0.22) return 0;
+  if (h < 0.28) return 0;
+  if (h < 0.48) return BLOCK_H;
+  if (h < 0.65) return BLOCK_H * 2;
+  if (h < 0.78) return BLOCK_H * 3;
+  return BLOCK_H * 4;
+}
+
+function getCharElevation(x: number, y: number, td: { elev: number }[][]): number {
+  const gx = Math.min(GRID_W - 1, Math.max(0, Math.round(x)));
+  const gy = Math.min(GRID_H - 1, Math.max(0, Math.round(y)));
+  return td[gy]?.[gx]?.elev || 0;
+}
+
 // ── Palettes ──────────────────────────────────────────────────────────────────
 const PALETTES = [
   { body: '#6366f1', bodyDk: '#3730a3', pants: '#1e1b4b', pantsDk: '#0f0e27', shoe: '#312e81', hair: '#1e1b4b', skin: '#fcd5b5', skinDk: '#e8b99a' },
@@ -76,7 +174,6 @@ const Crown: React.FC<{ tier: number; float: number }> = ({ tier, float }) => {
     <g transform={`translate(0, ${y})`}>
       {tier === 1 && (
         <g>
-          {/* Simple 3-point gold crown */}
           <rect x={-10} y={0} width={20} height={6} fill="#fbbf24" />
           <rect x={-10} y={0} width={20} height={2} fill="#fde68a" />
           <rect x={-10} y={-6} width={6} height={6} fill="#fbbf24" />
@@ -87,13 +184,11 @@ const Crown: React.FC<{ tier: number; float: number }> = ({ tier, float }) => {
       )}
       {tier === 2 && (
         <g>
-          {/* Crown with center gem */}
           <rect x={-12} y={0} width={24} height={7} fill="#f59e0b" />
           <rect x={-12} y={0} width={24} height={2} fill="#fde68a" />
           <rect x={-12} y={-7} width={7} height={7} fill="#f59e0b" />
           <rect x={-2} y={-11} width={4} height={11} fill="#f59e0b" />
           <rect x={5} y={-7} width={7} height={7} fill="#f59e0b" />
-          {/* Center gem */}
           <rect x={-2} y={-10} width={4} height={4} fill="#ef4444" />
           <rect x={-1} y={-10} width={2} height={2} fill="rgba(255,255,255,0.6)" />
           <rect x={-12} y={5} width={24} height={2} fill="#78350f" />
@@ -101,7 +196,6 @@ const Crown: React.FC<{ tier: number; float: number }> = ({ tier, float }) => {
       )}
       {tier === 3 && (
         <g>
-          {/* Ornate 5-point crown */}
           <rect x={-14} y={0} width={28} height={8} fill="#d97706" />
           <rect x={-14} y={0} width={28} height={2} fill="#fde68a" />
           <rect x={-14} y={-8} width={8} height={8} fill="#d97706" />
@@ -109,7 +203,6 @@ const Crown: React.FC<{ tier: number; float: number }> = ({ tier, float }) => {
           <rect x={0} y={-16} width={4} height={16} fill="#f59e0b" />
           <rect x={4} y={-14} width={5} height={14} fill="#d97706" />
           <rect x={6} y={-8} width={8} height={8} fill="#d97706" />
-          {/* Gems */}
           <rect x={-1} y={-14} width={6} height={6} fill="#a855f7" />
           <rect x={0} y={-14} width={3} height={3} fill="rgba(255,255,255,0.7)" />
           <rect x={-13} y={-6} width={4} height={4} fill="#3b82f6" />
@@ -119,7 +212,6 @@ const Crown: React.FC<{ tier: number; float: number }> = ({ tier, float }) => {
       )}
       {tier === 4 && (
         <g>
-          {/* Legendary glowing crown */}
           <rect x={-18} y={-20} width={36} height={28} fill="rgba(251,191,36,0.1)" />
           <rect x={-16} y={0} width={32} height={9} fill="#b45309" />
           <rect x={-16} y={0} width={32} height={2} fill="#fde68a" />
@@ -128,7 +220,6 @@ const Crown: React.FC<{ tier: number; float: number }> = ({ tier, float }) => {
           <rect x={-3} y={-20} width={6} height={20} fill="#f59e0b" />
           <rect x={1} y={-17} width={6} height={17} fill="#d97706" />
           <rect x={7} y={-10} width={9} height={10} fill="#b45309" />
-          {/* Many gems */}
           <rect x={-2} y={-18} width={4} height={4} fill="#ec4899" />
           <rect x={-1} y={-18} width={2} height={2} fill="rgba(255,255,255,0.8)" />
           <rect x={-6} y={-13} width={4} height={4} fill="#8b5cf6" />
@@ -148,7 +239,6 @@ const Weapon: React.FC<{ tier: number; handY: number }> = ({ tier, handY }) => {
   return (
     <g transform={`translate(22, ${handY})`}>
       {tier === 1 && (
-        // Wooden staff
         <g>
           <rect x={0} y={-48} width={4} height={54} fill="#92400e" />
           <rect x={1} y={-48} width={2} height={54} fill="#a16207" />
@@ -156,44 +246,37 @@ const Weapon: React.FC<{ tier: number; handY: number }> = ({ tier, handY }) => {
         </g>
       )}
       {tier === 2 && (
-        // Iron short sword
         <g>
           <rect x={0} y={-36} width={4} height={42} fill="#6b7280" />
           <rect x={1} y={-36} width={2} height={42} fill="#9ca3af" />
-          <rect x={-5} y={4} width={14} height={4} fill="#374151" /> {/* crossguard */}
-          <rect x={0} y={-36} width={4} height={6} fill="#1f2937" /> {/* pommel */}
+          <rect x={-5} y={4} width={14} height={4} fill="#374151" />
+          <rect x={0} y={-36} width={4} height={6} fill="#1f2937" />
           <rect x={1} y={-36} width={2} height={2} fill="#9ca3af" />
         </g>
       )}
       {tier === 3 && (
-        // Steel broadsword
         <g>
           <rect x={-1} y={-46} width={6} height={52} fill="#d1d5db" />
           <rect x={-1} y={-46} width={2} height={52} fill="#e5e7eb" />
           <rect x={1} y={-46} width={2} height={52} fill="#9ca3af" />
-          <rect x={-7} y={4} width={18} height={5} fill="#f59e0b" /> {/* gold crossguard */}
+          <rect x={-7} y={4} width={18} height={5} fill="#f59e0b" />
           <rect x={-7} y={5} width={18} height={2} fill="#fbbf24" />
           <rect x={0} y={-46} width={4} height={8} fill="#1f2937" />
-          <rect x={-1} y={-20} width={6} height={2} fill="#9ca3af" /> {/* fuller */}
+          <rect x={-1} y={-20} width={6} height={2} fill="#9ca3af" />
         </g>
       )}
       {tier === 4 && (
-        // Legendary axe
         <g>
           <rect x={-14} y={-52} width={28} height={22} fill="rgba(139,92,246,0.2)" />
-          {/* Axe head */}
           <rect x={-16} y={-52} width={20} height={22} fill="#5b21b6" />
           <rect x={-16} y={-52} width={4} height={22} fill="#4c1d95" />
           <rect x={4} y={-52} width={4} height={22} fill="#7c3aed" />
           <rect x={-16} y={-52} width={20} height={3} fill="#a78bfa" />
           <rect x={-16} y={-32} width={20} height={3} fill="#a78bfa" />
-          {/* Handle */}
           <rect x={0} y={-30} width={4} height={36} fill="#92400e" />
           <rect x={1} y={-30} width={2} height={36} fill="#a16207" />
-          {/* Gem on axe */}
           <rect x={-6} y={-44} width={8} height={8} fill="#ec4899" />
           <rect x={-5} y={-44} width={4} height={4} fill="rgba(255,255,255,0.6)" />
-          {/* Glow outline */}
           <rect x={-17} y={-53} width={22} height={1} fill="#a78bfa" />
         </g>
       )}
@@ -207,7 +290,6 @@ const Shield: React.FC<{ tier: number; handY: number }> = ({ tier, handY }) => {
   return (
     <g transform={`translate(-28, ${handY})`}>
       {tier === 1 && (
-        // Wood buckler
         <g>
           <rect x={-4} y={-14} width={14} height={14} fill="#92400e" />
           <rect x={-4} y={-14} width={14} height={3} fill="#a16207" />
@@ -216,20 +298,17 @@ const Shield: React.FC<{ tier: number; handY: number }> = ({ tier, handY }) => {
         </g>
       )}
       {tier === 2 && (
-        // Iron kite shield
         <g>
           <rect x={-6} y={-22} width={18} height={18} fill="#1e3a8a" />
           <rect x={-2} y={-4} width={10} height={8} fill="#1e3a8a" />
           <rect x={2} y={4} width={2} height={4} fill="#1e3a8a" />
           <rect x={-6} y={-22} width={18} height={3} fill="#2563eb" />
           <rect x={-6} y={-22} width={3} height={22} fill="#1e40af" />
-          {/* Emblem */}
           <rect x={0} y={-14} width={6} height={3} fill="#fbbf24" />
           <rect x={2} y={-16} width={2} height={7} fill="#fbbf24" />
         </g>
       )}
       {tier === 3 && (
-        // Steel heater shield
         <g>
           <rect x={-8} y={-26} width={22} height={18} fill="#374151" />
           <rect x={-8} y={-8} width={11} height={10} fill="#374151" />
@@ -237,13 +316,11 @@ const Shield: React.FC<{ tier: number; handY: number }> = ({ tier, handY }) => {
           <rect x={1} y={-2} width={4} height={4} fill="#374151" />
           <rect x={-8} y={-26} width={22} height={3} fill="#9ca3af" />
           <rect x={-8} y={-26} width={3} height={28} fill="#1f2937" />
-          {/* Cross */}
           <rect x={-5} y={-19} width={16} height={3} fill="#fbbf24" />
           <rect x={1} y={-26} width={4} height={26} fill="#fbbf24" opacity={0.5} />
         </g>
       )}
       {tier === 4 && (
-        // Legendary tower shield
         <g>
           <rect x={-12} y={-34} width={28} height={44} fill="rgba(16,185,129,0.15)" />
           <rect x={-10} y={-32} width={24} height={20} fill="#065f46" />
@@ -252,11 +329,9 @@ const Shield: React.FC<{ tier: number; handY: number }> = ({ tier, handY }) => {
           <rect x={1} y={-2} width={6} height={6} fill="#065f46" />
           <rect x={-10} y={-32} width={24} height={3} fill="#34d399" />
           <rect x={-10} y={-32} width={3} height={38} fill="#047857" />
-          {/* Rune pattern */}
           <rect x={-7} y={-26} width={18} height={2} fill="#34d399" />
           <rect x={-7} y={-16} width={18} height={2} fill="#34d399" />
           <rect x={-2} y={-32} width={4} height={32} fill="#34d399" opacity={0.4} />
-          {/* Gem */}
           <rect x={-2} y={-22} width={6} height={6} fill="#6ee7b7" />
           <rect x={-1} y={-22} width={3} height={3} fill="rgba(255,255,255,0.7)" />
         </g>
@@ -265,128 +340,207 @@ const Shield: React.FC<{ tier: number; handY: number }> = ({ tier, handY }) => {
   );
 };
 
-// ── Pixel Art Character ───────────────────────────────────────────────────────
+// ── Isometric Box Helper ──────────────────────────────────────────────────────
+// Renders an isometric box (prism) with bottom-center at (x, y)
+// w = half-width, d = half-depth (iso), h = height upward
+const IB: React.FC<{
+  x: number;
+  y: number;
+  w: number;
+  d: number;
+  h: number;
+  ct: string;
+  cl: string;
+  cr: string;
+  stroke?: string;
+  strokeWidth?: number;
+}> = ({ x, y, w, d, h, ct, cl, cr, stroke, strokeWidth }) => (
+  <g>
+    {h > 0 && (
+      <>
+        <polygon
+          points={`${x - w},${y - h} ${x},${y - h + d} ${x},${y + d} ${x - w},${y}`}
+          fill={cl}
+          stroke={stroke}
+          strokeWidth={strokeWidth}
+          strokeLinejoin="round"
+        />
+        <polygon
+          points={`${x},${y - h + d} ${x + w},${y - h} ${x + w},${y} ${x},${y + d}`}
+          fill={cr}
+          stroke={stroke}
+          strokeWidth={strokeWidth}
+          strokeLinejoin="round"
+        />
+      </>
+    )}
+    <polygon
+      points={`${x},${y - h - d} ${x + w},${y - h} ${x},${y - h + d} ${x - w},${y - h}`}
+      fill={ct}
+      stroke={stroke}
+      strokeWidth={strokeWidth}
+      strokeLinejoin="round"
+    />
+  </g>
+);
+
+// ── Pixel Art Isometric Character ─────────────────────────────────────────────
 const PixelChar: React.FC<{
   pal: typeof PALETTES[0];
   wTier: number; sTier: number; aTier: number; cTier: number;
   frame: number; moving: boolean; name: string; isDragging: boolean;
 }> = ({ pal, wTier, sTier, aTier, cTier, frame, moving, name, isDragging }) => {
-  const leg  = moving ? Math.sin(frame * 0.22) * 8 : 0;
-  const arm  = moving ? Math.sin(frame * 0.22 + Math.PI) * 8 : 0;
-  const bob  = moving ? Math.abs(Math.sin(frame * 0.22)) * 2 : 0;
-  const flt  = Math.sin(frame * 0.045) * 3; // crown float
+  const leg  = moving ? Math.sin(frame * 0.22) * 3 : 0;
+  const arm  = moving ? Math.sin(frame * 0.22 + Math.PI) * 3 : 0;
+  const bob  = moving ? Math.abs(Math.sin(frame * 0.22)) * 1.5 : 0;
+  const flt  = Math.sin(frame * 0.045) * 3;
 
-  const bC   = aTier > 0 ? ARMOR_BODY[aTier] : pal.body;
-  const bD   = aTier > 0 ? ARMOR_DARK[aTier] : pal.bodyDk;
-  const bH   = aTier > 0 ? ARMOR_HI[aTier] : pal.bodyDk;
+  const bC = aTier > 0 ? ARMOR_BODY[aTier] : pal.body;
+  const bD = aTier > 0 ? ARMOR_DARK[aTier] : pal.bodyDk;
+  const bH = aTier > 0 ? (ARMOR_HI[aTier] || pal.body) : lightenHex(pal.body, 0.2);
 
-  const bY   = -bob; // body bob offset
+  const by = -bob;
+
+  // Key Y positions (matching original bounding box structure)
   const footY = 0;
-  const legBaseY = -8 + bY;
-  const bodyBaseY = -28 + bY;
-  const headBaseY = -50 + bY;
-  const armBaseY  = -26 + bY;
-  const handRY    = armBaseY + 14 - arm; // right hand Y
-  const handLY    = armBaseY + 14 + arm; // left hand Y
+  const legY = -5 + by;
+  const bodyY = -21 + by;
+  const headY = -43 + by;
+
+  // Hand Y positions
+  const handBaseY = -12 + by;
+  const handRY = handBaseY - arm;
+  const handLY = handBaseY + arm;
+
+  // Derived colors
+  const shoeTop = lightenHex(pal.shoe, 0.15);
+  const shoeDk = darkenHex(pal.shoe, 0.6);
+  const pantsTop = lightenHex(pal.pants, 0.2);
+  const skinTop = lightenHex(pal.skin, 0.1);
+  const hairLt = lightenHex(pal.hair, 0.2);
+  const hairDk = darkenHex(pal.hair, 0.4);
+
+  // Common outline config
+  const outColor = "#111118";
+  const outW = 1.0;
 
   return (
-    <g style={{ filter: isDragging ? 'brightness(1.3) drop-shadow(0 10px 18px rgba(0,0,0,0.8))' : 'drop-shadow(0 3px 8px rgba(0,0,0,0.55))' }}>
+    <g style={{ filter: isDragging ? 'brightness(1.3) drop-shadow(0 10px 18px rgba(0,0,0,0.5))' : 'drop-shadow(0 2px 6px rgba(0,0,0,0.25))' }}>
       {/* Shadow */}
-      <ellipse cx={0} cy={footY + 3} rx={isDragging ? 22 : 17} ry={isDragging ? 7 : 5} fill="rgba(0,0,0,0.3)" />
+      <ellipse cx={0} cy={footY + 3} rx={isDragging ? 20 : 14} ry={isDragging ? 7 : 5} fill="rgba(0,0,0,0.15)" />
 
-      {/* ── SHOES ── */}
-      <rect x={-16} y={footY - 7} width={14} height={7} fill={pal.shoe} />
-      <rect x={-16} y={footY - 7} width={14} height={2} fill="rgba(255,255,255,0.12)" />
-      <rect x={2}   y={footY - 7} width={14} height={7} fill={pal.shoe} />
-      <rect x={2}   y={footY - 7} width={14} height={2} fill="rgba(255,255,255,0.12)" />
+      {/* ── BACK LEG (left) ── */}
+      <IB x={-4} y={legY + leg} w={3} d={2} h={12} ct={pantsTop} cl={pal.pantsDk} cr={pal.pants} stroke={outColor} strokeWidth={outW} />
+      {/* ── BACK SHOE (left) ── */}
+      <IB x={-4.5} y={footY + leg * 0.3} w={3.5} d={2.5} h={4} ct={shoeTop} cl={shoeDk} cr={pal.shoe} stroke={outColor} strokeWidth={outW} />
 
-      {/* ── LEGS ── */}
-      <rect x={-12} y={legBaseY - 20 + leg} width={10} height={20} fill={pal.pants} />
-      <rect x={-12} y={legBaseY - 20 + leg} width={3}  height={20} fill={pal.pantsDk} />
-      <rect x={2}   y={legBaseY - 20 - leg} width={10} height={20} fill={pal.pants} />
-      <rect x={9}   y={legBaseY - 20 - leg} width={3}  height={20} fill={pal.pantsDk} />
-
-      {/* ── BODY ── */}
-      <rect x={-13} y={bodyBaseY} width={26} height={20} fill={bC} />
-      <rect x={-13} y={bodyBaseY} width={4}  height={20} fill={bD} />
-      <rect x={9}   y={bodyBaseY} width={4}  height={20} fill={bD} />
-
-      {/* Armor decoration */}
-      {aTier === 1 && (
-        <g>
-          <rect x={-9} y={bodyBaseY + 3} width={18} height={3} fill={bH} />
-          <rect x={-9} y={bodyBaseY + 11} width={18} height={3} fill={bH} />
-        </g>
-      )}
-      {aTier === 2 && (
-        <g>
-          {[-1, 5, 11].map(dy => (
-            <rect key={dy} x={-9} y={bodyBaseY + dy} width={18} height={2} fill={bH} opacity={0.5} />
-          ))}
-          {[-8, -3, 2, 7].map(dx => (
-            <rect key={dx} x={dx} y={bodyBaseY} width={2} height={20} fill={bH} opacity={0.3} />
-          ))}
-        </g>
-      )}
-      {aTier === 3 && (
-        <g>
-          <rect x={-7} y={bodyBaseY + 1} width={14} height={17} fill={bH} opacity={0.4} />
-          <rect x={-7} y={bodyBaseY + 1} width={14} height={2} fill="rgba(255,255,255,0.15)" />
-          <rect x={-9} y={bodyBaseY} width={2} height={20} fill="rgba(255,255,255,0.08)" />
-        </g>
-      )}
-      {aTier === 4 && (
-        <g>
-          <rect x={-13} y={bodyBaseY} width={26} height={20} fill="rgba(99,102,241,0.18)" />
-          <rect x={-7}  y={bodyBaseY + 1} width={14} height={17} fill={bH} opacity={0.35} />
-          <rect x={-9}  y={bodyBaseY + 3} width={18} height={2} fill={bH} />
-          <rect x={-9}  y={bodyBaseY + 11} width={18} height={2} fill={bH} />
-          <rect x={-1}  y={bodyBaseY} width={2} height={20} fill={bH} opacity={0.6} />
-        </g>
-      )}
-
-      {/* ── LEFT ARM ── */}
-      <rect x={-21} y={armBaseY + arm} width={8} height={14} fill={bC} />
-      <rect x={-21} y={armBaseY + arm} width={2} height={14} fill={bD} />
-      {/* Left hand */}
-      <rect x={-21} y={handLY} width={8} height={6} fill={pal.skin} />
-      <rect x={-21} y={handLY} width={8} height={2} fill={pal.skinDk} />
-
-      {/* ── RIGHT ARM ── */}
-      <rect x={13} y={armBaseY - arm} width={8} height={14} fill={bC} />
-      <rect x={19} y={armBaseY - arm} width={2} height={14} fill={bD} />
-      {/* Right hand */}
-      <rect x={13} y={handRY} width={8} height={6} fill={pal.skin} />
-      <rect x={13} y={handRY} width={8} height={2} fill={pal.skinDk} />
-
-      {/* ── SHIELD (left hand) ── */}
+      {/* ── BACK ARM (left) + Shield ── */}
+      {/* Sleeve */}
+      <IB x={-9} y={handLY - 8} w={2.5} d={2} h={5} ct={bH} cl={bD} cr={bC} stroke={outColor} strokeWidth={outW} />
+      {/* Forearm */}
+      <IB x={-9} y={handLY} w={2} d={1.6} h={8} ct={skinTop} cl={pal.skinDk} cr={pal.skin} stroke={outColor} strokeWidth={outW} />
       <Shield tier={sTier} handY={handLY} />
 
-      {/* ── WEAPON (right hand) ── */}
+      {/* ── FRONT LEG (right) ── */}
+      <IB x={4} y={legY - leg} w={3} d={2} h={12} ct={pantsTop} cl={pal.pantsDk} cr={pal.pants} stroke={outColor} strokeWidth={outW} />
+      {/* ── FRONT SHOE (right) ── */}
+      <IB x={4.5} y={footY - leg * 0.3} w={3.5} d={2.5} h={4} ct={shoeTop} cl={shoeDk} cr={pal.shoe} stroke={outColor} strokeWidth={outW} />
+
+      {/* ── BODY ── */}
+      {/* Lower waist/belt */}
+      <IB x={0} y={bodyY + 5} w={7} d={4.2} h={5} ct={pantsTop} cl={pal.pantsDk} cr={pal.pants} stroke={outColor} strokeWidth={outW} />
+      {/* Torso shirt */}
+      <IB x={0} y={bodyY} w={7} d={4.2} h={17} ct={bH} cl={bD} cr={bC} stroke={outColor} strokeWidth={outW} />
+
+      {/* Armor decoration stripes on right face */}
+      {aTier >= 1 && (
+        <polygon
+          points={`0,${bodyY-6+4.2} 7,${bodyY-6} 7,${bodyY-4} 0,${bodyY-4+4.2}`}
+          fill="rgba(255,255,255,0.15)"
+        />
+      )}
+      {aTier >= 2 && (
+        <polygon
+          points={`0,${bodyY-12+4.2} 7,${bodyY-12} 7,${bodyY-10} 0,${bodyY-10+4.2}`}
+          fill="rgba(255,255,255,0.12)"
+        />
+      )}
+      {aTier >= 3 && (
+        <polygon
+          points={`0,${bodyY-3+4.2} 7,${bodyY-3} 7,${bodyY-1} 0,${bodyY-1+4.2}`}
+          fill="rgba(255,255,255,0.1)"
+        />
+      )}
+
+      {/* ── FRONT ARM (right) + Weapon ── */}
+      {/* Sleeve */}
+      <IB x={9} y={handRY - 8} w={2.5} d={2} h={5} ct={bH} cl={bD} cr={bC} stroke={outColor} strokeWidth={outW} />
+      {/* Forearm */}
+      <IB x={9} y={handRY} w={2} d={1.6} h={8} ct={skinTop} cl={pal.skinDk} cr={pal.skin} stroke={outColor} strokeWidth={outW} />
       <Weapon tier={wTier} handY={handRY} />
 
       {/* ── HEAD ── */}
-      <rect x={-11} y={headBaseY} width={22} height={18} fill={pal.skin} />
-      <rect x={-11} y={headBaseY} width={4}  height={18} fill={pal.skinDk} />
-      {/* Hair */}
-      <rect x={-11} y={headBaseY}     width={22} height={6} fill={pal.hair} />
-      <rect x={-13} y={headBaseY + 2} width={4}  height={10} fill={pal.hair} />
-      <rect x={9}   y={headBaseY + 2} width={4}  height={10} fill={pal.hair} />
-      {/* Eyes */}
-      <rect x={-7} y={headBaseY + 7} width={5} height={5} fill="#0f172a" />
-      <rect x={2}  y={headBaseY + 7} width={5} height={5} fill="#0f172a" />
-      <rect x={-6} y={headBaseY + 7} width={2} height={2} fill="rgba(255,255,255,0.35)" />
-      <rect x={3}  y={headBaseY + 7} width={2} height={2} fill="rgba(255,255,255,0.35)" />
-      {/* Mouth */}
-      <rect x={-4} y={headBaseY + 14} width={8} height={2} fill={pal.skinDk} />
+      {/* Head main skin box */}
+      <IB x={0} y={headY} w={6} d={5} h={10} ct={skinTop} cl={pal.skinDk} cr={pal.skin} stroke={outColor} strokeWidth={outW} />
+
+      {/* Hair cap on top */}
+      <IB x={0} y={headY - 6.5} w={6.2} d={5.2} h={4} ct={hairLt} cl={hairDk} cr={pal.hair} stroke={outColor} strokeWidth={outW} />
+      {/* Hair back cover */}
+      <IB x={-2.5} y={headY - 1.5} w={3.7} d={3.2} h={7} ct={hairLt} cl={hairDk} cr={pal.hair} stroke={outColor} strokeWidth={outW} />
+
+      {/* Eye rendering math on right face of skin head block */}
+      {/* Slope dx=1 => dy=-5/6 = -0.833 */}
+      {/* Eye 1 */}
+      <polygon
+        points={`
+          1.2,${headY - 5 + 3.5 - 1.0}
+          2.4,${headY - 5 + 3.5 - 2.0}
+          2.4,${headY - 5 + 5.5 - 2.0}
+          1.2,${headY - 5 + 5.5 - 1.0}
+        `}
+        fill="#111118"
+      />
+      {/* Eye 2 */}
+      <polygon
+        points={`
+          3.6,${headY - 5 + 3.5 - 3.0}
+          4.8,${headY - 5 + 3.5 - 4.0}
+          4.8,${headY - 5 + 5.5 - 4.0}
+          3.6,${headY - 5 + 5.5 - 3.0}
+        `}
+        fill="#111118"
+      />
+
+      {/* Glasses (if name has 'e', 'a', or 'u' for variety, or just draw for stylish guys like the reference) */}
+      {(name.toLowerCase().includes('e') || name.toLowerCase().includes('a')) && (
+        <polygon
+          points={`
+            0.5,${headY - 5 + 2.8 - 0.41}
+            5.5,${headY - 5 + 2.8 - 4.58}
+            5.5,${headY - 5 + 4.2 - 4.58}
+            0.5,${headY - 5 + 4.2 - 0.41}
+          `}
+          fill="#111118"
+        />
+      )}
+
+      {/* Mouth on right face */}
+      <line
+        x1={2.2}
+        y1={headY - 5 + 7.5 - 1.83}
+        x2={4.2}
+        y2={headY - 5 + 7.5 - 3.5}
+        stroke={pal.skinDk}
+        strokeWidth="1.2"
+      />
 
       {/* ── CROWN ── */}
       <Crown tier={cTier} float={flt} />
 
       {/* ── NAME TAG ── */}
-      <g transform="translate(0, -98)">
-        <rect x={-name.length * 3.8 - 4} y={-10} width={name.length * 7.6 + 8} height={14} fill="rgba(0,0,0,0.82)" />
-        <rect x={-name.length * 3.8 - 4} y={-10} width={name.length * 7.6 + 8} height={1}  fill="rgba(255,255,255,0.08)" />
+      <g transform={`translate(0, ${headY - 26})`}>
+        <rect x={-name.length * 3.8 - 4} y={-10} width={name.length * 7.6 + 8} height={14} fill="rgba(0,0,0,0.82)" rx={2} />
+        <rect x={-name.length * 3.8 - 4} y={-10} width={name.length * 7.6 + 8} height={1} fill="rgba(255,255,255,0.08)" rx={2} />
         <text textAnchor="middle" y={1} fontSize="9" fontFamily="'Courier New', Courier, monospace"
           fontWeight="700" fill="rgba(255,255,255,0.92)" letterSpacing="1">
           {name.toUpperCase()}
@@ -396,212 +550,352 @@ const PixelChar: React.FC<{
   );
 };
 
-// ── Iso Tile ──────────────────────────────────────────────────────────────────
-const IsoTile: React.FC<{ gx: number; gy: number }> = ({ gx, gy }) => {
-  const pts = `0,0 ${TILE_W / 2},${TILE_H / 2} 0,${TILE_H} ${-TILE_W / 2},${TILE_H / 2}`;
-  const isEdge = gx === 0 || gy === 0 || gx === GRID_W - 1 || gy === GRID_H - 1;
-  const alt = (gx + gy) % 2 === 0;
-  return (
-    <polygon
-      points={pts}
-      fill={isEdge ? 'rgba(99,102,241,0.07)' : alt ? 'rgba(255,255,255,0.025)' : 'rgba(255,255,255,0.04)'}
-      stroke={isEdge ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.055)'}
-      strokeWidth="0.5"
-    />
-  );
-};
-
-// ── Environment Elements ──────────────────────────────────────────────────────
+// ── Isometric Environment Elements ────────────────────────────────────────────
 const EnvTree: React.FC<{ sx: number; sy: number; variant: number }> = ({ sx, sy, variant }) => {
+  const isPine = variant % 3 === 2;
+  const outColor = "#111118";
+  const outW = 1.0;
+
+  if (isPine) {
+    // Conifer Pine Tree
+    return (
+      <g transform={`translate(${sx}, ${sy})`} style={{ pointerEvents: 'none' }}>
+        <ellipse cx={0} cy={2} rx={14} ry={5} fill="rgba(0,0,0,0.12)" />
+        {/* Trunk */}
+        <IB x={0} y={0} w={2.5} d={1.8} h={35} ct="#5c3c24" cl="#402a19" cr="#4d331e" stroke={outColor} strokeWidth={outW} />
+        {/* Lower canopy */}
+        <IB x={0} y={-14} w={18} d={10} h={14} ct="#226633" cl="#144020" cr="#1a4d26" stroke={outColor} strokeWidth={outW} />
+        {/* Mid canopy */}
+        <IB x={0} y={-25} w={13} d={7.5} h={12} ct="#2e8544" cl="#1b532a" cr="#246a39" stroke={outColor} strokeWidth={outW} />
+        {/* Top canopy */}
+        <IB x={0} y={-34} w={8} d={4.5} h={10} ct="#3e9c56" cl="#276a39" cr="#318146" stroke={outColor} strokeWidth={outW} />
+      </g>
+    );
+  }
+
+  // Fluffy Leafy Deciduous Tree
   const g = [
-    ['#15803d', '#16a34a', '#22c55e'],
-    ['#166534', '#15803d', '#4ade80'],
-    ['#14532d', '#166534', '#16a34a'],
-  ][variant % 3];
+    { t: '#79ac39', l: '#486822', r: '#5b832b' },
+    { t: '#85be3b', l: '#4e7324', r: '#62902d' },
+  ][variant % 2];
+
   return (
     <g transform={`translate(${sx}, ${sy})`} style={{ pointerEvents: 'none' }}>
-      <ellipse cx={0} cy={2} rx={22} ry={8} fill="rgba(0,0,0,0.15)" />
-      {/* Trunk */}
-      <rect x={-4} y={-40} width={8} height={40} fill="#78350f" />
-      <rect x={-2} y={-40} width={2} height={40} fill="#a16207" />
-      {/* Canopy layers */}
-      <rect x={-24} y={-62} width={48} height={26} fill={g[0]} />
-      <rect x={-24} y={-36} width={24} height={5} fill={g[0]} opacity={0.6} />
-      <rect x={-18} y={-76} width={36} height={18} fill={g[1]} />
-      <rect x={-10} y={-88} width={20} height={14} fill={g[2]} />
-      <rect x={-6}  y={-90} width={12} height={4}  fill="rgba(255,255,255,0.08)" />
+      <ellipse cx={0} cy={2} rx={18} ry={6} fill="rgba(0,0,0,0.1)" />
+      {/* Curved/stylized trunk */}
+      <IB x={0} y={0} w={3.5} d={2.2} h={15} ct="#5c3c24" cl="#402a19" cr="#4d331e" stroke={outColor} strokeWidth={outW} />
+      <IB x={1} y={-12} w={3.2} d={2.0} h={15} ct="#5c3c24" cl="#402a19" cr="#4d331e" stroke={outColor} strokeWidth={outW} />
+      {/* Fluffy rounded canopy using overlapping boxes */}
+      <IB x={0} y={-24} w={18} d={11} h={15} ct={g.t} cl={g.l} cr={g.r} stroke={outColor} strokeWidth={outW} />
+      <IB x={-4} y={-32} w={12} d={8} h={11} ct={lightenHex(g.t, 0.1)} cl={g.l} cr={g.r} stroke={outColor} strokeWidth={outW} />
+      <IB x={4} y={-30} w={11} d={7} h={11} ct={g.t} cl={g.l} cr={g.r} stroke={outColor} strokeWidth={outW} />
     </g>
   );
 };
 
 const EnvBuilding: React.FC<{ sx: number; sy: number; variant: number }> = ({ sx, sy, variant }) => {
   const cfg = [
-    { wM: '#1e293b', wD: '#0f172a', rf: '#334155', win: '#6366f1', h: 72 },
-    { wM: '#111827', wD: '#030712', rf: '#1f2937', win: '#8b5cf6', h: 96 },
-    { wM: '#1c1917', wD: '#0c0a09', rf: '#292524', win: '#0ea5e9', h: 56 },
+    { wM: '#566573', wD: '#2c3e50', rf: '#85929e', win: '#85c1e9', h: 72 },
+    { wM: '#515a5a', wD: '#2e4053', rf: '#808b96', win: '#c39bd3', h: 96 },
+    { wM: '#5d6d7e', wD: '#34495e', rf: '#95a5a6', win: '#76d7c4', h: 56 },
   ][variant % 3];
+  const outColor = "#111118";
+  const outW = 1.0;
   return (
     <g transform={`translate(${sx}, ${sy})`} style={{ pointerEvents: 'none' }}>
-      <ellipse cx={0} cy={4} rx={32} ry={10} fill="rgba(0,0,0,0.22)" />
+      <ellipse cx={0} cy={4} rx={32} ry={10} fill="rgba(0,0,0,0.12)" />
       {/* Left wall */}
-      <polygon points={`-32,0 0,16 0,${16 - cfg.h} -32,${-cfg.h}`} fill={cfg.wD} />
+      <polygon points={`-32,0 0,16 0,${16 - cfg.h} -32,${-cfg.h}`} fill={cfg.wD} stroke={outColor} strokeWidth={outW} strokeLinejoin="round" />
       {/* Right wall */}
-      <polygon points={`0,16 32,0 32,${-cfg.h} 0,${16 - cfg.h}`} fill={cfg.wM} />
+      <polygon points={`0,16 32,0 32,${-cfg.h} 0,${16 - cfg.h}`} fill={cfg.wM} stroke={outColor} strokeWidth={outW} strokeLinejoin="round" />
       {/* Windows right */}
-      <rect x={8}  y={-cfg.h + 18} width={10} height={10} fill={cfg.win} opacity={0.65} />
-      <rect x={22} y={-cfg.h + 18} width={10} height={10} fill={cfg.win} opacity={0.65} />
-      <rect x={8}  y={-cfg.h + 36} width={10} height={10} fill={cfg.win} opacity={0.4}  />
-      <rect x={22} y={-cfg.h + 36} width={10} height={10} fill={cfg.win} opacity={0.4}  />
+      <rect x={8}  y={-cfg.h + 18} width={10} height={10} fill={cfg.win} opacity={0.65} stroke={outColor} strokeWidth={0.8} />
+      <rect x={22} y={-cfg.h + 18} width={10} height={10} fill={cfg.win} opacity={0.65} stroke={outColor} strokeWidth={0.8} />
+      <rect x={8}  y={-cfg.h + 36} width={10} height={10} fill={cfg.win} opacity={0.4}  stroke={outColor} strokeWidth={0.8} />
+      <rect x={22} y={-cfg.h + 36} width={10} height={10} fill={cfg.win} opacity={0.4}  stroke={outColor} strokeWidth={0.8} />
       {/* Windows left */}
-      <rect x={-28} y={-cfg.h + 18} width={10} height={10} fill={cfg.win} opacity={0.4}  />
-      <rect x={-14} y={-cfg.h + 18} width={10} height={10} fill={cfg.win} opacity={0.35} />
+      <rect x={-28} y={-cfg.h + 18} width={10} height={10} fill={cfg.win} opacity={0.4}  stroke={outColor} strokeWidth={0.8} />
+      <rect x={-14} y={-cfg.h + 18} width={10} height={10} fill={cfg.win} opacity={0.35} stroke={outColor} strokeWidth={0.8} />
       {/* Roof top face */}
-      <polygon points={`-32,${-cfg.h} 0,${-cfg.h - 16} 32,${-cfg.h} 0,${-cfg.h + 16}`} fill={cfg.rf} />
-      <polygon points={`-32,${-cfg.h} 0,${-cfg.h - 16} 2,${-cfg.h - 14} -30,${-cfg.h + 2}`} fill="rgba(255,255,255,0.06)" />
+      <polygon points={`-32,${-cfg.h} 0,${-cfg.h - 16} 32,${-cfg.h} 0,${-cfg.h + 16}`} fill={cfg.rf} stroke={outColor} strokeWidth={outW} strokeLinejoin="round" />
+      <polygon points={`-32,${-cfg.h} 0,${-cfg.h - 16} 2,${-cfg.h - 14} -30,${-cfg.h + 2}`} fill="rgba(255,255,255,0.08)" />
     </g>
   );
 };
 
-const EnvRock: React.FC<{ sx: number; sy: number }> = ({ sx, sy }) => (
-  <g transform={`translate(${sx}, ${sy})`} style={{ pointerEvents: 'none' }}>
-    <ellipse cx={0} cy={4} rx={20} ry={7} fill="rgba(0,0,0,0.18)" />
-    <rect x={-18} y={-10} width={36} height={10} fill="#374151" />
-    <rect x={-14} y={-20} width={28} height={12} fill="#4b5563" />
-    <rect x={-8}  y={-26} width={16} height={8}  fill="#6b7280" />
-    <rect x={-18} y={-10} width={8}  height={10} fill="#1f2937" />
-    <rect x={-12} y={-20} width={6}  height={6}  fill="rgba(255,255,255,0.05)" />
-  </g>
-);
-
-const EnvLamp: React.FC<{ sx: number; sy: number }> = ({ sx, sy }) => (
-  <g transform={`translate(${sx}, ${sy})`} style={{ pointerEvents: 'none' }}>
-    <ellipse cx={0} cy={3} rx={8} ry={4} fill="rgba(0,0,0,0.2)" />
-    <rect x={-3} y={-44} width={6} height={44} fill="#374151" />
-    <rect x={-1} y={-44} width={2} height={44} fill="#4b5563" />
-    <rect x={-3} y={-44} width={6} height={4} fill="#6b7280" />
-    <rect x={-6} y={-48} width={12} height={6} fill="#374151" />
-    <ellipse cx={0} cy={-48} rx={8} ry={4} fill="rgba(99,102,241,0.5)" />
-    <ellipse cx={0} cy={-48} rx={5} ry={2.5} fill="rgba(165,180,252,0.8)" />
-    {/* Glow */}
-    <ellipse cx={0} cy={-44} rx={14} ry={10} fill="rgba(99,102,241,0.1)" />
-  </g>
-);
-
-const EnvBush: React.FC<{ sx: number; sy: number; variant: number }> = ({ sx, sy, variant }) => {
-  const colors = [
-    ['#166534', '#15803d', '#22c55e'],
-    ['#0f766e', '#14b8a6', '#5eead4'],
-  ][variant % 2];
+const EnvRock: React.FC<{ sx: number; sy: number }> = ({ sx, sy }) => {
+  const outColor = "#111118";
   return (
     <g transform={`translate(${sx}, ${sy})`} style={{ pointerEvents: 'none' }}>
-      <ellipse cx={0} cy={2} rx={14} ry={5} fill="rgba(0,0,0,0.15)" />
-      {/* Lower leaves */}
-      <rect x={-10} y={-8} width={20} height={8} fill={colors[0]} />
-      {/* Mid leaves */}
-      <rect x={-12} y={-16} width={24} height={9} fill={colors[1]} />
-      {/* Top leaves */}
-      <rect x={-8} y={-22} width={16} height={7} fill={colors[2]} />
-      <rect x={-4} y={-24} width={8} height={3} fill="rgba(255,255,255,0.15)" />
+      <ellipse cx={0} cy={3} rx={18} ry={6} fill="rgba(0,0,0,0.08)" />
+      <IB x={0} y={0} w={16} d={9} h={12} ct="#95a5a6" cl="#616a6b" cr="#7f8c8d" stroke={outColor} strokeWidth={1} />
+      <IB x={-5} y={-6} w={8} d={5} h={8} ct="#aab7b8" cl="#707b7c" cr="#8c9a9b" stroke={outColor} strokeWidth={1} />
+    </g>
+  );
+};
+
+const EnvLamp: React.FC<{ sx: number; sy: number }> = ({ sx, sy }) => {
+  const outColor = "#111118";
+  return (
+    <g transform={`translate(${sx}, ${sy})`} style={{ pointerEvents: 'none' }}>
+      <ellipse cx={0} cy={3} rx={6} ry={3} fill="rgba(0,0,0,0.08)" />
+      {/* Pole */}
+      <IB x={0} y={0} w={2} d={1.5} h={40} ct="#7f8c8d" cl="#515a5a" cr="#6c7a7b" stroke={outColor} strokeWidth={1} />
+      {/* Lamp housing */}
+      <IB x={0} y={-38} w={5} d={3} h={5} ct="#5d6d7e" cl="#2c3e50" cr="#4a6274" stroke={outColor} strokeWidth={1} />
+      {/* Warm glow */}
+      <ellipse cx={0} cy={-43} rx={6} ry={3} fill="rgba(241,196,15,0.55)" />
+      <ellipse cx={0} cy={-43} rx={4} ry={2} fill="rgba(253,230,138,0.8)" />
+      <ellipse cx={0} cy={-38} rx={14} ry={9} fill="rgba(241,196,15,0.06)" />
+    </g>
+  );
+};
+
+const EnvBush: React.FC<{ sx: number; sy: number; variant: number }> = ({ sx, sy, variant }) => {
+  const c = [
+    { t: '#79ac39', l: '#486822', r: '#5b832b' },
+    { t: '#85be3b', l: '#4e7324', r: '#62902d' },
+  ][variant % 2];
+  const outColor = "#111118";
+  return (
+    <g transform={`translate(${sx}, ${sy})`} style={{ pointerEvents: 'none' }}>
+      <ellipse cx={0} cy={2} rx={12} ry={4} fill="rgba(0,0,0,0.08)" />
+      <IB x={0} y={0} w={10} d={6} h={10} ct={c.t} cl={c.l} cr={c.r} stroke={outColor} strokeWidth={1} />
+      <IB x={-3} y={-6} w={6} d={4} h={6} ct={lightenHex(c.t, 0.15)} cl={c.l} cr={c.r} stroke={outColor} strokeWidth={1} />
     </g>
   );
 };
 
 const EnvFountain: React.FC<{ sx: number; sy: number }> = ({ sx, sy }) => {
+  const outColor = "#111118";
   return (
     <g transform={`translate(${sx}, ${sy})`} style={{ pointerEvents: 'none' }}>
-      <ellipse cx={0} cy={4} rx={26} ry={9} fill="rgba(0,0,0,0.2)" />
-      {/* Rim structure */}
-      <polygon points="-24,0 0,10 24,0 0,-10" fill="#374151" />
-      <polygon points="-24,3 0,13 24,3 24,0 0,10 -24,0" fill="#1f2937" />
-      {/* Water inside basin */}
-      <polygon points="-22,0 0,8 22,0 0,-8" fill="#0284c7" />
+      <ellipse cx={0} cy={4} rx={24} ry={8} fill="rgba(0,0,0,0.1)" />
+      {/* Basin */}
+      <IB x={0} y={0} w={22} d={12} h={6} ct="#7f8c8d" cl="#515a5a" cr="#6c7a7b" stroke={outColor} strokeWidth={1} />
+      {/* Water surface */}
+      <polygon points={`0,${-6 - 10} 20,${-6} 0,${-6 + 10} -20,${-6}`} fill="#5dade2" opacity={0.7} stroke={outColor} strokeWidth={1} />
       {/* Spire */}
-      <rect x={-3} y={-18} width={6} height={18} fill="#4b5563" />
-      <rect x={-1} y={-18} width={2} height={18} fill="#9ca3af" />
+      <IB x={0} y={-6} w={2} d={1.5} h={18} ct="#95a5a6" cl="#616a6b" cr="#7f8c8d" stroke={outColor} strokeWidth={1} />
       {/* Water spray */}
-      <rect x={-5} y={-24} width={10} height={7} fill="#e0f2fe" opacity={0.7} />
-      <rect x={-2} y={-28} width={4} height={5} fill="#ffffff" opacity={0.9} />
-      {/* Water droplets around */}
-      <rect x={-12} y={-6} width={2} height={2} fill="#bae6fd" opacity={0.6} />
-      <rect x={10} y={-6} width={2} height={2} fill="#bae6fd" opacity={0.6} />
+      <rect x={-4} y={-28} width={8} height={5} fill="#d6eaf8" opacity={0.8} />
+      <rect x={-2} y={-32} width={4} height={4} fill="#ebf5fb" opacity={0.9} />
     </g>
   );
 };
 
 const EnvRuins: React.FC<{ sx: number; sy: number; variant: number }> = ({ sx, sy, variant }) => {
+  const outColor = "#111118";
   return (
     <g transform={`translate(${sx}, ${sy})`} style={{ pointerEvents: 'none' }}>
-      <ellipse cx={0} cy={3} rx={18} ry={6} fill="rgba(0,0,0,0.15)" />
+      <ellipse cx={0} cy={3} rx={16} ry={5} fill="rgba(0,0,0,0.08)" />
       {variant % 2 === 0 ? (
-        // Pillar fragment
-        <g>
-          <rect x={-6} y={-32} width={12} height={32} fill="#4b5563" />
-          <rect x={-4} y={-32} width={2} height={32} fill="#9ca3af" />
-          <rect x={-8} y={-36} width={16} height={5} fill="#374151" />
-          {/* Cracked detail */}
-          <rect x={-2} y={-20} width={4} height={2} fill="#1f2937" />
-          <rect x={0} y={-18} width={2} height={6} fill="#1f2937" />
-        </g>
+        <>
+          <IB x={0} y={0} w={5} d={3} h={28} ct="#95a5a6" cl="#616a6b" cr="#7f8c8d" stroke={outColor} strokeWidth={1} />
+          <rect x={-1} y={-18} width={2} height={4} fill="rgba(0,0,0,0.15)" />
+        </>
       ) : (
-        // Crumbled wall blocks
-        <g>
-          <rect x={-12} y={-8} width={12} height={8} fill="#374151" />
-          <rect x={-10} y={-8} width={2} height={8} fill="#4b5563" />
-          <rect x={2} y={-6} width={10} height={6} fill="#374151" />
-          <rect x={4} y={-12} width={8} height={6} fill="#4b5563" />
-          <rect x={6} y={-12} width={2} height={6} fill="#9ca3af" />
-        </g>
+        <>
+          <IB x={-6} y={0} w={5} d={3} h={8} ct="#95a5a6" cl="#616a6b" cr="#7f8c8d" stroke={outColor} strokeWidth={1} />
+          <IB x={5} y={0} w={5} d={3} h={12} ct="#aab7b8" cl="#707b7c" cr="#8c9a9b" stroke={outColor} strokeWidth={1} />
+        </>
       )}
     </g>
   );
 };
 
 const EnvFlower: React.FC<{ sx: number; sy: number; variant: number }> = ({ sx, sy, variant }) => {
-  const color = ['#ec4899', '#f59e0b', '#a855f7'][variant % 3];
+  const colors = ['#e74c3c', '#f39c12', '#9b59b6', '#e91e63', '#ff6f00'];
+  const color = colors[variant % 5];
+  const outColor = "#111118";
   return (
     <g transform={`translate(${sx}, ${sy})`} style={{ pointerEvents: 'none' }}>
-      <ellipse cx={0} cy={2} rx={6} ry={2.5} fill="rgba(0,0,0,0.12)" />
       {/* Stem */}
-      <rect x={-1} y={-8} width={2} height={8} fill="#22c55e" />
-      {/* Petals (cross style) */}
-      <rect x={-3} y={-12} width={6} height={5} fill={color} />
-      <rect x={-1} y={-14} width={2} height={9} fill={color} />
-      <rect x={-1} y={-11} width={2} height={2} fill="#fde68a" /> {/* center */}
+      <rect x={-1} y={-8} width={2} height={8} fill="#27ae60" stroke={outColor} strokeWidth={0.8} />
+      {/* Petals (iso diamond) */}
+      <polygon points={`0,-14 3,-10 0,-6 -3,-10`} fill={color} stroke={outColor} strokeWidth={0.8} />
+      {/* Center */}
+      <polygon points={`0,-12 1.5,-10.5 0,-9 -1.5,-10.5`} fill="#f1c40f" />
     </g>
   );
 };
 
-// Environment layout (fixed positions, spread around edges/corners)
+// ── NEW RPG ENVIRONMENT DECORATIONS ───────────────────────────────────────────
+const EnvFence: React.FC<{ sx: number; sy: number; variant: number }> = ({ sx, sy, variant }) => {
+  const outColor = "#111118";
+  const cL = "#5c3c24", cR = "#734a2e", cT = "#8a5a36";
+  return (
+    <g transform={`translate(${sx}, ${sy})`} style={{ pointerEvents: 'none' }}>
+      {/* Vertical Post */}
+      <IB x={0} y={0} w={3} d={2} h={16} ct={cT} cl={cL} cr={cR} stroke={outColor} strokeWidth={1} />
+      
+      {/* Connecting rails depending on variant */}
+      {/* Variant 0: Front-Left (gy direction) */}
+      {(variant % 3 === 0 || variant % 3 === 2) && (
+        <g>
+          {/* Top rail */}
+          <polygon points="0,-12 -16,-4 -16,-1 0,-9" fill={cL} stroke={outColor} strokeWidth={1} strokeLinejoin="round" />
+          {/* Bottom rail */}
+          <polygon points="0,-5 -16,3 -16,6 0,-2" fill={cL} stroke={outColor} strokeWidth={1} strokeLinejoin="round" />
+        </g>
+      )}
+      {/* Variant 1: Front-Right (gx direction) */}
+      {(variant % 3 === 1 || variant % 3 === 2) && (
+        <g>
+          {/* Top rail */}
+          <polygon points="0,-12 16,-4 16,-1 0,-9" fill={cR} stroke={outColor} strokeWidth={1} strokeLinejoin="round" />
+          {/* Bottom rail */}
+          <polygon points="0,-5 16,3 16,6 0,-2" fill={cR} stroke={outColor} strokeWidth={1} strokeLinejoin="round" />
+        </g>
+      )}
+    </g>
+  );
+};
+
+const EnvStump: React.FC<{ sx: number; sy: number }> = ({ sx, sy }) => {
+  const outColor = "#111118";
+  return (
+    <g transform={`translate(${sx}, ${sy})`} style={{ pointerEvents: 'none' }}>
+      <ellipse cx={0} cy={2} rx={6} ry={2.5} fill="rgba(0,0,0,0.1)" />
+      <IB x={0} y={0} w={5} d={3.5} h={7} ct="#e0b880" cl="#5c3c24" cr="#734a2e" stroke={outColor} strokeWidth={1} />
+    </g>
+  );
+};
+
+const EnvLog: React.FC<{ sx: number; sy: number; variant: number }> = ({ sx, sy, variant }) => {
+  const cL = "#5c3c24", cR = "#734a2e", cT = "#e0b880";
+  return (
+    <g transform={`translate(${sx}, ${sy})`} style={{ pointerEvents: 'none' }}>
+      <ellipse cx={0} cy={2} rx={12} ry={4} fill="rgba(0,0,0,0.08)" />
+      {variant % 2 === 0 ? (
+        // Lying left-down to right-up
+        <g>
+          <polygon points="-12,4 12,-8 12,-1 0,5 -12,11" fill={cL} stroke="#111118" strokeWidth={1} />
+          <polygon points="12,-8 2,-13 -10,-1 -12,4 12,-8" fill={cR} stroke="#111118" strokeWidth={1} />
+          <ellipse cx={-11} cy={7} rx={3} ry={1.5} fill={cT} stroke="#111118" strokeWidth={1} />
+        </g>
+      ) : (
+        // Lying right-down to left-up
+        <g>
+          <polygon points="12,4 -12,-8 -12,-1 0,5 12,11" fill={cR} stroke="#111118" strokeWidth={1} />
+          <polygon points="-12,-8 -2,-13 10,-1 12,4 -12,-8" fill={cL} stroke="#111118" strokeWidth={1} />
+          <ellipse cx={11} cy={7} rx={3} ry={1.5} fill={cT} stroke="#111118" strokeWidth={1} />
+        </g>
+      )}
+    </g>
+  );
+};
+
+const EnvDock: React.FC<{ sx: number; sy: number; variant: number }> = ({ sx, sy, variant }) => {
+  const cL = "#5c3c24", cR = "#734a2e", cT = "#cbb291";
+  return (
+    <g transform={`translate(${sx}, ${sy})`} style={{ pointerEvents: 'none' }}>
+      {variant % 2 === 0 ? (
+        // Dock extending front-left (into water)
+        <g>
+          {/* Wooden support posts */}
+          <IB x={-14} y={16} w={2} d={2} h={12} ct={cT} cl={cL} cr={cR} stroke="#111118" strokeWidth={1} />
+          <IB x={0} y={23} w={2} d={2} h={12} ct={cT} cl={cL} cr={cR} stroke="#111118" strokeWidth={1} />
+          {/* Main planks */}
+          <polygon points="-18,4 12,-11 20,-7 -10,8" fill={cR} stroke="#111118" strokeWidth={1} />
+          <polygon points="-14,6 16,-9 24,-5 -6,10" fill={cT} stroke="#111118" strokeWidth={1} />
+          <polygon points="-10,8 20,-7 28,-3 -2,12" fill={cL} stroke="#111118" strokeWidth={1} />
+        </g>
+      ) : (
+        // Dock extending front-right
+        <g>
+          {/* Wooden support posts */}
+          <IB x={14} y={16} w={2} d={2} h={12} ct={cT} cl={cL} cr={cR} stroke="#111118" strokeWidth={1} />
+          <IB x={0} y={23} w={2} d={2} h={12} ct={cT} cl={cL} cr={cR} stroke="#111118" strokeWidth={1} />
+          {/* Main planks */}
+          <polygon points="18,4 -12,-11 -20,-7 10,8" fill={cL} stroke="#111118" strokeWidth={1} />
+          <polygon points="14,6 -16,-9 -24,-5 6,10" fill={cT} stroke="#111118" strokeWidth={1} />
+          <polygon points="10,8 -20,-7 -28,-3 2,12" fill={cR} stroke="#111118" strokeWidth={1} />
+        </g>
+      )}
+    </g>
+  );
+};
+
+// Environment layout
 const ENV_ELEMENTS: { type: string; gx: number; gy: number; v: number }[] = [
+  // Deciduous Trees
   { type: 'tree',     gx: 4,  gy: 4,  v: 0 },
   { type: 'tree',     gx: 22, gy: 2,  v: 1 },
-  { type: 'tree',     gx: 42, gy: 5,  v: 2 },
-  { type: 'tree',     gx: 7,  gy: 30, v: 1 },
-  { type: 'tree',     gx: 47, gy: 24, v: 0 },
-  { type: 'tree',     gx: 48, gy: 10, v: 2 },
   { type: 'tree',     gx: 3,  gy: 16, v: 0 },
+  { type: 'tree',     gx: 12, gy: 8,  v: 1 },
+  { type: 'tree',     gx: 18, gy: 28, v: 0 },
+  { type: 'tree',     gx: 47, gy: 24, v: 0 },
+  { type: 'tree',     gx: 35, gy: 15, v: 1 },
+
+  // Pine Trees (variant 2)
+  { type: 'tree',     gx: 42, gy: 5,  v: 2 },
+  { type: 'tree',     gx: 7,  gy: 30, v: 2 },
+  { type: 'tree',     gx: 48, gy: 10, v: 2 },
+  { type: 'tree',     gx: 28, gy: 32, v: 2 },
+  { type: 'tree',     gx: 15, gy: 20, v: 2 },
+  { type: 'tree',     gx: 38, gy: 26, v: 2 },
+
+  // Stumps and Logs
+  { type: 'stump',    gx: 5,  gy: 6,  v: 0 },
+  { type: 'log',      gx: 6,  gy: 8,  v: 0 },
+  { type: 'stump',    gx: 21, gy: 4,  v: 0 },
+  { type: 'log',      gx: 24, gy: 3,  v: 1 },
+  { type: 'stump',    gx: 46, gy: 25, v: 0 },
+  { type: 'log',      gx: 48, gy: 23, v: 0 },
+
+  // Buildings (departments/offices)
   { type: 'building', gx: 14, gy: 7,  v: 0 },
   { type: 'building', gx: 36, gy: 3,  v: 1 },
   { type: 'building', gx: 26, gy: 30, v: 2 },
+
+  // Rocks
   { type: 'rock',     gx: 24, gy: 20, v: 0 },
   { type: 'rock',     gx: 40, gy: 22, v: 0 },
   { type: 'rock',     gx: 10, gy: 24, v: 0 },
+  { type: 'rock',     gx: 32, gy: 8,  v: 0 },
+
+  // Fences
+  { type: 'fence',    gx: 12, gy: 10, v: 1 },
+  { type: 'fence',    gx: 13, gy: 10, v: 1 },
+  { type: 'fence',    gx: 14, gy: 10, v: 1 },
+  { type: 'fence',    gx: 15, gy: 10, v: 2 },
+  
+  { type: 'fence',    gx: 34, gy: 6,  v: 0 },
+  { type: 'fence',    gx: 34, gy: 7,  v: 0 },
+  { type: 'fence',    gx: 34, gy: 8,  v: 0 },
+  { type: 'fence',    gx: 34, gy: 9,  v: 2 },
+
+  // Docks
+  { type: 'dock',     gx: 1,  gy: 12, v: 1 },
+  { type: 'dock',     gx: 8,  gy: 1,  v: 0 },
+
+  // Lamps and Lights
   { type: 'lamp',     gx: 18, gy: 14, v: 0 },
   { type: 'lamp',     gx: 32, gy: 18, v: 0 },
   { type: 'lamp',     gx: 10, gy: 10, v: 0 },
 
-  // New additions for variety:
+  // Water Fountain
   { type: 'fountain', gx: 26, gy: 13, v: 0 },
+
+  // Bushes
   { type: 'bush',     gx: 5,  gy: 5,  v: 0 },
   { type: 'bush',     gx: 23, gy: 3,  v: 1 },
   { type: 'bush',     gx: 12, gy: 25, v: 0 },
   { type: 'bush',     gx: 41, gy: 23, v: 1 },
+  { type: 'bush',     gx: 17, gy: 21, v: 0 },
+
+  // Ancient Ruins
   { type: 'ruins',    gx: 15, gy: 32, v: 0 },
   { type: 'ruins',    gx: 45, gy: 6,  v: 1 },
+
+  // Flowers
   { type: 'flower',   gx: 17, gy: 13, v: 0 },
   { type: 'flower',   gx: 19, gy: 15, v: 1 },
   { type: 'flower',   gx: 31, gy: 17, v: 2 },
   { type: 'flower',   gx: 33, gy: 19, v: 0 },
+  { type: 'flower',   gx: 8,  gy: 15, v: 3 },
+  { type: 'flower',   gx: 44, gy: 12, v: 4 },
 ];
 
 // ── Character State ───────────────────────────────────────────────────────────
@@ -687,6 +981,19 @@ const GamificationWorld: React.FC<Props> = ({ state }) => {
 
   charsRef.current = chars;
 
+  // Pre-compute terrain data
+  const terrainData = useMemo(() => {
+    const data: { h: number; elev: number; biome: BiomeColors }[][] = [];
+    for (let gy = 0; gy < GRID_H; gy++) {
+      data[gy] = [];
+      for (let gx = 0; gx < GRID_W; gx++) {
+        const h = terrainHeight(gx, gy);
+        data[gy][gx] = { h, elev: getElevation(h), biome: getBiome(h, gx, gy) };
+      }
+    }
+    return data;
+  }, []);
+
   // Screen to World coords
   const screenToWorld = useCallback((clientX: number, clientY: number) => {
     const rect = containerRef.current?.getBoundingClientRect();
@@ -763,11 +1070,10 @@ const GamificationWorld: React.FC<Props> = ({ state }) => {
     }));
   }, [stats]);
 
-  // Animation loop (throttled to ~30 FPS to prevent React scheduler starvation)
+  // Animation loop (throttled to ~30 FPS)
   useEffect(() => {
     let lastTime = 0;
     const tick = (time: number) => {
-      // Run every ~33ms (30 FPS)
       if (time - lastTime >= 33) {
         lastTime = time;
         setChars(prev => prev.map(c => {
@@ -777,7 +1083,6 @@ const GamificationWorld: React.FC<Props> = ({ state }) => {
           const dist = Math.hypot(dx, dy);
           let { x, y, tx, ty, frame, moving, idle, dir } = c;
           if (dist > 0.06) {
-            // Speed multiplied by 2 to compensate for half the update frequency
             x += (dx / dist) * SPEED * 2;
             y += (dy / dist) * SPEED * 2;
             moving = true;
@@ -815,7 +1120,6 @@ const GamificationWorld: React.FC<Props> = ({ state }) => {
     if (dragId !== id) return;
     const dmx = e.clientX - dragRef.current.mx;
     const dmy = e.clientY - dragRef.current.my;
-    // Drag factors adjusted for current scale
     const dgx = ((dmx / (TILE_W / 2) + dmy / (TILE_H / 2)) / 2) / scale;
     const dgy = ((dmy / (TILE_H / 2) - dmx / (TILE_W / 2)) / 2) / scale;
     const nx = Math.max(2, Math.min(GRID_W - 3, dragRef.current.cx + dgx));
@@ -838,13 +1142,10 @@ const GamificationWorld: React.FC<Props> = ({ state }) => {
 
   // ── Pan & Zoom ─────────────────────────────────────────────────────────────
   const onBgDown = useCallback((e: React.PointerEvent) => {
-    // If clicking overlays or panels, don't trigger panning
     const target = e.target as HTMLElement;
     if (target.closest('.no-pan')) return;
-
     if (dragId) return;
 
-    // Track pointer
     activePointers.current[e.pointerId] = { x: e.clientX, y: e.clientY };
     const keys = Object.keys(activePointers.current);
 
@@ -867,7 +1168,6 @@ const GamificationWorld: React.FC<Props> = ({ state }) => {
 
     const keys = Object.keys(activePointers.current);
     if (keys.length === 2 && initialPinchDist.current !== null) {
-      // Handle multi-touch pinch to zoom
       const p1 = activePointers.current[Number(keys[0])];
       const p2 = activePointers.current[Number(keys[1])];
       const currentDist = Math.hypot(p1.x - p2.x, p1.y - p2.y);
@@ -889,7 +1189,6 @@ const GamificationWorld: React.FC<Props> = ({ state }) => {
         setScale(nextScale);
       }
     } else if (panning && keys.length === 1) {
-      // Normal drag panning
       setOffset({
         x: panRef.current.ox + e.clientX - panRef.current.mx,
         y: panRef.current.oy + e.clientY - panRef.current.my,
@@ -930,21 +1229,12 @@ const GamificationWorld: React.FC<Props> = ({ state }) => {
   const envSorted = useMemo(() => [...ENV_ELEMENTS].sort((a, b) => (a.gx + a.gy) - (b.gx + b.gy)), []);
   const charsSorted = useMemo(() => [...chars].sort((a, b) => (a.x + a.y) - (b.x + b.y)), [chars]);
 
-  // Grid lines pre-computed
-  const vLines = useMemo(() => Array.from({ length: GRID_W + 1 }, (_, i) => {
-    const a = g2s(i, 0);
-    const b = g2s(i, GRID_H);
-    return { x1: a.sx, y1: a.sy, x2: b.sx, y2: b.sy };
-  }), []);
-  const hLines = useMemo(() => Array.from({ length: GRID_H + 1 }, (_, i) => {
-    const a = g2s(0, i);
-    const b = g2s(GRID_W, i);
-    return { x1: a.sx, y1: a.sy, x2: b.sx, y2: b.sy };
-  }), []);
-
-  // Hover stats details computed
+  // Hover stats details
   const hoveredChar = useMemo(() => chars.find(c => c.id === hoveredCharId), [chars, hoveredCharId]);
   const hoveredDesignerStats = useMemo(() => stats.find(s => s.id === hoveredCharId), [stats, hoveredCharId]);
+
+  // Tile diamond points (constant)
+  const tilePts = `0,0 ${TILE_W / 2},${TILE_H / 2} 0,${TILE_H} ${-TILE_W / 2},${TILE_H / 2}`;
 
   return (
     <div
@@ -952,7 +1242,7 @@ const GamificationWorld: React.FC<Props> = ({ state }) => {
       style={{
         width: '100%', height: '100%',
         overflow: 'hidden', position: 'relative',
-        background: 'radial-gradient(ellipse at 50% 25%, #0d0f1f 0%, #060812 55%, #020408 100%)',
+        background: 'linear-gradient(180deg, #4a7fb5 0%, #6ba8d0 25%, #8ec5e0 50%, #b8dce8 75%, #d8eff5 100%)',
         cursor: panning ? 'grabbing' : dragId ? 'grabbing' : 'grab',
         userSelect: 'none',
         touchAction: 'none',
@@ -962,51 +1252,131 @@ const GamificationWorld: React.FC<Props> = ({ state }) => {
       onPointerUp={onBgUp}
       onPointerLeave={onBgLeave}
     >
-      {/* Stars */}
-      <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
-        {Array.from({ length: 100 }, (_, i) => {
-          const r = ((i * 37 + 17) % 100) / 100;
-          return (
-            <rect key={i}
-              x={`${(i * 79 + 13) % 100}%`} y={`${(i * 53 + 7) % 100}%`}
-              width={r > 0.85 ? 2 : 1} height={r > 0.85 ? 2 : 1}
-              fill="white" opacity={0.08 + r * 0.28}
-            />
-          );
-        })}
-      </svg>
+      {/* Clouds */}
+      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>
+        {[
+          { x: '12%', y: '6%', w: 140, h: 32, o: 0.35 },
+          { x: '40%', y: '3%', w: 200, h: 40, o: 0.25 },
+          { x: '70%', y: '10%', w: 120, h: 28, o: 0.3 },
+          { x: '25%', y: '14%', w: 100, h: 24, o: 0.2 },
+          { x: '85%', y: '5%', w: 90, h: 22, o: 0.18 },
+          { x: '55%', y: '8%', w: 160, h: 35, o: 0.22 },
+        ].map((cloud, i) => (
+          <div key={i} style={{
+            position: 'absolute',
+            left: cloud.x,
+            top: cloud.y,
+            width: cloud.w,
+            height: cloud.h,
+            borderRadius: '50%',
+            background: `rgba(255,255,255,${cloud.o})`,
+            filter: 'blur(10px)',
+          }} />
+        ))}
+      </div>
 
       {/* World SVG */}
       <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', overflow: 'visible', pointerEvents: 'none' }}>
         <g transform={`translate(${offset.x}, ${offset.y}) scale(${scale})`}>
-          {/* Grid tiles */}
+
+          {/* ── Terrain tiles with elevation ── */}
           {Array.from({ length: GRID_H }, (_, gy) =>
             Array.from({ length: GRID_W }, (_, gx) => {
               const { sx, sy } = g2s(gx, gy);
-              return <g key={`${gx}-${gy}`} transform={`translate(${sx}, ${sy})`}><IsoTile gx={gx} gy={gy} /></g>;
+              const td = terrainData[gy][gx];
+              const elev = td.elev;
+              const b = td.biome;
+
+              return (
+                <g key={`t${gx}-${gy}`} transform={`translate(${sx}, ${sy - elev})`}>
+                  {/* Left wall (visible cliff face) facing front-left */}
+                  {(() => {
+                    const neighborL = gy + 1 < GRID_H ? terrainData[gy + 1][gx] : null;
+                    const elevL = neighborL ? neighborL.elev : 0;
+                    const diffL = elev - elevL;
+                    if (diffL <= 0) return null;
+                    return (
+                      <g>
+                        {/* Main Cliff Face */}
+                        <polygon
+                          points={`${-TILE_W / 2},${TILE_H / 2} 0,${TILE_H} 0,${TILE_H + diffL} ${-TILE_W / 2},${TILE_H / 2 + diffL}`}
+                          fill={b.left}
+                        />
+                        {/* Vertical Rock Column dividers */}
+                        <line x1={-10.6} y1={26.7} x2={-10.6} y2={26.7 + diffL} stroke="rgba(0,0,0,0.22)" strokeWidth="1.2" />
+                        <line x1={-21.3} y1={21.4} x2={-21.3} y2={21.4 + diffL} stroke="rgba(0,0,0,0.22)" strokeWidth="1.2" />
+                        {/* Grass lip overlay (if biome is grass) */}
+                        {b.top.startsWith('#8') || b.top.startsWith('#7') ? (
+                          <polygon
+                            points={`${-TILE_W / 2},${TILE_H / 2} 0,${TILE_H} 0,${TILE_H + 3.5} ${-TILE_W / 2},${TILE_H / 2 + 3.5}`}
+                            fill={b.top}
+                            opacity={0.95}
+                          />
+                        ) : null}
+                      </g>
+                    );
+                  })()}
+
+                  {/* Right wall (visible cliff face) facing front-right */}
+                  {(() => {
+                    const neighborR = gx + 1 < GRID_W ? terrainData[gy][gx + 1] : null;
+                    const elevR = neighborR ? neighborR.elev : 0;
+                    const diffR = elev - elevR;
+                    if (diffR <= 0) return null;
+                    return (
+                      <g>
+                        {/* Main Cliff Face */}
+                        <polygon
+                          points={`0,${TILE_H} ${TILE_W / 2},${TILE_H / 2} ${TILE_W / 2},${TILE_H / 2 + diffR} 0,${TILE_H + diffR}`}
+                          fill={b.right}
+                        />
+                        {/* Vertical Rock Column dividers */}
+                        <line x1={10.6} y1={26.7} x2={10.6} y2={26.7 + diffR} stroke="rgba(0,0,0,0.22)" strokeWidth="1.2" />
+                        <line x1={21.3} y1={21.4} x2={21.3} y2={21.4 + diffR} stroke="rgba(0,0,0,0.22)" strokeWidth="1.2" />
+                        {/* Grass lip overlay (if biome is grass) */}
+                        {b.top.startsWith('#8') || b.top.startsWith('#7') ? (
+                          <polygon
+                            points={`0,${TILE_H} ${TILE_W / 2},${TILE_H / 2} ${TILE_W / 2},${TILE_H / 2 + 3.5} 0,${TILE_H + 3.5}`}
+                            fill={b.top}
+                            opacity={0.95}
+                          />
+                        ) : null}
+                      </g>
+                    );
+                  })()}
+
+                  {/* Top face (diamond) */}
+                  <polygon
+                    points={tilePts}
+                    fill={b.top}
+                    stroke={b.stroke}
+                    strokeWidth="0.5"
+                  />
+                </g>
+              );
             })
           )}
 
           {/* Highlighted Tile */}
-          {hoveredTile && (
-            <g transform={`translate(${g2s(hoveredTile.gx, hoveredTile.gy).sx}, ${g2s(hoveredTile.gx, hoveredTile.gy).sy})`}>
-              <polygon
-                points={`0,0 ${TILE_W / 2},${TILE_H / 2} 0,${TILE_H} ${-TILE_W / 2},${TILE_H / 2}`}
-                fill="rgba(99,102,241,0.22)"
-                stroke="rgba(99,102,241,0.75)"
-                strokeWidth="1.5"
-                style={{ pointerEvents: 'none' }}
-              />
-            </g>
-          )}
+          {hoveredTile && (() => {
+            const td = terrainData[hoveredTile.gy]?.[hoveredTile.gx];
+            const elev = td ? td.elev : 0;
+            const pos = g2s(hoveredTile.gx, hoveredTile.gy);
+            return (
+              <g transform={`translate(${pos.sx}, ${pos.sy - elev})`}>
+                <polygon
+                  points={tilePts}
+                  fill="rgba(255,255,255,0.18)"
+                  stroke="rgba(255,255,255,0.55)"
+                  strokeWidth="1.5"
+                  style={{ pointerEvents: 'none' }}
+                />
+              </g>
+            );
+          })()}
 
-          {/* Grid lines */}
-          {vLines.map((l, i) => <line key={`v${i}`} x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2} stroke="rgba(99,102,241,0.055)" strokeWidth="0.5" />)}
-          {hLines.map((l, i) => <line key={`h${i}`} x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2} stroke="rgba(99,102,241,0.055)" strokeWidth="0.5" />)}
-
-          {/* Environment + Characters (depth-sorted together) */}
+          {/* ── Environment + Characters (depth-sorted together) ── */}
           {(() => {
-            // Merge env + chars into one depth-sorted list
             type Item =
               | { kind: 'env'; depth: number; el: typeof ENV_ELEMENTS[0] }
               | { kind: 'char'; depth: number; c: CharState };
@@ -1019,7 +1389,9 @@ const GamificationWorld: React.FC<Props> = ({ state }) => {
             return items.map((item, idx) => {
               if (item.kind === 'env') {
                 const { sx, sy } = g2s(item.el.gx, item.el.gy);
-                const baseY = sy;
+                const td = terrainData[item.el.gy]?.[item.el.gx];
+                const elev = td ? td.elev : 0;
+                const baseY = sy - elev;
                 if (item.el.type === 'tree')     return <EnvTree     key={`e${idx}`} sx={sx} sy={baseY} variant={item.el.v} />;
                 if (item.el.type === 'building') return <EnvBuilding key={`e${idx}`} sx={sx} sy={baseY} variant={item.el.v} />;
                 if (item.el.type === 'rock')     return <EnvRock     key={`e${idx}`} sx={sx} sy={baseY} />;
@@ -1028,15 +1400,20 @@ const GamificationWorld: React.FC<Props> = ({ state }) => {
                 if (item.el.type === 'fountain') return <EnvFountain key={`e${idx}`} sx={sx} sy={baseY} />;
                 if (item.el.type === 'ruins')    return <EnvRuins    key={`e${idx}`} sx={sx} sy={baseY} variant={item.el.v} />;
                 if (item.el.type === 'flower')   return <EnvFlower   key={`e${idx}`} sx={sx} sy={baseY} variant={item.el.v} />;
+                if (item.el.type === 'fence')    return <EnvFence    key={`e${idx}`} sx={sx} sy={baseY} variant={item.el.v} />;
+                if (item.el.type === 'stump')    return <EnvStump    key={`e${idx}`} sx={sx} sy={baseY} />;
+                if (item.el.type === 'log')      return <EnvLog      key={`e${idx}`} sx={sx} sy={baseY} variant={item.el.v} />;
+                if (item.el.type === 'dock')     return <EnvDock     key={`e${idx}`} sx={sx} sy={baseY} variant={item.el.v} />;
                 return null;
               } else {
                 const c = item.c;
                 const { sx, sy } = g2s(c.x, c.y);
+                const elev = getCharElevation(c.x, c.y, terrainData);
                 const pal = PALETTES[c.pi];
                 return (
                   <g
                     key={c.id}
-                    transform={`translate(${sx}, ${sy - 4})`}
+                    transform={`translate(${sx}, ${sy - elev - 4})`}
                     style={{ pointerEvents: 'all', cursor: c.drag ? 'grabbing' : 'grab' }}
                     onPointerDown={e => onCharDown(e, c.id)}
                     onPointerMove={e => onCharMove(e, c.id)}
@@ -1059,8 +1436,9 @@ const GamificationWorld: React.FC<Props> = ({ state }) => {
       {/* Floating Statistics Tooltip */}
       {hoveredChar && hoveredDesignerStats && (() => {
         const { sx, sy } = g2s(hoveredChar.x, hoveredChar.y);
+        const elev = getCharElevation(hoveredChar.x, hoveredChar.y, terrainData);
         const charScreenX = offset.x + sx * scale;
-        const charScreenY = offset.y + (sy - 72) * scale;
+        const charScreenY = offset.y + (sy - elev - 72) * scale;
         return (
           <div
             className="no-pan"
@@ -1080,7 +1458,7 @@ const GamificationWorld: React.FC<Props> = ({ state }) => {
               width: 220,
               color: 'rgba(255, 255, 255, 0.95)',
               fontFamily: 'monospace',
-              pointerEvents: 'none', // Allow cursor interactions to bleed through
+              pointerEvents: 'none',
             }}
           >
             <div style={{ borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: 5, marginBottom: 7 }}>
@@ -1135,7 +1513,7 @@ const GamificationWorld: React.FC<Props> = ({ state }) => {
       })()}
 
       {/* Top bar */}
-      <div 
+      <div
         className="no-pan"
         onPointerDown={e => e.stopPropagation()}
         style={{
@@ -1177,7 +1555,7 @@ const GamificationWorld: React.FC<Props> = ({ state }) => {
       </div>
 
       {/* Legend panel */}
-      <div 
+      <div
         className="no-pan"
         onPointerDown={e => e.stopPropagation()}
         style={{
