@@ -1832,13 +1832,23 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
                         <div className="flex-1 border-r border-slate-100 pr-6 flex flex-col justify-between">
                            <div>
                              <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Total Artworks</div>
-                             <div className="flex items-baseline gap-3">
-                               <div className="text-6xl font-semibold tracking-tight leading-none text-blue-600">{analytics.totalArtworks}</div>
+                             <div className="flex items-center gap-3">
+                               <div className="text-8xl font-semibold tracking-tight leading-none text-slate-900">{analytics.totalArtworks}</div>
                                {(() => {
                                  const diff = analytics.totalArtworks - prevAnalytics.totalArtworks;
-                                 const color = diff > 0 ? 'text-emerald-500' : diff < 0 ? 'text-red-500' : 'text-slate-400';
-                                 const arrow = diff > 0 ? '▲' : diff < 0 ? '▼' : '●';
-                                 return <span className={`text-sm font-black ${color}`}>{arrow} {Math.abs(diff)}</span>;
+                                 const isPos = diff > 0;
+                                 const isNeg = diff < 0;
+                                 const badgeBg = isPos ? 'bg-emerald-50 border-emerald-100' : isNeg ? 'bg-rose-50 border-rose-100' : 'bg-slate-50 border-slate-100';
+                                 const badgeTextColor = isPos ? 'text-emerald-600' : isNeg ? 'text-rose-600' : 'text-slate-500';
+                                 const arrow = isPos ? '▲' : isNeg ? '▼' : '●';
+                                 return (
+                                   <div className="flex flex-col items-start gap-0.5">
+                                     <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md text-xs font-bold border ${badgeBg} ${badgeTextColor}`}>
+                                       {arrow} {Math.abs(diff)}
+                                     </span>
+                                     <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">vs prev</span>
+                                   </div>
+                                 );
                                })()}
                              </div>
                            </div>
@@ -1851,13 +1861,23 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
                         <div className="flex-1 flex flex-col justify-between">
                            <div>
                              <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Projects In-Charge</div>
-                             <div className="flex items-baseline gap-3">
-                               <div className="text-6xl font-semibold tracking-tight leading-none text-indigo-600">{analytics.allProjectsCount}</div>
+                             <div className="flex items-center gap-3">
+                               <div className="text-8xl font-semibold tracking-tight leading-none text-slate-900">{analytics.allProjectsCount}</div>
                                {(() => {
                                  const diff = analytics.allProjectsCount - prevAnalytics.allProjectsCount;
-                                 const color = diff > 0 ? 'text-emerald-500' : diff < 0 ? 'text-red-500' : 'text-slate-400';
-                                 const arrow = diff > 0 ? '▲' : diff < 0 ? '▼' : '●';
-                                 return <span className={`text-sm font-black ${color}`}>{arrow} {Math.abs(diff)}</span>;
+                                 const isPos = diff > 0;
+                                 const isNeg = diff < 0;
+                                 const badgeBg = isPos ? 'bg-emerald-50 border-emerald-100' : isNeg ? 'bg-rose-50 border-rose-100' : 'bg-slate-50 border-slate-100';
+                                 const badgeTextColor = isPos ? 'text-emerald-600' : isNeg ? 'text-rose-600' : 'text-slate-500';
+                                 const arrow = isPos ? '▲' : isNeg ? '▼' : '●';
+                                 return (
+                                   <div className="flex flex-col items-start gap-0.5">
+                                     <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md text-xs font-bold border ${badgeBg} ${badgeTextColor}`}>
+                                       {arrow} {Math.abs(diff)}
+                                     </span>
+                                     <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">vs prev</span>
+                                   </div>
+                                 );
                                })()}
                              </div>
                            </div>
@@ -2182,23 +2202,27 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
                     <div className="flex gap-4" style={{ height: '280px' }}>
 
                       {/* 1. Total Projects */}
-
                       <div className="bg-white rounded-xl flex-1 flex flex-col overflow-hidden shadow-sm border border-slate-100">
                         <div className="flex flex-col justify-between flex-1 p-5">
                           <div className="text-xs font-black uppercase tracking-widest text-slate-400">Total Projects</div>
-                          <div>
-                            <div className="flex flex-col gap-2">
-                               <div className="text-8xl font-semibold tracking-tight leading-none text-indigo-600">{analytics.allProjectsCount}</div>
-                               <div className="flex items-center gap-2">
-                                  {(() => {
-                                    const diff = analytics.allProjectsCount - prevAnalytics.allProjectsCount;
-                                    const color = diff > 0 ? 'text-emerald-500' : diff < 0 ? 'text-red-500' : 'text-slate-400';
-                                    const arrow = diff > 0 ? '▲' : diff < 0 ? '▼' : '●';
-                                    return <span className={`text-base font-black ${color}`}>{arrow} {Math.abs(diff)}</span>;
-                                  })()}
-                                  <div className="text-[11px] font-bold uppercase text-slate-400">registered projects</div>
-                               </div>
-                            </div>
+                          <div className="flex items-center gap-3">
+                            <div className="text-8xl font-semibold tracking-tight leading-none text-slate-900">{analytics.allProjectsCount}</div>
+                            {(() => {
+                              const diff = analytics.allProjectsCount - prevAnalytics.allProjectsCount;
+                              const isPos = diff > 0;
+                              const isNeg = diff < 0;
+                              const badgeBg = isPos ? 'bg-emerald-50 border-emerald-100' : isNeg ? 'bg-rose-50 border-rose-100' : 'bg-slate-50 border-slate-100';
+                              const badgeTextColor = isPos ? 'text-emerald-600' : isNeg ? 'text-rose-600' : 'text-slate-500';
+                              const arrow = isPos ? '▲' : isNeg ? '▼' : '●';
+                              return (
+                                <div className="flex flex-col items-start gap-0.5">
+                                  <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md text-xs font-bold border ${badgeBg} ${badgeTextColor}`}>
+                                    {arrow} {Math.abs(diff)}
+                                  </span>
+                                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">registered</span>
+                                </div>
+                              );
+                            })()}
                           </div>
                         </div>
                       </div>
@@ -2207,19 +2231,24 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
                       <div className="bg-white rounded-xl flex-1 flex flex-col overflow-hidden shadow-sm border border-slate-100">
                         <div className="flex flex-col justify-between flex-1 p-5">
                           <div className="text-xs font-black uppercase tracking-widest text-slate-400">Project Artworks</div>
-                          <div>
-                            <div className="flex flex-col gap-2">
-                               <div className="text-8xl font-semibold tracking-tight leading-none text-sky-500">{analytics.totalProjectArtworks}</div>
-                               <div className="flex items-center gap-2">
-                                  {(() => {
-                                    const diff = analytics.totalProjectArtworks - prevAnalytics.totalProjectArtworks;
-                                    const color = diff > 0 ? 'text-emerald-500' : diff < 0 ? 'text-red-500' : 'text-slate-400';
-                                    const arrow = diff > 0 ? '▲' : diff < 0 ? '▼' : '●';
-                                    return <span className={`text-base font-black ${color}`}>{arrow} {Math.abs(diff)}</span>;
-                                  })()}
-                                  <div className="text-[11px] font-bold uppercase text-slate-400">project artworks</div>
-                               </div>
-                            </div>
+                          <div className="flex items-center gap-3">
+                            <div className="text-8xl font-semibold tracking-tight leading-none text-slate-900">{analytics.totalProjectArtworks}</div>
+                            {(() => {
+                              const diff = analytics.totalProjectArtworks - prevAnalytics.totalProjectArtworks;
+                              const isPos = diff > 0;
+                              const isNeg = diff < 0;
+                              const badgeBg = isPos ? 'bg-emerald-50 border-emerald-100' : isNeg ? 'bg-rose-50 border-rose-100' : 'bg-slate-50 border-slate-100';
+                              const badgeTextColor = isPos ? 'text-emerald-600' : isNeg ? 'text-rose-600' : 'text-slate-500';
+                              const arrow = isPos ? '▲' : isNeg ? '▼' : '●';
+                              return (
+                                <div className="flex flex-col items-start gap-0.5">
+                                  <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md text-xs font-bold border ${badgeBg} ${badgeTextColor}`}>
+                                    {arrow} {Math.abs(diff)}
+                                  </span>
+                                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">artworks</span>
+                                </div>
+                              );
+                            })()}
                           </div>
                         </div>
                       </div>
@@ -2228,19 +2257,24 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
                       <div className="bg-white rounded-xl flex-1 flex flex-col overflow-hidden shadow-sm border border-slate-100">
                         <div className="flex flex-col justify-between flex-1 p-5">
                           <div className="text-xs font-black uppercase tracking-widest text-slate-400">Avg Team Size</div>
-                          <div>
-                            <div className="flex flex-col gap-2">
-                               <div className="text-8xl font-semibold tracking-tight leading-none text-violet-600">{parseFloat(analytics.avgTeamSize.toFixed(2)).toString()}</div>
-                               <div className="flex items-center gap-2">
-                                  {(() => {
-                                    const diff = analytics.avgTeamSize - prevAnalytics.avgTeamSize;
-                                    const color = diff > 0 ? 'text-emerald-500' : diff < 0 ? 'text-red-500' : 'text-slate-400';
-                                    const arrow = diff > 0 ? '▲' : diff < 0 ? '▼' : '●';
-                                    return <span className={`text-base font-black ${color}`}>{arrow} {parseFloat(Math.abs(diff).toFixed(2))}</span>;
-                                  })()}
-                                  <div className="text-[11px] font-bold uppercase text-slate-400">members / project</div>
-                               </div>
-                            </div>
+                          <div className="flex items-center gap-3">
+                            <div className="text-8xl font-semibold tracking-tight leading-none text-slate-900">{parseFloat(analytics.avgTeamSize.toFixed(2)).toString()}</div>
+                            {(() => {
+                              const diff = analytics.avgTeamSize - prevAnalytics.avgTeamSize;
+                              const isPos = diff > 0;
+                              const isNeg = diff < 0;
+                              const badgeBg = isPos ? 'bg-emerald-50 border-emerald-100' : isNeg ? 'bg-rose-50 border-rose-100' : 'bg-slate-50 border-slate-100';
+                              const badgeTextColor = isPos ? 'text-emerald-600' : isNeg ? 'text-rose-600' : 'text-slate-500';
+                              const arrow = isPos ? '▲' : isNeg ? '▼' : '●';
+                              return (
+                                <div className="flex flex-col items-start gap-0.5">
+                                  <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md text-xs font-bold border ${badgeBg} ${badgeTextColor}`}>
+                                    {arrow} {parseFloat(Math.abs(diff).toFixed(2))}
+                                  </span>
+                                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">members/proj</span>
+                                </div>
+                              );
+                            })()}
                           </div>
                         </div>
                       </div>
@@ -2249,19 +2283,24 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
                       <div className="bg-white rounded-xl flex-1 flex flex-col overflow-hidden shadow-sm border border-slate-100">
                         <div className="flex flex-col justify-between flex-1 p-5">
                           <div className="text-xs font-black uppercase tracking-widest text-slate-400">Avg Workdays</div>
-                          <div>
-                            <div className="flex flex-col gap-2">
-                               <div className="text-8xl font-semibold tracking-tight leading-none text-rose-500">{parseFloat(analytics.avgWorkDays.toFixed(2)).toString()}</div>
-                               <div className="flex items-center gap-2">
-                                  {(() => {
-                                    const diff = analytics.avgWorkDays - prevAnalytics.avgWorkDays;
-                                    const color = diff > 0 ? 'text-emerald-500' : diff < 0 ? 'text-red-500' : 'text-slate-400';
-                                    const arrow = diff > 0 ? '▲' : diff < 0 ? '▼' : '●';
-                                    return <span className={`text-base font-black ${color}`}>{arrow} {parseFloat(Math.abs(diff).toFixed(2))}</span>;
-                                  })()}
-                                  <div className="text-[11px] font-bold uppercase text-slate-400">days / project</div>
-                               </div>
-                            </div>
+                          <div className="flex items-center gap-3">
+                            <div className="text-8xl font-semibold tracking-tight leading-none text-slate-900">{parseFloat(analytics.avgWorkDays.toFixed(2)).toString()}</div>
+                            {(() => {
+                              const diff = analytics.avgWorkDays - prevAnalytics.avgWorkDays;
+                              const isPos = diff > 0;
+                              const isNeg = diff < 0;
+                              const badgeBg = isPos ? 'bg-emerald-50 border-emerald-100' : isNeg ? 'bg-rose-50 border-rose-100' : 'bg-slate-50 border-slate-100';
+                              const badgeTextColor = isPos ? 'text-emerald-600' : isNeg ? 'text-rose-600' : 'text-slate-500';
+                              const arrow = isPos ? '▲' : isNeg ? '▼' : '●';
+                              return (
+                                <div className="flex flex-col items-start gap-0.5">
+                                  <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md text-xs font-bold border ${badgeBg} ${badgeTextColor}`}>
+                                    {arrow} {parseFloat(Math.abs(diff).toFixed(2))}
+                                  </span>
+                                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">days/project</span>
+                                </div>
+                              );
+                            })()}
                           </div>
                         </div>
                       </div>
@@ -2416,61 +2455,91 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
                     <div className="flex gap-4" style={{ height: '220px' }}>
                       <div className="bg-white rounded-xl flex-1 flex flex-col overflow-hidden shadow-sm border border-slate-100 p-5 justify-between">
                          <div className="text-xs font-black uppercase tracking-widest text-slate-400">Total Leads</div>
-                         <div>
-                            <div className="flex items-baseline gap-3">
-                               <div className="text-7xl font-semibold tracking-tight text-orange-500">{analytics.allLeadsCount}</div>
-                               {(() => {
-                                 const diff = analytics.allLeadsCount - prevAnalytics.allLeadsCount;
-                                 const color = diff > 0 ? 'text-emerald-500' : diff < 0 ? 'text-red-500' : 'text-slate-400';
-                                 return <span className={`text-base font-black ${color}`}>{diff > 0 ? '▲' : diff < 0 ? '▼' : '●'} {Math.abs(diff)}</span>;
-                               })()}
-                            </div>
-                            <div className="text-[11px] font-bold uppercase text-slate-400 mt-1">lead requests / period</div>
+                         <div className="flex items-center gap-3">
+                            <div className="text-7xl font-semibold tracking-tight text-slate-900 leading-none">{analytics.allLeadsCount}</div>
+                            {(() => {
+                              const diff = analytics.allLeadsCount - prevAnalytics.allLeadsCount;
+                              const isPos = diff > 0;
+                              const isNeg = diff < 0;
+                              const badgeBg = isPos ? 'bg-emerald-50 border-emerald-100' : isNeg ? 'bg-rose-50 border-rose-100' : 'bg-slate-50 border-slate-100';
+                              const badgeTextColor = isPos ? 'text-emerald-600' : isNeg ? 'text-rose-600' : 'text-slate-500';
+                              const arrow = isPos ? '▲' : isNeg ? '▼' : '●';
+                              return (
+                                <div className="flex flex-col items-start gap-0.5">
+                                  <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md text-xs font-bold border ${badgeBg} ${badgeTextColor}`}>
+                                    {arrow} {Math.abs(diff)}
+                                  </span>
+                                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">leads</span>
+                                </div>
+                              );
+                            })()}
                          </div>
                       </div>
 
                       <div className="bg-white rounded-xl flex-1 flex flex-col overflow-hidden shadow-sm border border-slate-100 p-5 justify-between">
                          <div className="text-xs font-black uppercase tracking-widest text-slate-400">Lead Artworks</div>
-                         <div>
-                            <div className="flex items-baseline gap-3">
-                               <div className="text-7xl font-semibold tracking-tight text-amber-500">{analytics.totalLeadArtworks}</div>
-                               {(() => {
-                                 const diff = analytics.totalLeadArtworks - prevAnalytics.totalLeadArtworks;
-                                 const color = diff > 0 ? 'text-emerald-500' : diff < 0 ? 'text-red-500' : 'text-slate-400';
-                                 return <span className={`text-base font-black ${color}`}>{diff > 0 ? '▲' : diff < 0 ? '▼' : '●'} {Math.abs(diff)}</span>;
-                               })()}
-                            </div>
-                            <div className="text-[11px] font-bold uppercase text-slate-400 mt-1">total artwork count</div>
+                         <div className="flex items-center gap-3">
+                            <div className="text-7xl font-semibold tracking-tight text-slate-900 leading-none">{analytics.totalLeadArtworks}</div>
+                            {(() => {
+                              const diff = analytics.totalLeadArtworks - prevAnalytics.totalLeadArtworks;
+                              const isPos = diff > 0;
+                              const isNeg = diff < 0;
+                              const badgeBg = isPos ? 'bg-emerald-50 border-emerald-100' : isNeg ? 'bg-rose-50 border-rose-100' : 'bg-slate-50 border-slate-100';
+                              const badgeTextColor = isPos ? 'text-emerald-600' : isNeg ? 'text-rose-600' : 'text-slate-500';
+                              const arrow = isPos ? '▲' : isNeg ? '▼' : '●';
+                              return (
+                                <div className="flex flex-col items-start gap-0.5">
+                                  <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md text-xs font-bold border ${badgeBg} ${badgeTextColor}`}>
+                                    {arrow} {Math.abs(diff)}
+                                  </span>
+                                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">artworks</span>
+                                </div>
+                              );
+                            })()}
                          </div>
                       </div>
 
                       <div className="bg-white rounded-xl flex-1 flex flex-col overflow-hidden shadow-sm border border-slate-100 p-5 justify-between">
                          <div className="text-xs font-black uppercase tracking-widest text-slate-400">Avg Workdays</div>
-                         <div>
-                            <div className="flex items-baseline gap-3">
-                               <div className="text-7xl font-semibold tracking-tight text-yellow-500">{parseFloat(analytics.avgLeadWorkDays.toFixed(2)).toString()}</div>
-                               {(() => {
-                                 const diff = analytics.avgLeadWorkDays - (prevAnalytics.avgLeadWorkDays || 0);
-                                 const color = diff > 0 ? 'text-red-500' : diff < 0 ? 'text-emerald-500' : 'text-slate-400';
-                                 return <span className={`text-base font-black ${color}`}>{diff > 0 ? '▲' : diff < 0 ? '▼' : '●'} {parseFloat(Math.abs(diff).toFixed(2))}</span>;
-                               })()}
-                            </div>
-                            <div className="text-[11px] font-bold uppercase text-slate-400 mt-1">days / lead processing</div>
+                         <div className="flex items-center gap-3">
+                            <div className="text-7xl font-semibold tracking-tight text-slate-900 leading-none">{parseFloat(analytics.avgLeadWorkDays.toFixed(2)).toString()}</div>
+                            {(() => {
+                              const diff = analytics.avgLeadWorkDays - (prevAnalytics.avgLeadWorkDays || 0);
+                              const isPos = diff > 0; // for workdays, lower is better, but let's keep green for decrease and red for increase
+                              const badgeBg = isPos ? 'bg-rose-50 border-rose-100' : diff < 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-slate-50 border-slate-100';
+                              const badgeTextColor = isPos ? 'text-rose-600' : diff < 0 ? 'text-emerald-600' : 'text-slate-500';
+                              const arrow = isPos ? '▲' : diff < 0 ? '▼' : '●';
+                              return (
+                                <div className="flex flex-col items-start gap-0.5">
+                                  <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md text-xs font-bold border ${badgeBg} ${badgeTextColor}`}>
+                                    {arrow} {parseFloat(Math.abs(diff).toFixed(2))}
+                                  </span>
+                                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">days/lead</span>
+                                </div>
+                              );
+                            })()}
                          </div>
                       </div>
 
                       <div className="bg-white rounded-xl flex-1 flex flex-col overflow-hidden shadow-sm border border-slate-100 p-5 justify-between">
                          <div className="text-xs font-black uppercase tracking-widest text-slate-400">Avg Lead Revisions</div>
-                         <div>
-                            <div className="flex items-baseline gap-3">
-                               <div className="text-7xl font-semibold tracking-tight text-rose-500">{parseFloat(analytics.avgLeadRevisions.toFixed(2)).toString()}</div>
-                               {(() => {
-                                 const diff = analytics.avgLeadRevisions - (prevAnalytics.avgLeadRevisions || 0);
-                                 const color = diff > 0 ? 'text-red-500' : diff < 0 ? 'text-emerald-500' : 'text-slate-400';
-                                 return <span className={`text-base font-black ${color}`}>{diff > 0 ? '▲' : diff < 0 ? '▼' : '●'} {parseFloat(Math.abs(diff).toFixed(2))}</span>;
-                               })()}
-                            </div>
-                            <div className="text-[11px] font-bold uppercase text-slate-400 mt-1">revisions / artwork</div>
+                         <div className="flex items-center gap-3">
+                            <div className="text-7xl font-semibold tracking-tight text-slate-900 leading-none">{parseFloat(analytics.avgLeadRevisions.toFixed(2)).toString()}</div>
+                            {(() => {
+                              const diff = analytics.avgLeadRevisions - (prevAnalytics.avgLeadRevisions || 0);
+                              const isPos = diff > 0; // lower is better
+                              const badgeBg = isPos ? 'bg-rose-50 border-rose-100' : diff < 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-slate-50 border-slate-100';
+                              const badgeTextColor = isPos ? 'text-rose-600' : diff < 0 ? 'text-emerald-600' : 'text-slate-500';
+                              const arrow = isPos ? '▲' : diff < 0 ? '▼' : '●';
+                              return (
+                                <div className="flex flex-col items-start gap-0.5">
+                                  <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md text-xs font-bold border ${badgeBg} ${badgeTextColor}`}>
+                                    {arrow} {parseFloat(Math.abs(diff).toFixed(2))}
+                                  </span>
+                                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">revisions</span>
+                                </div>
+                              );
+                            })()}
                          </div>
                       </div>
                     </div>
@@ -2522,50 +2591,72 @@ const ReportGenerator: React.FC<Props> = ({ state }) => {
                   <div className="flex-1 flex flex-col gap-6 mt-6 w-full h-[540px]">
                     
                     {/* Top Row: 3 KPI Cards */}
-                    <div className="flex gap-6 h-[220px]">
+                    <div className="flex gap-6" style={{ height: '220px' }}>
                       
                       <div className="bg-white rounded-2xl flex-1 flex flex-col overflow-hidden shadow-sm border border-slate-100 p-6 justify-between">
                          <div className="text-xs font-black uppercase tracking-widest text-slate-400">Total Internal Artworks</div>
-                         <div>
-                            <div className="flex items-baseline gap-3">
-                               <div className="text-8xl font-semibold tracking-tight text-indigo-600">{analytics.totalInternalArtworks}</div>
-                               {(() => {
-                                 const diff = analytics.totalInternalArtworks - prevAnalytics.totalInternalArtworks;
-                                 const color = diff > 0 ? 'text-emerald-500' : diff < 0 ? 'text-rose-500' : 'text-slate-400';
-                                 return <span className={`text-lg font-black ${color}`}>{diff > 0 ? '▲' : diff < 0 ? '▼' : '●'} {Math.abs(diff)}</span>;
-                               })()}
-                            </div>
-                            <div className="text-[11px] font-bold uppercase text-slate-400 mt-1">artworks in period</div>
+                         <div className="flex items-center gap-3">
+                            <div className="text-8xl font-semibold tracking-tight text-slate-900 leading-none">{analytics.totalInternalArtworks}</div>
+                            {(() => {
+                              const diff = analytics.totalInternalArtworks - prevAnalytics.totalInternalArtworks;
+                              const isPos = diff > 0;
+                              const isNeg = diff < 0;
+                              const badgeBg = isPos ? 'bg-emerald-50 border-emerald-100' : isNeg ? 'bg-rose-50 border-rose-100' : 'bg-slate-50 border-slate-100';
+                              const badgeTextColor = isPos ? 'text-emerald-600' : isNeg ? 'text-rose-600' : 'text-slate-500';
+                              const arrow = isPos ? '▲' : isNeg ? '▼' : '●';
+                              return (
+                                <div className="flex flex-col items-start gap-0.5">
+                                  <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md text-xs font-bold border ${badgeBg} ${badgeTextColor}`}>
+                                    {arrow} {Math.abs(diff)}
+                                  </span>
+                                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">artworks</span>
+                                </div>
+                              );
+                            })()}
                          </div>
                       </div>
 
                       <div className="bg-white rounded-2xl flex-1 flex flex-col overflow-hidden shadow-sm border border-slate-100 p-6 justify-between">
                          <div className="text-xs font-black uppercase tracking-widest text-slate-400">Avg Internal Workdays</div>
-                         <div>
-                            <div className="flex items-baseline gap-3">
-                               <div className="text-8xl font-semibold tracking-tight text-sky-500">{parseFloat(analytics.avgInternalWorkDays.toFixed(1)).toString()}</div>
-                               {(() => {
-                                 const diff = analytics.avgInternalWorkDays - prevAnalytics.avgInternalWorkDays;
-                                 const color = diff > 0 ? 'text-rose-500' : diff < 0 ? 'text-emerald-500' : 'text-slate-400';
-                                 return <span className={`text-lg font-black ${color}`}>{diff > 0 ? '▲' : diff < 0 ? '▼' : '●'} {parseFloat(Math.abs(diff).toFixed(1))}</span>;
-                               })()}
-                            </div>
-                            <div className="text-[11px] font-bold uppercase text-slate-400 mt-1">days / internal task</div>
+                         <div className="flex items-center gap-3">
+                            <div className="text-8xl font-semibold tracking-tight text-slate-900 leading-none">{parseFloat(analytics.avgInternalWorkDays.toFixed(1)).toString()}</div>
+                            {(() => {
+                              const diff = analytics.avgInternalWorkDays - prevAnalytics.avgInternalWorkDays;
+                              const isPos = diff > 0;
+                              const badgeBg = isPos ? 'bg-rose-50 border-rose-100' : diff < 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-slate-50 border-slate-100';
+                              const badgeTextColor = isPos ? 'text-rose-600' : diff < 0 ? 'text-emerald-600' : 'text-slate-500';
+                              const arrow = isPos ? '▲' : diff < 0 ? '▼' : '●';
+                              return (
+                                <div className="flex flex-col items-start gap-0.5">
+                                  <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md text-xs font-bold border ${badgeBg} ${badgeTextColor}`}>
+                                    {arrow} {parseFloat(Math.abs(diff).toFixed(1))}
+                                  </span>
+                                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">days/task</span>
+                                </div>
+                              );
+                            })()}
                          </div>
                       </div>
 
                       <div className="bg-white rounded-2xl flex-1 flex flex-col overflow-hidden shadow-sm border border-slate-100 p-6 justify-between">
                          <div className="text-xs font-black uppercase tracking-widest text-slate-400">Avg Internal Revisions</div>
-                         <div>
-                            <div className="flex items-baseline gap-3">
-                               <div className="text-8xl font-semibold tracking-tight text-violet-500">{parseFloat(analytics.avgInternalRevisions.toFixed(2)).toString()}</div>
-                               {(() => {
-                                 const diff = analytics.avgInternalRevisions - prevAnalytics.avgInternalRevisions;
-                                 const color = diff > 0 ? 'text-rose-500' : diff < 0 ? 'text-emerald-500' : 'text-slate-400';
-                                 return <span className={`text-lg font-black ${color}`}>{diff > 0 ? '▲' : diff < 0 ? '▼' : '●'} {parseFloat(Math.abs(diff).toFixed(2))}</span>;
-                               })()}
-                            </div>
-                            <div className="text-[11px] font-bold uppercase text-slate-400 mt-1">revisions / internal artwork</div>
+                         <div className="flex items-center gap-3">
+                            <div className="text-8xl font-semibold tracking-tight text-slate-900 leading-none">{parseFloat(analytics.avgInternalRevisions.toFixed(2)).toString()}</div>
+                            {(() => {
+                              const diff = analytics.avgInternalRevisions - prevAnalytics.avgInternalRevisions;
+                              const isPos = diff > 0;
+                              const badgeBg = isPos ? 'bg-rose-50 border-rose-100' : diff < 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-slate-50 border-slate-100';
+                              const badgeTextColor = isPos ? 'text-rose-600' : diff < 0 ? 'text-emerald-600' : 'text-slate-500';
+                              const arrow = isPos ? '▲' : diff < 0 ? '▼' : '●';
+                              return (
+                                <div className="flex flex-col items-start gap-0.5">
+                                  <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md text-xs font-bold border ${badgeBg} ${badgeTextColor}`}>
+                                    {arrow} {parseFloat(Math.abs(diff).toFixed(2))}
+                                  </span>
+                                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">revisions</span>
+                                </div>
+                              );
+                            })()}
                          </div>
                       </div>
 

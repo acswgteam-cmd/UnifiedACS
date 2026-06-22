@@ -129,6 +129,10 @@ export default {
       '3xl': ['28px', { lineHeight: '1.2' }],
       '4xl': ['36px', { lineHeight: '1.1' }],
       '5xl': ['48px', { lineHeight: '1.05' }],
+      '6xl': ['60px', { lineHeight: '1' }],
+      '7xl': ['72px', { lineHeight: '1' }],
+      '8xl': ['96px', { lineHeight: '1' }],
+      '9xl': ['128px', { lineHeight: '1' }],
     },
 
     fontFamily: {

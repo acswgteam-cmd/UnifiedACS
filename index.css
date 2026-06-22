@@ -926,3 +926,110 @@ select.outline-none { background-color: var(--s1) !important; color: var(--ink) 
 /* Ring / focus states */
 .focus\:ring-indigo-600:focus, .focus\:ring-indigo-500:focus { --tw-ring-color: rgba(0,163,233,0.35) !important; }
 .ring-2.ring-amber-300 { box-shadow: none !important; }
+
+/* ═══════════════════════════════════════════════════════════════
+   REPORT GENERATOR — FORCED LIGHT MODE SCOPE
+   When data-theme="light" is set on the report generator container,
+   this block ensures all nested elements render with proper light
+   mode colors, overriding any global dark-mode !important rules.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* --- CSS Variable reset for light mode scope --- */
+[data-theme="light"] {
+  color-scheme: light;
+}
+
+/* --- Override global color utility overrides within light scope --- */
+[data-theme="light"] .text-slate-800,
+[data-theme="light"] .text-zinc-800,
+[data-theme="light"] .text-gray-800 { color: #1e293b !important; }
+
+[data-theme="light"] .text-slate-700,
+[data-theme="light"] .text-zinc-700,
+[data-theme="light"] .text-gray-700 { color: #334155 !important; }
+
+[data-theme="light"] .text-slate-600,
+[data-theme="light"] .text-zinc-600,
+[data-theme="light"] .text-gray-600 { color: #475569 !important; }
+
+[data-theme="light"] .text-slate-500,
+[data-theme="light"] .text-zinc-500,
+[data-theme="light"] .text-gray-500 { color: #64748b !important; }
+
+[data-theme="light"] .text-slate-400,
+[data-theme="light"] .text-zinc-400,
+[data-theme="light"] .text-gray-400 { color: #94a3b8 !important; }
+
+[data-theme="light"] .text-slate-300,
+[data-theme="light"] .text-zinc-300,
+[data-theme="light"] .text-gray-300 { color: #cbd5e1 !important; }
+
+[data-theme="light"] .text-slate-900,
+[data-theme="light"] .text-zinc-900,
+[data-theme="light"] .text-gray-900 { color: #0f172a !important; }
+
+/* --- Background utility restores for light scope --- */
+[data-theme="light"] .bg-white { background-color: #ffffff !important; }
+[data-theme="light"] .bg-slate-50 { background-color: #f8fafc !important; }
+[data-theme="light"] .bg-slate-100 { background-color: #f1f5f9 !important; }
+[data-theme="light"] .bg-slate-200 { background-color: #e2e8f0 !important; }
+
+/* --- Colored text overrides (report slides should keep their colors) --- */
+[data-theme="light"] .text-blue-600 { color: #2563eb !important; }
+[data-theme="light"] .text-blue-500 { color: #3b82f6 !important; }
+[data-theme="light"] .text-indigo-600 { color: #4f46e5 !important; }
+[data-theme="light"] .text-indigo-500 { color: #6366f1 !important; }
+[data-theme="light"] .text-emerald-600 { color: #059669 !important; }
+[data-theme="light"] .text-emerald-500 { color: #10b981 !important; }
+[data-theme="light"] .text-rose-500 { color: #f43f5e !important; }
+[data-theme="light"] .text-rose-600 { color: #e11d48 !important; }
+[data-theme="light"] .text-amber-500 { color: #f59e0b !important; }
+[data-theme="light"] .text-amber-600 { color: #d97706 !important; }
+[data-theme="light"] .text-orange-500 { color: #f97316 !important; }
+[data-theme="light"] .text-orange-600 { color: #ea580c !important; }
+[data-theme="light"] .text-fuchsia-600 { color: #c026d3 !important; }
+[data-theme="light"] .text-violet-600 { color: #7c3aed !important; }
+[data-theme="light"] .text-sky-500 { color: #0ea5e9 !important; }
+[data-theme="light"] .text-teal-500 { color: #14b8a6 !important; }
+[data-theme="light"] .text-yellow-500 { color: #eab308 !important; }
+[data-theme="light"] .text-red-500 { color: #ef4444 !important; }
+[data-theme="light"] .text-red-600 { color: #dc2626 !important; }
+
+/* --- Background color utility restores --- */
+[data-theme="light"] .bg-indigo-600 { background-color: #4f46e5 !important; }
+[data-theme="light"] .bg-blue-50 { background-color: #eff6ff !important; }
+[data-theme="light"] .bg-indigo-50 { background-color: #eef2ff !important; }
+[data-theme="light"] .bg-emerald-50 { background-color: #ecfdf5 !important; }
+[data-theme="light"] .bg-amber-50 { background-color: #fffbeb !important; }
+[data-theme="light"] .bg-red-50 { background-color: #fef2f2 !important; }
+[data-theme="light"] .bg-rose-50 { background-color: #fff1f2 !important; }
+[data-theme="light"] .bg-teal-100 { background-color: #ccfbf1 !important; }
+[data-theme="light"] .bg-amber-100 { background-color: #fef3c7 !important; }
+[data-theme="light"] .bg-emerald-100 { background-color: #d1fae5 !important; }
+[data-theme="light"] .bg-blue-100 { background-color: #dbeafe !important; }
+[data-theme="light"] .bg-orange-100 { background-color: #ffedd5 !important; }
+[data-theme="light"] .bg-fuchsia-50 { background-color: #fdf4ff !important; }
+[data-theme="light"] .bg-slate-900 { background-color: #0f172a !important; }
+[data-theme="light"] .bg-gradient-to-br { /* preserve gradient, no override needed */ }
+
+/* --- Border color restores for light scope --- */
+[data-theme="light"] .border-slate-100 { border-color: #f1f5f9 !important; }
+[data-theme="light"] .border-slate-200 { border-color: #e2e8f0 !important; }
+[data-theme="light"] .border-indigo-100 { border-color: #e0e7ff !important; }
+[data-theme="light"] .divide-slate-50 > * + * { border-top-color: #f8fafc !important; }
+[data-theme="light"] .divide-slate-100 > * + * { border-top-color: #f1f5f9 !important; }
+
+/* --- Shadow restores for light scope --- */
+[data-theme="light"] .shadow-sm { box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05) !important; }
+[data-theme="light"] .shadow-xl { box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1) !important; }
+[data-theme="light"] .shadow-lg { box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1) !important; }
+
+/* --- Text color overrides for colored elements inside slides --- */
+[data-theme="light"] .text-teal-600 { color: #0d9488 !important; }
+[data-theme="light"] .text-orange-700 { color: #c2410c !important; }
+[data-theme="light"] .text-amber-700 { color: #b45309 !important; }
+[data-theme="light"] .text-emerald-700 { color: #047857 !important; }
+[data-theme="light"] .text-red-700 { color: #b91c1c !important; }
+
+/* Sidebar settings panel in report gen - force light bg */
+[data-theme="light"] .bg-zinc-200 { background-color: #e4e4e7 !important; }
