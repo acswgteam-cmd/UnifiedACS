@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { SURVEY_FORM_SECRET } from '../data/mockData';
 import { ProjectEvaluationView } from '../components/ProjectEvaluationView';
 import { Dropdown } from '../components/Dropdown';
+import { saveAs } from 'file-saver';
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 
@@ -202,6 +203,57 @@ export const ProjectMaster: React.FC<Props> = ({ projects, designers, artworkLog
   const getDesignerName = (id: string) => designers.find(d => d.id === id)?.name || 'N/A';
   const uniqueLocations = useMemo(() => { const locsSet = new Set<string>(); projects.forEach(p => { const locs = (p as any).locations || (p as any).location; if (Array.isArray(locs)) locs.forEach(l => l && locsSet.add(l)); else if (typeof locs === 'string' && locs.trim() !== '') locsSet.add(locs.trim()); }); return Array.from(locsSet).sort(); }, [projects]);
   const filteredProjects = useMemo(() => { return projects.filter(p => { const matchType = filterType === 'ALL' || p.project_type === filterType; const matchPIC = filterPIC === 'ALL' || p.pic_designer_id === filterPIC; const locs = (p as any).locations || (p as any).location || []; const normalizedLocs = Array.isArray(locs) ? locs : [locs]; const matchLoc = filterLocation === 'ALL' || normalizedLocs.includes(filterLocation); const matchStatus = filterStatus === 'ALL' || p.status === filterStatus; return matchType && matchPIC && matchLoc && matchStatus; }); }, [projects, filterType, filterPIC, filterLocation, filterStatus]);
+
+  const handleDownloadExcel = () => {
+    const headers = [
+      'Project ID',
+      'Nama Project',
+      'Status',
+      'Tanggal Mulai',
+      'Tanggal Selesai',
+      'Tipe Project',
+      'PIC Designer',
+      'Support Designers',
+      'Lokasi',
+      'Catatan'
+    ];
+
+    const rows = filteredProjects.map(p => {
+      const picName = getDesignerName(p.pic_designer_id);
+      const supportNames = (p.support_designer_ids || []).map(id => getDesignerName(id)).join(', ');
+      const locs = (p as any).locations || (p as any).location || [];
+      const normalizedLocs = Array.isArray(locs) ? locs.join(', ') : String(locs);
+      
+      return [
+        p.id,
+        p.project_name || '',
+        p.status || '',
+        p.start_date || '',
+        p.end_date || '',
+        p.project_type || '',
+        picName,
+        supportNames,
+        normalizedLocs,
+        p.notes || ''
+      ];
+    });
+
+    const escapeCsvValue = (val: string) => {
+      const text = String(val);
+      if (text.includes(',') || text.includes('"') || text.includes('\n') || text.includes('\r')) {
+        return `"${text.replace(/"/g, '""')}"`;
+      }
+      return text;
+    };
+
+    const csvContent = '\uFEFF' + [
+      headers.map(escapeCsvValue).join(','),
+      ...rows.map(row => row.map(escapeCsvValue).join(','))
+    ].join('\r\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    saveAs(blob, `project_data_export_${new Date().toISOString().slice(0, 10)}.csv`);
+  };
 
   const projectBoardGroups = useMemo(() => {
     const groups: Record<string, Project[]> = {};
@@ -1088,7 +1140,14 @@ IMPORTANT: Extract ALL rows. Return raw JSON only, no explanations.`;
   return (
     <div className="space-y-6 flex flex-col h-full relative">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 flex-shrink-0"><div><h1 className="text-2xl font-bold text-zinc-900 tracking-tight uppercase">Project Master</h1><p className="text-zinc-600 text-sm mt-1 font-bold">Manage event project timelines.</p></div><div className="flex flex-wrap items-center gap-3 w-full md:w-auto mt-4 md:mt-0">
-        <button onClick={handleCopyChecklistLink} className={`px-4 py-2 rounded-lg text-xs font-bold uppercase transition-all flex items-center gap-2 border ${copySuccess ? 'bg-emerald-50 border-emerald-500 text-emerald-700' : 'bg-white border-zinc-300 text-zinc-700 hover:border-zinc-900'}`}><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>{copySuccess ? 'Checklist Link Copied!' : 'Checklist Link'}</button><div className="flex bg-[#FAFAFA] p-1 rounded-xl"><button onClick={() => setView('list')} className={`p-2 rounded-lg transition-all ${view === 'list' ? 'bg-white text-zinc-800 shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`} title="List View"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" /></svg></button><button onClick={() => setView('board')} className={`p-2 rounded-lg transition-all ${view === 'board' ? 'bg-white text-zinc-800 shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`} title="Board View"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" strokeWidth="2" /><path d="M9 3v18M15 3v18" strokeWidth="2" /></svg></button><button onClick={() => setView('calendar')} className={`p-2 rounded-lg transition-all ${view === 'calendar' ? 'bg-white text-zinc-800 shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`} title="Calendar View"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" strokeWidth="2" /><path d="M16 2v4M8 2v4M3 10h18" strokeWidth="2" /></svg></button><button onClick={() => setView('evaluation')} className={`p-2 rounded-lg transition-all ${view === 'evaluation' ? 'bg-yellow-500 text-white shadow-sm' : 'bg-transparent text-yellow-600 hover:bg-yellow-100 hover:text-yellow-700'}`} title="Evaluation View"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 8V6a2 2 0 00-2-2H7a2 2 0 00-2 2v2M5 8h14a2 2 0 012 2v2a5 5 0 01-5 5H8a5 5 0 01-5-5v-2a2 2 0 012-2zm7 9v4m-4 0h8" /></svg></button></div>{!isAdding && (<button onClick={() => setIsAdding(true)} className="px-4 py-2 bg-zinc-900 text-white rounded-lg text-sm font-bold shadow-sm border border-[#EAEAEA]">Add Project</button>)}</div></header>
+        <button onClick={handleCopyChecklistLink} className={`px-4 py-2 rounded-lg text-xs font-bold uppercase transition-all flex items-center gap-2 border ${copySuccess ? 'bg-emerald-50 border-emerald-500 text-emerald-700' : 'bg-white border-zinc-300 text-zinc-700 hover:border-zinc-900'}`}><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>{copySuccess ? 'Checklist Link Copied!' : 'Checklist Link'}</button>
+        <button onClick={handleDownloadExcel} className="px-4 py-2 rounded-lg text-xs font-bold uppercase transition-all flex items-center gap-2 border bg-white border-zinc-300 text-zinc-700 hover:border-zinc-900 hover:bg-zinc-50 shadow-sm" title="Download data project ke Excel/CSV">
+          <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          Download Excel
+        </button>
+        <div className="flex bg-[#FAFAFA] p-1 rounded-xl"><button onClick={() => setView('list')} className={`p-2 rounded-lg transition-all ${view === 'list' ? 'bg-white text-zinc-800 shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`} title="List View"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" /></svg></button><button onClick={() => setView('board')} className={`p-2 rounded-lg transition-all ${view === 'board' ? 'bg-white text-zinc-800 shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`} title="Board View"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" strokeWidth="2" /><path d="M9 3v18M15 3v18" strokeWidth="2" /></svg></button><button onClick={() => setView('calendar')} className={`p-2 rounded-lg transition-all ${view === 'calendar' ? 'bg-white text-zinc-800 shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`} title="Calendar View"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" strokeWidth="2" /><path d="M16 2v4M8 2v4M3 10h18" strokeWidth="2" /></svg></button><button onClick={() => setView('evaluation')} className={`p-2 rounded-lg transition-all ${view === 'evaluation' ? 'bg-yellow-500 text-white shadow-sm' : 'bg-transparent text-yellow-600 hover:bg-yellow-100 hover:text-yellow-700'}`} title="Evaluation View"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 8V6a2 2 0 00-2-2H7a2 2 0 00-2 2v2M5 8h14a2 2 0 012 2v2a5 5 0 01-5 5H8a5 5 0 01-5-5v-2a2 2 0 012-2zm7 9v4m-4 0h8" /></svg></button></div>{!isAdding && (<button onClick={() => setIsAdding(true)} className="px-4 py-2 bg-zinc-900 text-white rounded-lg text-sm font-bold shadow-sm border border-[#EAEAEA]">Add Project</button>)}</div></header>
 
       {view === 'evaluation' ? (
         <div className="flex-1 bg-white rounded-[24px] border border-[#EAEAEA] shadow-sm overflow-hidden p-6 animate-in slide-in-from-bottom-2 duration-300">

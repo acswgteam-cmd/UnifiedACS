@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { WorkContext, ArtworkLog, AppState } from '../types';
 import { Dropdown } from './Dropdown';
+import { saveAs } from 'file-saver';
 
 interface Props {
   state: AppState;
@@ -77,6 +78,57 @@ const ArtworkTable: React.FC<Props> = ({ state, onUpdate, onDelete }) => {
       case WorkContext.LEAD: return 'bg-emerald-100 text-emerald-800';
       case WorkContext.INTERNAL: return 'bg-purple-100 text-purple-800';
     }
+  };
+
+  const handleDownloadExcel = () => {
+    const headers = [
+      'Artwork ID',
+      'Artwork Name',
+      'Artwork Type',
+      'Context',
+      'Context Name/Detail',
+      'PIC Designer',
+      'Start Date',
+      'End Date',
+      'Revision Count',
+      'Approval Required',
+      'Notes'
+    ];
+
+    const rows = filteredLogs.map(log => {
+      const picName = getDesignerName(log.pic_designer_id);
+      const contextLabel = getContextLabel(log);
+      
+      return [
+        log.id,
+        log.artwork_name || '',
+        log.artwork_type || '',
+        log.work_context || '',
+        contextLabel || '',
+        picName,
+        log.start_date || '',
+        log.end_date || '',
+        log.revision_count !== undefined ? String(log.revision_count) : '0',
+        log.approval_required ? 'Yes' : 'No',
+        log.notes || ''
+      ];
+    });
+
+    const escapeCsvValue = (val: string) => {
+      const text = String(val);
+      if (text.includes(',') || text.includes('"') || text.includes('\n') || text.includes('\r')) {
+        return `"${text.replace(/"/g, '""')}"`;
+      }
+      return text;
+    };
+
+    const csvContent = '\uFEFF' + [
+      headers.map(escapeCsvValue).join(','),
+      ...rows.map(row => row.map(escapeCsvValue).join(','))
+    ].join('\r\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    saveAs(blob, `artwork_log_export_${new Date().toISOString().slice(0, 10)}.csv`);
   };
 
   const handleStartEdit = (log: ArtworkLog) => {
@@ -172,6 +224,13 @@ const ArtworkTable: React.FC<Props> = ({ state, onUpdate, onDelete }) => {
             />
           </div>
         </div>
+
+        <button onClick={handleDownloadExcel} className="px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all flex items-center gap-2 border bg-white border-slate-300 text-zinc-700 hover:border-zinc-900 hover:bg-zinc-50 shadow-sm ml-auto" title="Download artwork log ke Excel/CSV">
+          <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          Download Excel
+        </button>
       </div>
 
       <div className="overflow-x-auto overflow-y-auto max-h-[600px]">

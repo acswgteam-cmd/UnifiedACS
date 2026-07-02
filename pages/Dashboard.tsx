@@ -254,6 +254,56 @@ const Dashboard: React.FC<Props> = ({ state }) => {
       return (totalDays / logs.length).toFixed(1);
     };
 
+    const calcAvgProjectDuration = () => {
+      const projectLogs = filteredLogs.filter(l => l.work_context === WorkContext.PROJECT && l.project_id);
+      if (!projectLogs.length) return "0.0";
+      
+      const projectTimes: Record<string, { minStart: number; maxEnd: number }> = {};
+      
+      projectLogs.forEach(l => {
+        const pid = l.project_id!;
+        const start = new Date(l.start_date).getTime();
+        const end = new Date(l.end_date || l.start_date).getTime();
+        
+        if (!projectTimes[pid]) {
+          projectTimes[pid] = { minStart: start, maxEnd: end };
+        } else {
+          if (start < projectTimes[pid].minStart) projectTimes[pid].minStart = start;
+          if (end > projectTimes[pid].maxEnd) projectTimes[pid].maxEnd = end;
+        }
+      });
+      
+      const durations = Object.values(projectTimes).map(times => {
+        const diffMs = times.maxEnd - times.minStart;
+        const diffDays = Math.max(0, diffMs / (1000 * 3600 * 24)) + 1;
+        return diffDays;
+      });
+      
+      if (!durations.length) return "0.0";
+      const sum = durations.reduce((acc, val) => acc + val, 0);
+      return (sum / durations.length).toFixed(1);
+    };
+
+    const calcAvgProjectRevisions = () => {
+      const projectLogs = filteredLogs.filter(l => l.work_context === WorkContext.PROJECT && l.project_id);
+      if (!projectLogs.length) return "0.0";
+      
+      const projectRevisions: Record<string, number> = {};
+      
+      projectLogs.forEach(l => {
+        const pid = l.project_id!;
+        projectRevisions[pid] = (projectRevisions[pid] || 0) + (l.revision_count || 0);
+      });
+      
+      const revisionSums = Object.values(projectRevisions);
+      if (!revisionSums.length) return "0.0";
+      
+      const sum = revisionSums.reduce((acc, val) => acc + val, 0);
+      return (sum / revisionSums.length).toFixed(1);
+    };
+
+
+
     const getMonthlyTrends = () => {
       const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
       const trends = [];
@@ -522,8 +572,12 @@ const Dashboard: React.FC<Props> = ({ state }) => {
       monthlyTrends: getMonthlyTrends(),
       leadDurationByMonth: getLeadDurationByMonth(),
       avgDurProj: calcAvgDuration(WorkContext.PROJECT),
+      avgDurProjLife: calcAvgProjectDuration(),
+      avgDurProjRevisions: calcAvgProjectRevisions(),
       avgDurLead: calcAvgDuration(WorkContext.LEAD),
       avgDurInt: calcAvgDuration(WorkContext.INTERNAL),
+
+
       projectTypeSplit: ["2D Design", "3D Design", "Video"].map(t => ({
         type: t,
         percentage: artworksProject ? Math.round((filteredLogs.filter(l => l.work_context === WorkContext.PROJECT && l.artwork_type === t).length / artworksProject) * 100) : 0
@@ -799,6 +853,8 @@ const Dashboard: React.FC<Props> = ({ state }) => {
                   title="Project"
                   count={analytics.artworksProject}
                   duration={analytics.avgDurProj}
+                  avgProjectDuration={analytics.avgDurProjLife}
+                  avgProjectRevisions={analytics.avgDurProjRevisions}
                   typeSplit={analytics.projectTypeSplit}
                   gradient="from-blue-500 to-cyan-500"
                 />
@@ -1566,7 +1622,7 @@ const KPICard = ({ id, filename, label, value, sub, gradient, keywords, statsLis
   );
 };
 
-const VolumeCard = ({ id, filename, title, count, duration, typeSplit, gradient }: any) => {
+const VolumeCard = ({ id, filename, title, count, duration, avgProjectDuration, avgProjectRevisions, typeSplit, gradient }: any) => {
   const colorMap: any = {
     'orange': '#f59e0b',
     'blue': '#3b82f6',
@@ -1583,15 +1639,27 @@ const VolumeCard = ({ id, filename, title, count, duration, typeSplit, gradient 
         <h3 className="text-[13px] font-medium text-[var(--color-ink-2)] tracking-tight">{title} Context</h3>
         <span className="px-2 py-1 rounded-md text-[11px] font-medium" style={{ color: accentColor, backgroundColor: `${accentColor}15` }}>Volume</span>
       </div>
-      <div className="grid grid-cols-2 gap-4 mb-6">
+      <div className={`grid ${avgProjectDuration !== undefined && avgProjectRevisions !== undefined ? 'grid-cols-2 sm:grid-cols-4' : (avgProjectDuration !== undefined ? 'grid-cols-3' : 'grid-cols-2')} gap-4 mb-6`}>
         <div>
           <div className="text-3xl font-semibold tracking-tight font-display" style={{ color: accentColor }}>{count}</div>
           <div className="text-[12px] text-[var(--color-ink-3)] mt-1">Artworks</div>
         </div>
-        <div className="border-l border-[var(--color-hl)] pl-5">
+        <div className="border-l border-[var(--color-hl)] pl-3 md:pl-5">
           <div className="text-3xl font-semibold text-[var(--color-ink)] tracking-tight font-display">~{duration}</div>
           <div className="text-[12px] text-[var(--color-ink-3)] mt-1">Avg Days</div>
         </div>
+        {avgProjectDuration !== undefined && (
+          <div className="border-l border-[var(--color-hl)] pl-3 md:pl-5">
+            <div className="text-3xl font-semibold text-[var(--color-ink)] tracking-tight font-display">~{avgProjectDuration}</div>
+            <div className="text-[12px] text-[var(--color-ink-3)] mt-1">Avg Proj Days</div>
+          </div>
+        )}
+        {avgProjectRevisions !== undefined && (
+          <div className="border-l border-[var(--color-hl)] pl-3 md:pl-5">
+            <div className="text-3xl font-semibold text-[var(--color-ink)] tracking-tight font-display">~{avgProjectRevisions}</div>
+            <div className="text-[12px] text-[var(--color-ink-3)] mt-1">Avg Revisions</div>
+          </div>
+        )}
       </div>
       <div className="space-y-4 mt-auto">
         {typeSplit.map((t: any, idx: number) => {
