@@ -91,6 +91,27 @@ const descriptions: Record<keyof typeof schemas,string> = {
  list_internal_tasks: 'Search internal design tasks by name, status, department or inclusive deadline dates (YYYY-MM-DD). Null deadlines are excluded by date filters. Requester is not an assigned designer.',
  get_task_updates: 'Read the newest recorded updates/notes for one internal task by exact ID. Shows note PIC and recorded timestamps; incomplete legacy history is possible. changed_by is not authenticated identity.',
 };
+// Return only fixed diagnostics; database errors can contain credentials or query data.
+export function safeReadError(error: unknown): string {
+  const code = error && typeof error === 'object' && 'code' in error ? String(error.code) : '';
+  const diagnostics: Record<string, string> = {
+    SELF_SIGNED_CERT_IN_CHAIN: 'Database TLS certificate is not trusted. Configure MCP_DATABASE_CA with the Supabase CA certificate.',
+    DEPTH_ZERO_SELF_SIGNED_CERT: 'Database TLS certificate is not trusted. Configure MCP_DATABASE_CA with the Supabase CA certificate.',
+    UNABLE_TO_VERIFY_LEAF_SIGNATURE: 'Database TLS certificate is not trusted. Configure MCP_DATABASE_CA with the Supabase CA certificate.',
+    CERT_HAS_EXPIRED: 'Database TLS certificate has expired.',
+    '28P01': 'Database password authentication failed. Check MCP_DATABASE_URL credentials.',
+    '28000': 'Database login authorization failed. Check the dedicated login role.',
+    '42501': 'Database reader is missing required SELECT permissions.',
+    '42703': 'Database schema is missing a required connector column.',
+    '42P01': 'Database schema is missing a required connector table.',
+    EAI_AGAIN: 'Database hostname could not be resolved.',
+    ENOTFOUND: 'Database hostname could not be resolved.',
+    ECONNREFUSED: 'Database connection was refused.',
+    ETIMEDOUT: 'Database connection timed out.',
+    '53300': 'Database connection limit was reached.',
+  };
+  return diagnostics[code] || 'Check connector configuration and database schema.';
+}
 export function createServer(query: Query, resource: string, read: <T>(run: (q: Query) => Promise<T>) => Promise<T> = run => run(query)) {
   const server = new McpServer({name:'unified-acs-readonly', version:'1.0.0'}, {maxToolInputElements: 30});
   for (const name of Object.keys(schemas) as (keyof typeof schemas)[]) {
@@ -101,8 +122,8 @@ export function createServer(query: Query, resource: string, read: <T>(run: (q: 
       try {
         const output = await read(q => executeTool(name, args, q, resource));
         return {content:[{type:'text' as const, text:JSON.stringify(output)}], structuredContent: output};
-      } catch {
-        return {isError:true, content:[{type:'text' as const, text:'Unable to read ACS data. Check connector configuration and database schema; no data was changed.'}]};
+      } catch (error) {
+        return {isError:true, content:[{type:'text' as const, text:`Unable to read ACS data. ${safeReadError(error)} No data was changed.`}]};
       }
     });
   }
