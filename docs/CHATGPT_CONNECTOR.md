@@ -1,19 +1,36 @@
-# UnifiedACS → ChatGPT (akses baca)
+# UnifiedACS → ChatGPT (baca + input artwork)
 
-Kode ini menambahkan MCP Streamable HTTP di `/api/mcp` ke proyek Vite/Vercel yang ada. ChatGPT dapat membaca data Supabase melalui empat fungsi. Tidak memerlukan Gemini atau OpenAI API key. Koneksi GitHub sendiri tidak memberi akses ke database aplikasi.
+Kode ini menambahkan MCP Streamable HTTP di `/api/mcp` ke proyek Vite/Vercel yang ada. ChatGPT dapat membaca data Supabase melalui fungsi baca dan input artwork. Tidak memerlukan Gemini atau OpenAI API key. Koneksi GitHub sendiri tidak memberi akses ke database aplikasi.
 
-**Status:** kode dan pengujian lokal tersedia; belum terhubung ke database produksi, belum diuji login OAuth langsung dari ChatGPT. Sebelum digunakan, pemilik perlu menyiapkan akun database dan penyedia OAuth, mengisi environment variable, lalu melakukan pemeriksaan staging di bawah. Tanpa konfigurasi lengkap endpoint menolak permintaan (`503`); tanpa token yang valid menolak akses (`401`).
+**Versi 1.1:** menambahkan `list_designers`, `create_artwork`, dan waktu input artwork (`created_at`). Fungsi baca tetap memakai transaksi READ ONLY. Input hanya menambah artwork dalam proyek yang sudah ada, dengan PIC aktif, tanpa UPDATE/DELETE. Token baca lama tetap dapat membaca; pembuatan artwork membutuhkan scope tambahan `acs:artwork:create`.
+
+## Aktivasi pembaruan untuk koneksi yang sudah terpasang
+
+1. Jalankan `supabase/mcp/setup_artwork_writer.sql` pada database yang sama. Script tidak mengganti password, frontend grants, atau konfigurasi RLS aplikasi lama. Audit input berada di schema privat dengan RLS aktif. Default transaksi login tetap read-only; fungsi input membuka READ WRITE secara eksplisit.
+2. Deploy kode versi 1.1 pada branch connector yang dipakai (`feat/read-only-mcp`). URL, issuer, audience, allowlist dan database URL tetap sama.
+3. Di Auth0 → Applications → APIs → API UnifiedACS dengan Identifier sesuai `MCP_RESOURCE_URL` → Permissions, tambahkan `acs:artwork:create` dengan deskripsi “Add artwork to existing ACS projects”. Bila API menggunakan RBAC, berikan permission ini hanya kepada akun HOD yang diizinkan, serta `acs:read`. Server tetap memeriksa `MCP_ALLOWED_SUBJECTS`.
+4. Refresh daftar tools dan lakukan login/otorisasi ulang koneksi UnifiedACS di ChatGPT agar token mendapat kedua scope. Token tanpa scope tulis akan ditolak saat membuat artwork. Metadata discovery mengiklankan kedua scope.
+5. Coba instruksi: “Tambahkan artwork [nama] di project [nama], tipe 2D Design, PIC Sofyan, mulai 7 Oktober 2026.” Tanggal selesai opsional; jumlah revisi default 0, approval default false, catatan opsional. Assistant mencari ID proyek/PIC terlebih dahulu, dan meminta klarifikasi bila ambigu.
+6. Jalankan `supabase/mcp/verify_artwork_writer.sql`. `can_update`, `can_delete`, `can_forge_input_time` harus false. Script verifikasi read-only lama tidak berlaku lagi untuk login yang diperbarui.
+
+`request_id` berupa UUID menjadi ID artwork sekaligus kunci retry. Gunakan ID dan argumen yang sama saat retry; pergantian payload atau pemilik pada ID yang sama ditolak. INSERT artwork dan audit input dilakukan atomik. Audit menyimpan subject OAuth terverifikasi, hash input, receipt dan waktu input. Pengulangan mengembalikan receipt awal dan `replayed: true`; receipt bukan status terbaru setelah pengguna mengedit artwork melalui aplikasi.
+
+**Keamanan:** setup membatasi login connector melalui grant kolom dan trigger khusus untuk memastikan input selalu PROJECT dengan PIC aktif dan nilai valid. Schema audit bersifat privat dan memakai RLS. Perubahan model autentikasi/RLS frontend berada di luar scope connector ini; tinjau kebijakan aplikasi sebelum mengubahnya.
+
+**Validasi:** test MCP menggunakan token RS256 lokal dan database simulasi; jalankan ulang tests/typecheck/build. Status deployment, permission database dan scope OAuth harus diperiksa terpisah. Jangan menganggap test lokal sebagai bukti input melalui ChatGPT sudah aktif.
 
 ## Data yang tersedia
 
 | Fungsi | Pertanyaan | Sumber |
 | --- | --- | --- |
+| `list_designers` | “Cari Sofyan dan ID PIC aktif” | designers |
+| `create_artwork` | “Tambahkan artwork ke proyek” | artwork_logs + audit privat |
 | `search_projects` | “Cari proyek X / proyek yang ON PROGRESS” | projects + designers |
 | `get_project_details` | “Siapa PIC, kapan mulai/selesai, apa checklist dan artwork proyek ini?” | projects + designers + project_checklists + artwork_logs |
 | `list_internal_tasks` | “Apa pekerjaan internal yang deadline minggu ini?” | internal_designs + departments |
 | `get_task_updates` | “Apa update terbaru dan PIC catatan tugas ini?” | internal_design_changelog + internal_designs + departments + designers |
 
-Gunakan pencarian dahulu, lalu ID dari hasilnya. Nama mirip perlu dikonfirmasi kepada pengguna. PIC proyek, designer artwork, requester tugas, dan PIC catatan adalah peran berbeda. Task internal belum mempunyai kolom PIC tingkat task; connector tidak menebaknya. Label `changed_by` di aplikasi lama bukan identitas pengguna terverifikasi. Riwayat lama mungkin tidak lengkap. `retrieved_at` adalah waktu pembacaan, bukan waktu terakhir data diubah.
+Gunakan pencarian dahulu, lalu ID dari hasilnya. Nama mirip perlu dikonfirmasi kepada pengguna. PIC proyek, designer artwork, requester tugas, dan PIC catatan adalah peran berbeda. Task internal belum mempunyai kolom PIC tingkat task; connector tidak menebaknya. Label `changed_by` di aplikasi lama bukan identitas pengguna terverifikasi. Riwayat lama mungkin tidak lengkap. `retrieved_at` adalah waktu pembacaan; `artwork.created_at` adalah waktu input; start_date/end_date adalah tanggal pengerjaan.
 
 Survey, evaluasi designer, lead, URL gambar, dan link Drive tidak diekspos. Brief dan catatan proyek tidak diambil; isi catatan dan nilai perubahan yang tercatat di changelog tetap dapat dibaca. Semua teks dianggap data tidak tepercaya, bukan instruksi AI. Hasil maksimal 50 baris per daftar, dengan `has_more`/`next_offset`, bukan total jumlah data. Detail proyek memiliki pagination terpisah untuk checklist dan artwork dengan offset yang sama. String panjang dibatasi 4.000 karakter.
 
@@ -74,7 +91,7 @@ Tests menggunakan token RS256 yang ditandatangani lokal dan database simulasi; t
 
 Setelah deploy staging:
 
-1. `GET /.well-known/oauth-protected-resource` harus mengembalikan resource, issuer, dan scope `acs:read` yang benar. Endpoint discovery tidak berisi rahasia/data proyek.
+1. `GET /.well-known/oauth-protected-resource` harus mengembalikan resource, issuer, dan scope `acs:read` dan `acs:artwork:create` yang benar. Endpoint discovery tidak berisi rahasia/data proyek.
 2. `POST /api/mcp` tanpa token harus menghasilkan `401` dan header `WWW-Authenticate`. Sebelum semua konfigurasi diisi, `503` adalah normal.
 3. Dari **MCP Inspector** atau ChatGPT, login sebagai owner. Uji keempat fungsi dengan satu proyek dan task yang diketahui. Bandingkan PIC, tanggal, status dan update dengan UI/Supabase; ulangi dengan nama ambigu, hasil kosong dan daftar yang lebih panjang dari limit.
 4. Login akun lain yang tidak di-allowlist harus ditolak. Token untuk audience lain atau tanpa `acs:read` juga harus ditolak.

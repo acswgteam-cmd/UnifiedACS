@@ -1,8 +1,9 @@
 import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from 'jose';
+import { CREATE_SCOPE } from './artwork.js';
 import type { Config } from './config.js';
 export const SCOPE = 'acs:read';
 const keySets = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
-export async function authorize(header: string | undefined, config: Config, testKey?: JWTVerifyGetKey) {
+export async function authorize(header: string | undefined, config: Config, testKey?: JWTVerifyGetKey, requiredScopes: string[] = [SCOPE]) {
   const match = header?.match(/^Bearer ([^\s]+)$/i);
   if (!match) throw new Error('Unauthorized');
   let key = testKey || keySets.get(config.jwks);
@@ -15,13 +16,13 @@ export async function authorize(header: string | undefined, config: Config, test
     requiredClaims: ['exp', 'iat', 'sub'], clockTolerance: 5,
   });
   if (!payload.sub || !config.allowedSubjects.includes(payload.sub)) throw new Error('Unauthorized');
-  if (typeof payload.scope !== 'string' || !payload.scope.split(' ').includes(SCOPE)) throw new Error('Unauthorized');
+  if (typeof payload.scope !== 'string' || !requiredScopes.every(scope => (payload.scope as string).split(' ').includes(scope))) throw new Error('Unauthorized');
   return payload.sub;
 }
 export function protectedResource(config: Pick<Config, 'resource' | 'issuer'>) {
-  return {resource: config.resource, authorization_servers: [config.issuer], scopes_supported: [SCOPE], bearer_methods_supported: ['header'], resource_name: 'UnifiedACS read-only'};
+  return {resource: config.resource, authorization_servers: [config.issuer], scopes_supported: [SCOPE, CREATE_SCOPE], bearer_methods_supported: ['header'], resource_name: 'UnifiedACS artwork connector'};
 }
-export function challenge(config: Pick<Config, 'resource'>) {
+export function challenge(config: Pick<Config, 'resource'>, scopes: string[] = [SCOPE], insufficient = false) {
   const metadata = new URL('/.well-known/oauth-protected-resource', config.resource);
-  return `Bearer resource_metadata="${metadata}", scope="${SCOPE}"`;
+  return `Bearer resource_metadata="${metadata}", scope="${scopes.join(' ')}"${insufficient ? ', error="insufficient_scope"' : ''}`;
 }

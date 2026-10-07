@@ -8,7 +8,7 @@ if (preview && (!branch || branch === 'feat/read-only-mcp')) {
   // browser database keys, or cached frontend build output with it.
   rmSync('dist', { recursive: true, force: true });
   mkdirSync('dist', { recursive: true });
-  writeFileSync('dist/index.html', '<!doctype html><html lang="en"><meta charset="utf-8"><title>UnifiedACS MCP Preview</title><body><h1>UnifiedACS MCP Preview</h1><p>This deployment serves the authenticated read-only MCP connector. The admin application is not included.</p></body></html>');
+  writeFileSync('dist/index.html', '<!doctype html><html lang="en"><meta charset="utf-8"><title>UnifiedACS MCP Preview</title><body><h1>UnifiedACS MCP Preview</h1><p>This deployment serves the authenticated MCP artwork connector. The admin application is not included.</p></body></html>');
   console.log('MCP-only preview: admin frontend and assets excluded');
 } else {
   const result = spawnSync('vite', ['build'], { stdio: 'inherit', shell: false });

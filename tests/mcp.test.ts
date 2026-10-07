@@ -18,7 +18,7 @@ async function token(overrides: Record<string,any> = {}) {
  return new SignJWT({sub:'owner|1', scope:'acs:read', iss:config.issuer, aud:config.resource, iat:Math.floor(Date.now()/1000), exp:Math.floor(Date.now()/1000)+300, ...overrides})
   .setProtectedHeader({alg:'RS256'}).sign(privateKey);
 }
-const auth = (header: string | undefined, c: typeof config) => authorize(header, c, async () => publicKey);
+const auth = (header: string | undefined, c: typeof config, _key?: any, scopes?: string[]) => authorize(header, c, async () => publicKey, scopes);
 
 test('configuration refuses missing auth, admin DB login and insecure TLS overrides', () => {
  assert.deepEqual(loadConfig(env).allowedSubjects,['owner|1']);
@@ -85,9 +85,9 @@ test('HTTP MCP handshake, tool discovery, calls and fail-closed errors with no d
  let res=await post({jsonrpc:'2.0',id:1,method:'tools/list'}, {...headers,authorization:''});
  assert.equal(res.status,401);assert.match(res.headers.get('www-authenticate')!,/oauth-protected-resource/); assert.equal(reads,0);
  res=await post({jsonrpc:'2.0',id:2,method:'initialize',params:{protocolVersion:'2025-11-25',capabilities:{},clientInfo:{name:'test',version:'1'}}});
- assert.equal(res.status,200);assert.equal((await res.json()).result.serverInfo.name,'unified-acs-readonly');
+ assert.equal(res.status,200);assert.equal((await res.json()).result.serverInfo.name,'unified-acs');
  res=await post({jsonrpc:'2.0',id:3,method:'tools/list'});
- const tools=(await res.json()).result.tools;assert.equal(tools.length,4);assert.ok(tools.every((x:any)=>x.annotations.readOnlyHint));assert.equal(reads,0);
+ const tools=(await res.json()).result.tools;assert.equal(tools.length,6);assert.equal(tools.filter((x:any)=>x.annotations.readOnlyHint).length,5);assert.equal(tools.find((x:any)=>x.name==='create_artwork').annotations.readOnlyHint,false);assert.equal(reads,0);
  res=await post({jsonrpc:'2.0',id:4,method:'tools/call',params:{name:'search_projects',arguments:{query:'Test'}}});
  const output=await res.json();assert.equal(output.result.structuredContent.items.length,0);assert.equal(reads,1);
  res=await post({jsonrpc:'2.0',id:5,method:'tools/call',params:{name:'search_projects',arguments:{limit:999}}});
@@ -101,4 +101,46 @@ test('unconfigured deployment returns 503 without invoking auth or DB', async t 
  server.listen(0,'127.0.0.1');await once(server,'listening');t.after(()=>{server.close();server.closeAllConnections();});
  const res=await fetch(`http://127.0.0.1:${(server.address() as any).port}/api/mcp`);
  assert.equal(res.status,503);assert.equal(await res.text(),'Connector is not configured');
+});
+
+test('artwork validation rejects impossible dates, backwards ranges, unknown fields and missing PIC', async () => {
+ const {createArtworkSchema} = await import('../server/mcp/artwork.js');
+ const args={request_id:taskId,project_id:projectId,artwork_name:'KV',artwork_type:'2D Design',pic_designer_id:taskId,start_date:'2026-10-07'};
+ assert.equal(createArtworkSchema.parse(args).revision_count,0);
+ for (const invalid of [{start_date:'2026-02-30'},{end_date:'2026-10-06'},{artwork_type:'Other'},{revision_count:-1},{pic_designer_id:undefined},{sql:'DROP TABLE x'},{created_at:'2026-10-07'}]) assert.throws(()=>createArtworkSchema.parse({...args,...invalid}));
+});
+test('artwork insertion binds values, verifies active PIC and uses one stable audited request', async () => {
+ const {createArtwork} = await import('../server/mcp/artwork.js');
+ const args={request_id:taskId,project_id:projectId,artwork_name:"KV '); DROP TABLE projects;--",artwork_type:'2D Design',pic_designer_id:taskId,start_date:'2026-10-07'};
+ let audit:any; let inserts=0;
+ const q:Query=async(sql,v)=>{
+  if(sql.startsWith('SELECT pg_advisory')) return [];
+  if(sql.includes('FROM acs_mcp_private')) return audit?[audit]:[];
+  if(sql.includes('FROM public.projects')) return [{id:projectId,project_name:'Project'}];
+  if(sql.includes('FROM public.designers')) return [{id:taskId,name:'Sofyan',active:true}];
+  if(sql.startsWith('INSERT INTO public.artwork_logs')) {inserts++;assert.equal(v![2],args.artwork_name);assert.ok(!sql.includes(args.artwork_name));return [{id:taskId,created_at:'2026-10-07T00:00:00Z'}];}
+  if(sql.startsWith('INSERT INTO acs_mcp_private')) {audit={actor_subject:v![1],input_hash:v![2],result:JSON.parse(v![3] as string)};return [];}
+  throw new Error('Unexpected SQL');
+ };
+ const first=await createArtwork(args,q,'owner|1');assert.equal(first.created,true);
+ const replay=await createArtwork(args,q,'owner|1');assert.equal(replay.replayed,true);assert.equal(inserts,1);
+ await assert.rejects(()=>createArtwork({...args,artwork_name:'Different'},q,'owner|1'),/different input/);
+ await assert.rejects(()=>createArtwork(args,q,'other|2'),/different input/);
+ const invalid:Query=async sql=>sql.includes('FROM public.projects')?[{id:projectId}]:sql.includes('FROM public.designers')?[{id:taskId,active:false}]:[];
+ await assert.rejects(()=>createArtwork(args,invalid,'owner|1'),/active designer/);
+});
+test('HTTP write calls require both scopes and never reach database with read-only tokens', async t => {
+ let writes=0;
+ const handler=makeHandler({config:()=>config,auth,read:async(_c,run)=>run(async()=>[]),write:async(_c,run)=>{writes++;return run(async sql=>sql.includes('FROM public.projects')?[{id:projectId}]:sql.includes('FROM public.designers')?[{id:taskId,name:'Designer',active:true}]:sql.startsWith('INSERT INTO public.artwork_logs')?[{id:taskId,created_at:'2026-10-07T00:00:00Z'}]:[]);}});
+ const server=httpServer(handler);server.listen(0,'127.0.0.1');await once(server,'listening');t.after(()=>{server.close();server.closeAllConnections();});
+ const url=`http://127.0.0.1:${(server.address() as any).port}/api/mcp`;
+ const call={jsonrpc:'2.0',id:1,method:'tools/call',params:{name:'create_artwork',arguments:{request_id:taskId,project_id:projectId,artwork_name:'KV',artwork_type:'2D Design',pic_designer_id:taskId,start_date:'2026-10-07'}}};
+ const post=async(scope:string)=>fetch(url,{method:'POST',headers:{authorization:'Bearer '+await token({scope}),'content-type':'application/json',accept:'application/json, text/event-stream'},body:JSON.stringify(call)});
+ const denied=await post('acs:read');const body=await denied.json();assert.equal(body.result.isError,true);assert.match(body.result._meta['mcp/www_authenticate'],/insufficient_scope/);assert.equal(writes,0);
+ const permitted=await post('acs:read acs:artwork:create');assert.equal(permitted.status,200);assert.equal((await permitted.json()).result.structuredContent.created,true);assert.equal(writes,1);
+ assert.equal((await post('acs:artwork:create')).status,401);
+ // Exercise Vercel's parsed-body path and its HTTP 403 scope challenge as well.
+ const parsed=httpServer((req,res)=>{(req as any).body=call;void handler(req,res);});parsed.listen(0,'127.0.0.1');await once(parsed,'listening');t.after(()=>{parsed.close();parsed.closeAllConnections();});
+ const deniedParsed=await fetch(`http://127.0.0.1:${(parsed.address() as any).port}/api/mcp`,{method:'POST',headers:{authorization:'Bearer '+await token()}});
+ assert.equal(deniedParsed.status,403);assert.match(deniedParsed.headers.get('www-authenticate')!,/acs:artwork:create/);assert.equal(writes,1);
 });
